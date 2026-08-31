@@ -1,0 +1,22 @@
+{
+  "name": "stacktao-site",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "content": "node scripts/generate-content.mjs",
+    "dev": "npm run content && vite",
+    "build": "npm run content && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "gray-matter": "^4.0.3",
+    "lucide": "^0.468.0",
+    "marked": "^15.0.6",
+    "sanitize-html": "^2.14.0"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0"
+  }
+}

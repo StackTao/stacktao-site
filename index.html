@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f2ea" />
+    <meta name="description" content="StackTao 的文章、项目与长期笔记。" />
+    <title>StackTao</title>
+    <script>
+      ;(function () {
+        var saved = localStorage.getItem('stacktao-theme')
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        if (saved === 'dark' || (!saved && dark)) document.documentElement.classList.add('dark')
+      })()
+    </script>
+  </head>
+  <body>
+    <canvas class="inkscape" data-inkscape aria-hidden="true"></canvas>
+    <div class="reading-line" data-reading-line aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="mark" href="/" data-link aria-label="StackTao 首页">
+        <span class="mark-letter">ST</span>
+      </a>
+      <div class="topbar-actions">
+        <button class="search-launcher" type="button" data-search-open aria-label="搜索" title="搜索">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <span>搜索</span>
+          <kbd>⌘ K</kbd>
+        </button>
+        <button class="icon-button" type="button" data-theme-toggle aria-label="切换深浅色" title="切换深浅色">
+          <i data-lucide="sun" class="theme-icon-light" aria-hidden="true"></i>
+          <i data-lucide="moon" class="theme-icon-dark" aria-hidden="true"></i>
+        </button>
+        <button class="icon-button mobile-only" type="button" data-menu-toggle aria-label="打开菜单" title="打开菜单">
+          <i data-lucide="menu" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+
+    <div class="site-shell" data-shell>
+      <aside class="side-rail" data-side-rail>
+        <div class="rail-profile">
+          <p class="eyebrow">About · StackTao</p>
+          <p class="rail-role" data-site-role>开源工具作者<br />设计工程师</p>
+          <p class="rail-bio" data-site-bio>记录工具、设计与长期维护。</p>
+        </div>
+        <nav class="rail-nav" aria-label="主要导航">
+          <a href="/" data-link data-nav="home"><span>序</span>首页</a>
+          <a href="/posts" data-link data-nav="posts"><span>甲</span>文章</a>
+          <a href="/projects" data-link data-nav="projects"><span>乙</span>项目</a>
+          <a href="/about" data-link data-nav="about"><span>丙</span>关于</a>
+        </nav>
+        <div class="rail-foot">
+          <div class="rail-now">
+            <span>Now</span>
+            <strong data-site-now>构建安静而可靠的工具</strong>
+          </div>
+          <div class="rail-progress" role="progressbar" aria-label="页面阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span>Reading</span>
+            <output data-reading-value>00%</output>
+            <span class="rail-progress-track"><span data-reading-bar></span></span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content" id="content" tabindex="-1" aria-live="polite">
+        <div class="loading-state">正在展开纸卷...</div>
+      </main>
+
+      <aside class="page-outline" data-outline aria-label="文章大纲"></aside>
+    </div>
+
+    <footer class="site-footer">
+      <p>以文字保存思考，以工具回应问题。</p>
+      <div>
+        <span>CC BY-NC-SA 4.0</span>
+        <span>2021-PRESENT © StackTao</span>
+      </div>
+    </footer>
+
+    <div class="mobile-drawer" data-mobile-drawer aria-hidden="true">
+      <button class="drawer-backdrop" type="button" data-menu-close aria-label="关闭菜单"></button>
+      <div class="drawer-panel">
+        <div class="drawer-head">
+          <span>StackTao</span>
+          <button class="icon-button" type="button" data-menu-close aria-label="关闭菜单">
+            <i data-lucide="x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <nav aria-label="移动端导航">
+          <a href="/" data-link><span>序</span>首页</a>
+          <a href="/posts" data-link><span>甲</span>文章</a>
+          <a href="/projects" data-link><span>乙</span>项目</a>
+          <a href="/about" data-link><span>丙</span>关于</a>
+        </nav>
+      </div>
+    </div>
+
+    <dialog class="search-dialog" data-search-dialog>
+      <div class="search-box">
+        <div class="search-field">
+          <i data-lucide="search" aria-hidden="true"></i>
+          <input type="search" data-search-input placeholder="搜索文章与关键词" aria-label="搜索文章与关键词" autocomplete="off" />
+          <kbd>ESC</kbd>
+        </div>
+        <div class="search-results" data-search-results>
+          <p>输入标题、摘要或标签开始搜索。</p>
+        </div>
+      </div>
+    </dialog>
+
+    <button class="back-to-top" type="button" data-back-to-top aria-label="返回顶部" title="返回顶部">
+      <i data-lucide="arrow-up" aria-hidden="true"></i>
+    </button>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
