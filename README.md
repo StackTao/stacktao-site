@@ -42,4 +42,4 @@ public/js/
 └── content-generated.js     # 注入原型 PAGES、文章列表和搜索项
 ```
 
-`content-generated.js` 会覆盖原型的 `/posts`、`/projects`、`/talks` 和 `/photos` 路由，并按配置更新顶部与页脚菜单，但不触碰视觉和 Canvas 动画。缺少某类 JSON 时继续使用原型内置页面。正文会在构建阶段经过 HTML 白名单清理；浏览器不直接执行或解析 GitHub 仓库里的 Markdown。
+`content-generated.js` 会覆盖原型的首页、文章、最近更新、项目、演讲和相册路由，并按配置更新左侧个人资料、顶部菜单与页脚菜单，但不触碰视觉和 Canvas 动画。缺少某类 JSON 时继续使用原型内置页面。正文会在构建阶段经过 HTML 白名单清理；浏览器不直接执行或解析 GitHub 仓库里的 Markdown。

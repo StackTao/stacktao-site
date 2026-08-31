@@ -339,7 +339,34 @@ function createStructuredSearch(projects, talks, albums) {
   return projectItems.concat(talkItems, albumItems).filter((item) => item.title)
 }
 
-function createPrototypePages(articles) {
+function createHomePage(config, projects) {
+  const site = config.site || {}
+  const projectItems = projects && Array.isArray(projects.groups)
+    ? projects.groups.flatMap((group) => Array.isArray(group.projects) ? group.projects : [])
+    : []
+  const projectLinks = projectItems.slice(0, 3).map((project) => `<a class="magic-link" ${linkAttributes(project.url || '/projects')}><span class="dot" style="background:${safeColor(project.color)}"></span>${escapeHtml(project.name)}</a>`).join(' ')
+  const socialLinks = [
+    site.github ? `<a ${linkAttributes(site.github)}>GitHub</a>` : '',
+    site.website ? `<a ${linkAttributes(site.website)}>个人主页</a>` : '',
+  ].filter(Boolean).join('')
+  const contact = site.email
+    ? `<p>联系我：<a href="mailto:${escapeHtml(site.email)}">${escapeHtml(site.email)}</a></p>`
+    : ''
+
+  return `<main class="page prose slide-enter-content">
+    <h1>${escapeHtml(site.name || 'StackTao')}</h1>
+    <p>${escapeHtml(site.title || '把复杂的问题整理成清楚的工具。')}</p>
+    <p>${escapeHtml(site.description || '')}</p>
+    ${projectLinks ? `<p>目前公开维护 ${projectLinks}。每个项目都从具体工作流出发，并把实现、文档和发布放在同一套维护节奏里。</p>` : ''}
+    ${site.bio ? `<p>${escapeHtml(site.bio)}</p>` : ''}
+    <hr>
+    <p>继续查看</p>
+    <div class="socials">${socialLinks}<a href="#/projects">全部项目</a><a href="#/posts">中文文章</a></div>
+    ${contact}
+  </main>`
+}
+
+function createPrototypePages(articles, config, projects) {
   const pages = {}
   const titles = {}
 
@@ -371,13 +398,27 @@ function createPrototypePages(articles) {
       </a>`).join('')}
     </div>`).join('')
 
+  pages['/'] = createHomePage(config, projects)
+  titles['/'] = String(config.site && config.site.name || 'StackTao')
   pages['/posts'] = `<main class="page prose slide-enter-content">${groups}</main>`
   titles['/posts'] = '文章 - StackTao'
+  pages['/feed'] = `<main class="page prose slide-enter-content">
+    <h1>最近更新</h1>
+    <p class="op50">由内容仓库生成的文章索引。</p>
+    ${groups}
+  </main>`
+  titles['/feed'] = '最近更新 - StackTao'
+  pages['/404'] = `<main class="page prose slide-enter-content">
+    <h1>404</h1>
+    <p>这个页面不存在，可能已经移动或被重新整理。</p>
+    <p><a href="#/">返回首页</a> · <a href="#/posts">查看文章</a> · <a href="#/projects">浏览项目</a></p>
+  </main>`
+  titles['/404'] = '页面不存在 - StackTao'
   return { pages, titles }
 }
 
 function createPrototypeContentScript(articles, config, projects, talks, albums) {
-  const generated = createPrototypePages(articles)
+  const generated = createPrototypePages(articles, config, projects)
   const structured = createStructuredPages(projects, talks, albums)
   Object.assign(generated.pages, structured.pages)
   Object.assign(generated.titles, structured.titles)
@@ -393,17 +434,56 @@ function createPrototypeContentScript(articles, config, projects, talks, albums)
   var titles = window.PAGE_TITLES || {}
   var generatedPages = ${JSON.stringify(generated.pages)}
   var generatedTitles = ${JSON.stringify(generated.titles)}
+  Object.keys(pages).forEach(function (route) {
+    var stalePost = route.indexOf('/posts/') === 0
+    var staleTalk = generatedPages['/talks'] && route.indexOf('/talks/') === 0
+    if (stalePost || staleTalk) {
+      delete pages[route]
+      delete titles[route]
+    }
+  })
   Object.keys(generatedPages).forEach(function (route) { pages[route] = generatedPages[route] })
   Object.keys(generatedTitles).forEach(function (route) { titles[route] = generatedTitles[route] })
   window.PAGES = pages
   window.PAGE_TITLES = titles
-  var existing = (window.SEARCH_INDEX || []).filter(function (item) {
-    var managedKind = ['Blog', '文章', 'Project', '项目', 'Talk', '演讲', '相册'].indexOf(item.kind) >= 0
-    var managedPage = ['#/projects', '#/talks', '#/photos'].indexOf(item.href) >= 0
-    return !managedKind && !managedPage
-  })
-  window.SEARCH_INDEX = ${JSON.stringify(search)}.concat(existing)
+  window.SEARCH_INDEX = ${JSON.stringify(search)}
   window.CONTENT_CONFIG = ${JSON.stringify({ site: config.site || {}, navigation, footerNavigation })}
+
+  var siteConfig = ${JSON.stringify(config.site || {})}
+  var profile = document.querySelector('.nav-profile')
+  if (profile) {
+    var profileLabel = profile.querySelector('.nav-profile-label')
+    var profileRole = profile.querySelector('.nav-profile-role')
+    var profileSummary = profile.querySelector('.nav-profile-summary')
+    var profileNow = profile.querySelector('.nav-profile-facts dd a')
+    var profileContact = profile.querySelector('.nav-profile-contact')
+    if (profileLabel) profileLabel.textContent = 'About · ' + (siteConfig.name || 'StackTao')
+    if (profileRole && siteConfig.role) {
+      profileRole.textContent = ''
+      String(siteConfig.role).split('\\n').forEach(function (line, index) {
+        if (index) profileRole.appendChild(document.createElement('br'))
+        profileRole.appendChild(document.createTextNode(line))
+      })
+    }
+    if (profileSummary && siteConfig.bio) profileSummary.textContent = siteConfig.bio
+    if (profileNow && siteConfig.now) profileNow.textContent = siteConfig.now
+    if (profileContact) {
+      if (siteConfig.github) {
+        profileContact.href = siteConfig.github
+        profileContact.textContent = String(siteConfig.github).replace(/^https?:\\/\\//, '')
+        profileContact.target = '_blank'
+        profileContact.rel = 'noreferrer'
+      }
+      else if (siteConfig.email) {
+        profileContact.href = 'mailto:' + siteConfig.email
+        profileContact.textContent = siteConfig.email
+      }
+      else profileContact.hidden = true
+    }
+  }
+
+  var copyright = document.querySelector('.footer-meta span')
+  if (copyright) copyright.textContent = (siteConfig.since || new Date().getFullYear()) + '-PRESENT © ' + (siteConfig.name || 'StackTao')
 
   var headerNav = document.querySelector('.nav-right')
   var generatedNavigation = ${JSON.stringify(navigation)}

@@ -68,7 +68,7 @@ featured: true
 
 ## 站点与菜单配置
 
-文章仓库根目录必须包含 `content.config.json`。`navigation` 控制顶部菜单，`footerNavigation` 控制页脚菜单；未提供菜单数组时保留页面框架的默认菜单。`site` 会写入生成清单供后续使用，当前不会自动改写左侧个人介绍，左侧内容仍由页面框架维护。
+文章仓库根目录必须包含 `content.config.json`。`site` 控制首页文案、左侧个人资料和页脚署名，`navigation` 控制顶部菜单，`footerNavigation` 控制页脚菜单；未提供菜单数组时保留页面框架的默认菜单。
 
 ```json
 {

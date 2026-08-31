@@ -1,23 +1,30 @@
 {
-  "title": "项目",
-  "description": "持续维护的开源工具与设计实验。",
+  "title": "公开项目",
+  "description": "从 IDE 插件、AI 编程知识库到这个个人站，都是围绕真实工作流持续整理的工具。",
   "groups": [
     {
-      "title": "当前维护",
+      "title": "GitHub · 2026",
       "projects": [
         {
-          "name": "Peak",
-          "summary": "面向开发者的性能观察工具，强调清楚的因果与可解释的反馈。",
-          "status": "Active",
-          "url": "https://github.com/StackTao",
+          "name": "ShowDoc RunAPI",
+          "summary": "在 IntelliJ IDEA 内扫描 Spring MVC 接口、调试请求，并批量同步到自部署 ShowDoc RunAPI。",
+          "status": "Kotlin · IntelliJ IDEA 2024.1+",
+          "url": "https://github.com/StackTao/runapi-plugin",
           "color": "#3f7666"
         },
         {
-          "name": "Type Forge",
-          "summary": "整理中文与西文混排实践的实验性排版工具。",
-          "status": "Research",
-          "url": "https://github.com/StackTao",
+          "name": "Claude Code Guide",
+          "summary": "面向中文开发者的 Claude Code 共建知识库，整理命令、Skills、MCP、协作方法与安全边界。",
+          "status": "JavaScript · 静态知识库",
+          "url": "https://github.com/StackTao/ClaudeCodeGuide",
           "color": "#8a6f45"
+        },
+        {
+          "name": "StackTao Site",
+          "summary": "由 Markdown 和 JSON 驱动的个人站框架，保留水墨 Canvas、Hash 路由和无后端静态发布。",
+          "status": "JavaScript · GitHub Pages",
+          "url": "https://github.com/StackTao/stacktao-site",
+          "color": "#6e6961"
         }
       ]
     }

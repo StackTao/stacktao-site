@@ -1,27 +1,26 @@
 {
   "site": {
     "name": "StackTao",
-    "title": "在复杂的世界里，做清醒的工具。",
-    "description": "开源工具作者、设计工程师。这里记录开发者工具、界面秩序与长期维护。",
-    "role": "开源工具作者\n设计工程师",
-    "bio": "专注开发者工具、前端基础设施与安静的交互设计。",
-    "now": "构建安静而可靠的工具",
-    "email": "hi@example.com"
+    "title": "把复杂的开发流程，整理成可以被重复使用的工具。",
+    "description": "我在 GitHub 上维护开发者工具和中文技术资料，关注 IDE 工作流、AI 编程协作与静态内容系统。",
+    "role": "开发者工具作者\n开源内容维护者",
+    "bio": "这里记录真实项目里的设计取舍、实现过程和维护经验。比起追逐新概念，我更关心工具能否清楚、可靠地解决具体问题。",
+    "now": "ShowDoc RunAPI · Claude Code Guide · StackTao Site",
+    "github": "https://github.com/StackTao",
+    "website": "https://stacktao.cn",
+    "since": "2025"
   },
   "navigation": [
     { "label": "文章", "route": "/posts", "key": "blog", "enabled": true },
     { "label": "项目", "route": "/projects", "key": "projects", "enabled": true },
-    { "label": "演讲", "route": "/talks", "key": "talks", "enabled": true },
     { "label": "相册", "route": "/photos", "key": "photos", "enabled": true },
-    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": true }
+    { "label": "演讲", "route": "/talks", "key": "talks", "enabled": false },
+    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": false }
   ],
   "footerNavigation": [
-    { "label": "笔记", "route": "/notes" },
-    { "label": "相册", "route": "/photos" },
-    { "label": "工具", "route": "/use" },
-    { "label": "演示", "route": "/demos" },
-    { "label": "书签", "route": "/bookmarks" },
-    { "label": "媒体", "route": "/media" },
-    { "label": "联系", "route": "/chat" }
+    { "label": "首页", "route": "/" },
+    { "label": "文章", "route": "/posts" },
+    { "label": "项目", "route": "/projects" },
+    { "label": "相册", "route": "/photos" }
   ]
 }
