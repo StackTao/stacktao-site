@@ -1384,9 +1384,14 @@ body.overlay-open {
 .app-shell {
   position: relative;
   z-index: 2;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 #view {
+  flex: 1 0 auto;
   opacity: 1;
   transform: translateY(0);
   filter: blur(0);
