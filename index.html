@@ -1,118 +1,116 @@
-<!doctype html>
-<html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f2ea" />
-    <meta name="description" content="StackTao 的文章、项目与长期笔记。" />
-    <title>StackTao</title>
-    <script>
-      ;(function () {
-        var saved = localStorage.getItem('stacktao-theme')
-        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches
-        if (saved === 'dark' || (!saved && dark)) document.documentElement.classList.add('dark')
-      })()
-    </script>
-  </head>
-  <body>
-    <canvas class="inkscape" data-inkscape aria-hidden="true"></canvas>
-    <div class="reading-line" data-reading-line aria-hidden="true"></div>
-
-    <header class="topbar">
-      <a class="mark" href="/" data-link aria-label="StackTao 首页">
-        <span class="mark-letter">ST</span>
+<!DOCTYPE html>
+<html lang="en" data-base="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StackTao</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=inkscape-45" />
+  <script>
+    (function () {
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      var setting = localStorage.getItem('color-scheme') || localStorage.getItem('vueuse-color-scheme') || 'auto'
+      if (setting === 'dark' || (prefersDark && setting !== 'light'))
+        document.documentElement.classList.add('dark')
+    })()
+  </script>
+</head>
+<body>
+  <div id="nprogress"><div class="bar"></div></div>
+  <canvas class="art-canvas" aria-hidden="true"></canvas>
+  <div class="app-shell">
+    <header class="nav-wrap">
+      <a href="#/" class="logo" aria-label="StackTao 首页">
+        <svg width="50" height="50" viewBox="0 0 50 50" fill="none" aria-hidden="true" focusable="false">
+          <defs>
+            <mask id="stacktao-mark" maskUnits="userSpaceOnUse" x="0" y="0" width="50" height="50">
+              <text x="2" y="38" fill="white" font-family="Georgia, serif" font-size="31" font-style="italic" font-weight="700">ST</text>
+            </mask>
+          </defs>
+          <path class="logo-ink" mask="url(#stacktao-mark)" pathLength="350" d="M-12 6 C-2 7 10 8 20 12 C16 8 8 8 5 14 C2 20 9 22 16 23 C23 24 25 29 22 35 C18 42 8 42 5 36 C3 32 6 29 10 31 C16 35 21 40 27 36 C31 32 30 24 31 16 C28 16 25 15 25 13 C31 10 41 10 46 13 C43 16 38 17 34 16 C34 23 34 31 33 40 C33 47 33 55 33 62"/>
+        </svg>
       </a>
-      <div class="topbar-actions">
-        <button class="search-launcher" type="button" data-search-open aria-label="搜索" title="搜索">
-          <i data-lucide="search" aria-hidden="true"></i>
-          <span>搜索</span>
-          <kbd>⌘ K</kbd>
-        </button>
-        <button class="icon-button" type="button" data-theme-toggle aria-label="切换深浅色" title="切换深浅色">
-          <i data-lucide="sun" class="theme-icon-light" aria-hidden="true"></i>
-          <i data-lucide="moon" class="theme-icon-dark" aria-hidden="true"></i>
-        </button>
-        <button class="icon-button mobile-only" type="button" data-menu-toggle aria-label="打开菜单" title="打开菜单">
-          <i data-lucide="menu" aria-hidden="true"></i>
-        </button>
-      </div>
-    </header>
-
-    <div class="site-shell" data-shell>
-      <aside class="side-rail" data-side-rail>
-        <div class="rail-profile">
-          <p class="eyebrow">About · StackTao</p>
-          <p class="rail-role" data-site-role>开源工具作者<br />设计工程师</p>
-          <p class="rail-bio" data-site-bio>记录工具、设计与长期维护。</p>
-        </div>
-        <nav class="rail-nav" aria-label="主要导航">
-          <a href="/" data-link data-nav="home"><span>序</span>首页</a>
-          <a href="/posts" data-link data-nav="posts"><span>甲</span>文章</a>
-          <a href="/projects" data-link data-nav="projects"><span>乙</span>项目</a>
-          <a href="/about" data-link data-nav="about"><span>丙</span>关于</a>
-        </nav>
-        <div class="rail-foot">
-          <div class="rail-now">
-            <span>Now</span>
-            <strong data-site-now>构建安静而可靠的工具</strong>
+      <aside class="nav-profile" aria-label="个人简介">
+        <div class="nav-profile-label">About · StackTao</div>
+        <p class="nav-profile-role">开源工具作者<br>设计工程师</p>
+        <p class="nav-profile-summary">专注开发者工具、前端基础设施与交互设计。</p>
+        <dl class="nav-profile-facts">
+          <div>
+            <dt>Now</dt>
+            <dd><a href="#/projects">Peak · Vivid<br>Type Forge</a></dd>
           </div>
-          <div class="rail-progress" role="progressbar" aria-label="页面阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-            <span>Reading</span>
+        </dl>
+        <a class="nav-profile-contact" href="mailto:hi@yunfeng.dev">hi@yunfeng.dev</a>
+        <div class="nav-profile-live" data-reading-status role="progressbar" aria-label="页面阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="nav-profile-live-head">
+            <span data-reading-label>Page</span>
             <output data-reading-value>00%</output>
-            <span class="rail-progress-track"><span data-reading-bar></span></span>
           </div>
+          <span class="nav-profile-live-track" aria-hidden="true"><span data-reading-bar></span></span>
         </div>
       </aside>
+      <nav class="nav-right">
+        <a href="#/posts" data-nav="blog" aria-label="文章">文章</a>
+        <a href="#/projects" data-nav="projects" aria-label="项目">项目</a>
+        <a href="#/talks" data-nav="talks" aria-label="演讲">演讲</a>
+        <a href="#/photos" data-nav="photos" aria-label="相册">相册</a>
+        <a href="#/sponsors" data-nav="sponsors" aria-label="支持">支持</a>
+        <button class="icon-btn" data-search aria-label="搜索">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>
+        </button>
+        <button class="icon-btn" aria-label="切换深浅色" onclick="toggleDark(event)">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4l1.4-1.4M17 7l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/></svg>
+        </button>
+        <a href="#/feed" class="icon-btn" aria-label="RSS">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 19a1.5 1.5 0 1 0 0.01 0z" fill="currentColor"/><path d="M5 13a6 6 0 0 1 6 6M5 7a12 12 0 0 1 12 12"/></svg>
+        </a>
+      </nav>
+    </header>
 
-      <main class="content" id="content" tabindex="-1" aria-live="polite">
-        <div class="loading-state">正在展开纸卷...</div>
-      </main>
+    <div id="view"></div>
 
-      <aside class="page-outline" data-outline aria-label="文章大纲"></aside>
-    </div>
-
-    <footer class="site-footer">
-      <p>以文字保存思考，以工具回应问题。</p>
+    <footer class="footer copyright">
+      <div style="margin-bottom: 0.7rem; display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; justify-content: center">
+        <a href="#/notes">Notes</a>
+        <a href="#/photos">Photos</a>
+        <a href="#/use">Uses</a>
+        <a href="#/demos">Demos</a>
+        <a href="#/bookmarks">Bookmarks</a>
+        <a href="#/media">Media</a>
+        <a href="#/chat">Chat</a>
+      </div>
       <div>
-        <span>CC BY-NC-SA 4.0</span>
-        <span>2021-PRESENT © StackTao</span>
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noreferrer">CC BY-NC-SA 4.0</a>
+        2021-PRESENT © StackTao
       </div>
     </footer>
-
-    <div class="mobile-drawer" data-mobile-drawer aria-hidden="true">
-      <button class="drawer-backdrop" type="button" data-menu-close aria-label="关闭菜单"></button>
-      <div class="drawer-panel">
-        <div class="drawer-head">
-          <span>StackTao</span>
-          <button class="icon-button" type="button" data-menu-close aria-label="关闭菜单">
-            <i data-lucide="x" aria-hidden="true"></i>
-          </button>
-        </div>
-        <nav aria-label="移动端导航">
-          <a href="/" data-link><span>序</span>首页</a>
-          <a href="/posts" data-link><span>甲</span>文章</a>
-          <a href="/projects" data-link><span>乙</span>项目</a>
-          <a href="/about" data-link><span>丙</span>关于</a>
-        </nav>
+  </div>
+  <button class="back-to-top" data-back-to-top aria-label="返回顶部" title="返回顶部">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+      <path d="M12 19V5M6.5 10.5 12 5l5.5 5.5"/>
+    </svg>
+  </button>
+  <div class="search-mask" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="search-panel">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg>
+        <input placeholder="搜索文章、演讲与项目…" aria-label="搜索内容" aria-controls="search-results" aria-expanded="false" />
       </div>
+      <div class="search-hits" id="search-results" aria-live="polite"></div>
     </div>
-
-    <dialog class="search-dialog" data-search-dialog>
-      <div class="search-box">
-        <div class="search-field">
-          <i data-lucide="search" aria-hidden="true"></i>
-          <input type="search" data-search-input placeholder="搜索文章与关键词" aria-label="搜索文章与关键词" autocomplete="off" />
-          <kbd>ESC</kbd>
-        </div>
-        <div class="search-results" data-search-results>
-          <p>输入标题、摘要或标签开始搜索。</p>
-        </div>
-      </div>
-    </dialog>
-
-    <button class="back-to-top" type="button" data-back-to-top aria-label="返回顶部" title="返回顶部">
-      <i data-lucide="arrow-up" aria-hidden="true"></i>
-    </button>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+  </div>
+  <div class="lightbox" role="dialog" aria-modal="true" aria-hidden="true">
+    <img alt="" />
+    <div class="lightbox-cap"></div>
+  </div>
+  <script>window.SEARCH_INDEX = [{"title":"Naming Things That Last","kind":"Blog","href":"#/posts/naming-things-that-last"},{"title":"おはよう、京都！","kind":"Blog","href":"#/posts/ohayo-kyoto"},{"title":"Hello Kyoto!","kind":"Blog","href":"#/posts/hello-kyoto"},{"title":"Photos Page","kind":"Blog","href":"#/posts/photos-page"},{"title":"Between Sync and Async","kind":"Blog","href":"#/posts/between-sync-and-async"},{"title":"ESM-only Is Fine","kind":"Blog","href":"#/posts/esm-only-is-fine"},{"title":"Epoch Versioning","kind":"Blog","href":"#/posts/epoch-versioning"},{"title":"Introducing Peak Icon","kind":"Blog","href":"#/posts/introducing-peak-icon"},{"title":"开源的心理建设","kind":"Blog","href":"#/posts/kaifa-de-xinli-jianshe"},{"title":"Mental Health in Open Source","kind":"Blog","href":"#/posts/mental-health-in-open-source"},{"title":"Why I don't use Prettier","kind":"Blog","href":"#/posts/why-i-dont-use-prettier"},{"title":"为什么我不使用 Prettier","kind":"Blog","href":"#/posts/weishenme-wo-bu-shiyong-prettier"},{"title":"Why Reproductions are Required","kind":"Blog","href":"#/posts/smallest-reproduction"},{"title":"「请提供最小重现」","kind":"Blog","href":"#/posts/qing-tigong-zui-xiao-zhongxian"},{"title":"Reimagine Atomic CSS","kind":"Blog","href":"#/posts/reimagine-atomic-css"},{"title":"About Yak Shaving","kind":"Blog","href":"#/posts/about-yak-shaving"},{"title":"CPU Profiling Peak","kind":"Note","href":"#/notes/cpu-profiling-peak"},{"title":"TwoSlash in Notes","kind":"Note","href":"#/notes/twoslash-notes"},{"title":"pnpm on External disk","kind":"Note","href":"#/notes/pnpm-on-external-disk"},{"title":"NPM Binary 镜像配置","kind":"Note","href":"#/notes/npm-mirror"},{"title":"Range in JavaScript","kind":"Note","href":"#/notes/range-in-javascript"},{"title":"Domain Email","kind":"Note","href":"#/notes/domain-email"},{"title":"Introducing Peak DevTools","kind":"Talk","href":"#/talks/introducing-peak-devtools"},{"title":"Make Tools People Love","kind":"Talk","href":"#/talks/make-tools-people-love"},{"title":"Yak Shaving","kind":"Talk","href":"#/talks/yak-shaving"},{"title":"Vue と WebComponents で作る Agnostic UI","kind":"Talk","href":"#/talks/agnostic-ui"},{"title":"ESLint One for All Made Easy","kind":"Talk","href":"#/talks/eslint-one-for-all"},{"title":"The Progressive Path","kind":"Talk","href":"#/talks/the-progressive-path"},{"title":"The Set Theory","kind":"Talk","href":"#/talks/the-set-theory"},{"title":"Composable Vue","kind":"Talk","href":"#/talks/composable-vue"},{"title":"Projects","kind":"Page","href":"#/projects"},{"title":"Photos","kind":"Page","href":"#/photos"},{"title":"Sponsors","kind":"Page","href":"#/sponsors"}]</script>
+  <script src="js/pages.js"></script>
+  <script src="js/pages-longform.js?v=inkscape-45"></script>
+  <script src="js/content-generated.js?v=content"></script>
+  <script src="js/site.js?v=inkscape-45"></script>
+</body>
 </html>

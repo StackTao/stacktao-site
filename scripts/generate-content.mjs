@@ -13,6 +13,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((value) => {
 }))
 const sourceDir = path.resolve(projectRoot, args.source || process.env.CONTENT_DIR || 'example-content')
 const outputDir = path.resolve(projectRoot, args.out || 'public/content')
+const contentScriptPath = path.resolve(projectRoot, args.script || 'public/js/content-generated.js')
 
 const safeTags = [
   'p', 'br', 'hr', 'h2', 'h3', 'h4', 'strong', 'em', 'del', 'blockquote',
@@ -33,6 +34,22 @@ function slugify(value) {
 function assetUrl(value, slug) {
   if (!value || /^(?:[a-z]+:|\/)/i.test(value)) return value
   return `/content/assets/${slug}/${value.replace(/^\.\//, '')}`
+}
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+function editorialDate(value, includeYear = false) {
+  const date = new Date(`${value}T00:00:00Z`)
+  const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+  const day = date.getUTCDate()
+  return `${month} ${day}${includeYear ? `, ${date.getUTCFullYear()}` : ''}`
 }
 
 async function findArticleFiles(directory) {
@@ -120,13 +137,75 @@ async function renderArticle(file) {
     updated: data.updated ? new Date(data.updated).toISOString().slice(0, 10) : null,
     summary: String(data.summary || ''),
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    lang: String(data.lang || 'zh'),
     cover: assetUrl(data.cover, slug) || null,
+    discussion: data.discussion ? String(data.discussion) : '',
     draft: data.draft === true,
     featured: data.featured === true,
     minutes: readingMinutes(parsed.content),
     outline,
     html,
   }
+}
+
+function createPrototypePages(articles) {
+  const pages = {}
+  const titles = {}
+
+  for (const article of articles) {
+    const discussion = article.discussion
+      ? `<p class="share-line">&gt; ${escapeHtml(article.discussion)}</p>`
+      : ''
+    pages[article.route] = `<article class="page prose slide-enter-content">
+      <h1>${escapeHtml(article.title)}</h1>
+      <p class="post-meta">${editorialDate(article.date, true)} · ${article.minutes}min</p>
+      ${article.html}
+      ${discussion}
+    </article>`
+    titles[article.route] = `${article.title} - StackTao`
+  }
+
+  const years = new Map()
+  for (const article of articles) {
+    const year = article.date.slice(0, 4)
+    if (!years.has(year)) years.set(year, [])
+    years.get(year).push(article)
+  }
+  const groups = Array.from(years.entries()).map(([year, entries]) => `
+    <div data-year-group>
+      <div class="year-label">${year}</div>
+      ${entries.map((article) => `<a class="post-row item" data-lang="${escapeHtml(article.lang)}" href="#${article.route}">
+        <span>${escapeHtml(article.title)}</span>
+        <span class="meta">${editorialDate(article.date)} · ${article.minutes}min</span>
+      </a>`).join('')}
+    </div>`).join('')
+
+  pages['/posts'] = `<main class="page prose slide-enter-content">${groups}</main>`
+  titles['/posts'] = '文章 - StackTao'
+  return { pages, titles }
+}
+
+function createPrototypeContentScript(articles) {
+  const generated = createPrototypePages(articles)
+  const search = articles.map((article) => ({
+    title: article.title,
+    kind: '文章',
+    href: `#${article.route}`,
+  }))
+  return `(function () {
+  var pages = window.PAGES || {}
+  var titles = window.PAGE_TITLES || {}
+  var generatedPages = ${JSON.stringify(generated.pages)}
+  var generatedTitles = ${JSON.stringify(generated.titles)}
+  Object.keys(generatedPages).forEach(function (route) { pages[route] = generatedPages[route] })
+  Object.keys(generatedTitles).forEach(function (route) { titles[route] = generatedTitles[route] })
+  window.PAGES = pages
+  window.PAGE_TITLES = titles
+  var existing = (window.SEARCH_INDEX || []).filter(function (item) {
+    return item.kind !== 'Blog' && item.kind !== '文章'
+  })
+  window.SEARCH_INDEX = ${JSON.stringify(search)}.concat(existing)
+})()\n`
 }
 
 async function main() {
@@ -165,10 +244,13 @@ async function main() {
     route: article.route,
     date: article.date,
   }))
+  const contentScript = createPrototypeContentScript(articles)
 
   await Promise.all([
     fs.writeFile(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
     fs.writeFile(path.join(outputDir, 'search-index.json'), `${JSON.stringify(search, null, 2)}\n`),
+    fs.mkdir(path.dirname(contentScriptPath), { recursive: true })
+      .then(() => fs.writeFile(contentScriptPath, contentScript)),
   ])
   console.log(`Generated ${articles.length} articles from ${sourceDir}`)
 }

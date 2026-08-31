@@ -2,6 +2,7 @@ node_modules/
 dist/
 public/content/*
 !public/content/.gitkeep
+public/js/content-generated.js
 .DS_Store
 *.log
 .env
