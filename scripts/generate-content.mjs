@@ -45,6 +45,45 @@ function escapeHtml(value = '') {
     .replaceAll("'", '&#039;')
 }
 
+async function readJsonOptional(file) {
+  try {
+    return JSON.parse(await fs.readFile(file, 'utf8'))
+  }
+  catch (error) {
+    if (error.code === 'ENOENT') return null
+    throw new Error(`无法读取 JSON: ${file}\n${error.message}`)
+  }
+}
+
+function safeHref(value, fallback = '#/') {
+  const href = String(value || '').trim()
+  if (/^#\/[a-z0-9/_-]*$/i.test(href)) return href
+  if (/^\/[a-z0-9/_-]*$/i.test(href)) return `#${href}`
+  if (/^(?:https?:|mailto:)/i.test(href)) return href
+  return fallback
+}
+
+function linkAttributes(value) {
+  const href = safeHref(value)
+  return `href="${escapeHtml(href)}"${/^https?:/i.test(href) ? ' target="_blank" rel="noreferrer"' : ''}`
+}
+
+function safeColor(value) {
+  const color = String(value || '')
+  return /^#[0-9a-f]{3,8}$/i.test(color) ? color : '#6e6961'
+}
+
+function normalizeNavigation(items, includeKey = false) {
+  if (!Array.isArray(items)) return []
+  return items
+    .filter((item) => item && item.enabled !== false && item.label && /^\/[a-z0-9/_-]*$/i.test(String(item.route || '')))
+    .map((item) => ({
+      label: String(item.label),
+      route: String(item.route),
+      ...(includeKey ? { key: String(item.key || slugify(item.label)) } : {}),
+    }))
+}
+
 function editorialDate(value, includeYear = false) {
   const date = new Date(`${value}T00:00:00Z`)
   const month = date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
@@ -148,6 +187,158 @@ async function renderArticle(file) {
   }
 }
 
+async function loadAlbums() {
+  const albumsDir = path.join(sourceDir, 'albums')
+  let entries
+  try {
+    entries = await fs.readdir(albumsDir, { withFileTypes: true })
+  }
+  catch (error) {
+    if (error.code === 'ENOENT') return []
+    throw error
+  }
+
+  const albums = []
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const directory = path.join(albumsDir, entry.name)
+    const data = await readJsonOptional(path.join(directory, 'album.json'))
+    if (!data) continue
+    const slug = String(data.slug || entry.name)
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`相册目录必须使用英文 slug: ${directory}`)
+    albums.push({
+      title: String(data.title || slug),
+      slug,
+      date: String(data.date || ''),
+      description: String(data.description || ''),
+      photos: Array.isArray(data.photos) ? data.photos : [],
+      directory,
+    })
+  }
+  return albums.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+async function publishAlbumAssets(albums) {
+  for (const album of albums) {
+    for (const photo of album.photos) {
+      const source = String(photo.src || '').replace(/^\.\//, '')
+      if (!source || /^(?:https?:)?\/\//i.test(source)) continue
+      const sourcePath = path.resolve(album.directory, source)
+      const relative = path.relative(album.directory, sourcePath)
+      if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`相册图片路径越界: ${source}`)
+      const target = path.join(outputDir, 'assets', 'albums', album.slug, relative)
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      await fs.copyFile(sourcePath, target)
+    }
+  }
+}
+
+function photoUrl(photo, album) {
+  const source = String(photo.src || '').trim()
+  if (/^https?:\/\//i.test(source)) return source
+  const relative = source.replace(/^\.\//, '').split(path.sep).join('/')
+  return `/content/assets/albums/${album.slug}/${relative}`
+}
+
+function createProjectsPage(data) {
+  if (!data || !Array.isArray(data.groups)) return null
+  const groups = data.groups.map((group) => {
+    const projects = Array.isArray(group.projects) ? group.projects : []
+    return `<h4 id="${escapeHtml(slugify(group.title || 'projects'))}">${escapeHtml(group.title || '项目')}</h4>
+      <div class="project-grid">${projects.map((project) => `<a class="item" ${linkAttributes(project.url || '#/projects')}>
+        <span class="project-icon" style="background:${safeColor(project.color)}"></span>
+        <span><span class="project-name">${escapeHtml(project.name)}</span>
+          <div class="project-desc">${escapeHtml(project.summary)}${project.status ? ` · ${escapeHtml(project.status)}` : ''}</div>
+        </span>
+      </a>`).join('')}</div>`
+  }).join('')
+  return `<main class="page prose slide-enter-content">
+    <h1>${escapeHtml(data.title || '项目')}</h1>
+    ${data.description ? `<p class="op50">${escapeHtml(data.description)}</p>` : ''}
+    ${groups}
+  </main>`
+}
+
+function createTalksPage(data) {
+  if (!data || !Array.isArray(data.talks)) return null
+  const talks = data.talks.map((talk) => {
+    const events = Array.isArray(talk.events) ? talk.events : []
+    return `<div class="talk-block" data-lang="${escapeHtml(talk.lang || 'zh')}">
+      ${talk.series ? `<div class="talk-series">${escapeHtml(talk.series)}</div>` : ''}
+      <div class="talk-title"><a ${linkAttributes(talk.url || '#/talks')}>${escapeHtml(talk.title)}</a></div>
+      ${talk.description ? `<p class="talk-desc">${escapeHtml(talk.description)}</p>` : ''}
+      ${events.map((event) => `<div class="talk-pres"><strong>${escapeHtml(event.name)}</strong>${event.language ? ` <span class="lang-tag">${escapeHtml(event.language)}</span>` : ''}
+        <div class="op50">${[event.date, event.location].filter(Boolean).map(escapeHtml).join(' · ')}</div>
+      </div>
+      <div class="pres-links">${(Array.isArray(event.links) ? event.links : []).map((link) => `<a class="btn" ${linkAttributes(link.url)}>${escapeHtml(link.label)}</a>`).join('')}</div>`).join('')}
+      <hr>
+    </div>`
+  }).join('')
+  return `<main class="page prose slide-enter-content">
+    <h1>${escapeHtml(data.title || '演讲')}</h1>
+    ${data.description ? `<p class="op50">${escapeHtml(data.description)}</p>` : ''}
+    ${talks}
+  </main>`
+}
+
+function createPhotosPage(albums) {
+  if (!albums.length) return null
+  let photoIndex = 0
+  const sections = albums.map((album) => `<section class="photo-album">
+    <div class="prose">
+      <h2>${escapeHtml(album.title)}</h2>
+      ${album.description ? `<p class="op50">${escapeHtml(album.description)}</p>` : ''}
+    </div>
+    <div class="photo-grid photos">${album.photos.map((photo) => {
+      photoIndex += 1
+      const place = [photo.place, photo.date].filter(Boolean).join(', ')
+      return `<img src="${escapeHtml(photoUrl(photo, album))}" alt="${escapeHtml(photo.alt || '')}" data-place="${escapeHtml(place)}" data-photo-index="${photoIndex}" loading="lazy" decoding="async" />`
+    }).join('')}</div>
+  </section>`).join('')
+  return `<main class="page slide-enter-content" style="max-width:1100px;margin:0 auto">
+    <div class="prose"><h1>相册</h1><p>记录途中值得停下来的光线与空间。</p></div>
+    <div class="photo-toolbar">
+      <button data-gallery="cover">裁切</button>
+      <button data-gallery="contain">完整</button>
+    </div>
+    ${sections}
+  </main>`
+}
+
+function createStructuredPages(projects, talks, albums) {
+  const pages = {}
+  const titles = {}
+  const projectPage = createProjectsPage(projects)
+  const talksPage = createTalksPage(talks)
+  const photosPage = createPhotosPage(albums)
+  if (projectPage) {
+    pages['/projects'] = projectPage
+    titles['/projects'] = `${projects.title || '项目'} - StackTao`
+  }
+  if (talksPage) {
+    pages['/talks'] = talksPage
+    titles['/talks'] = `${talks.title || '演讲'} - StackTao`
+  }
+  if (photosPage) {
+    pages['/photos'] = photosPage
+    titles['/photos'] = '相册 - StackTao'
+  }
+  return { pages, titles }
+}
+
+function createStructuredSearch(projects, talks, albums) {
+  const projectItems = projects && Array.isArray(projects.groups)
+    ? projects.groups.flatMap((group) => Array.isArray(group.projects) ? group.projects : []).map((project) => ({
+        title: String(project.name || ''), kind: '项目', href: safeHref(project.url || '/projects'),
+      }))
+    : []
+  const talkItems = talks && Array.isArray(talks.talks)
+    ? talks.talks.map((talk) => ({ title: String(talk.title || ''), kind: '演讲', href: safeHref(talk.url || '/talks') }))
+    : []
+  const albumItems = albums.map((album) => ({ title: album.title, kind: '相册', href: '#/photos' }))
+  return projectItems.concat(talkItems, albumItems).filter((item) => item.title)
+}
+
 function createPrototypePages(articles) {
   const pages = {}
   const titles = {}
@@ -185,13 +376,18 @@ function createPrototypePages(articles) {
   return { pages, titles }
 }
 
-function createPrototypeContentScript(articles) {
+function createPrototypeContentScript(articles, config, projects, talks, albums) {
   const generated = createPrototypePages(articles)
+  const structured = createStructuredPages(projects, talks, albums)
+  Object.assign(generated.pages, structured.pages)
+  Object.assign(generated.titles, structured.titles)
+  const navigation = normalizeNavigation(config.navigation, true)
+  const footerNavigation = normalizeNavigation(config.footerNavigation)
   const search = articles.map((article) => ({
     title: article.title,
     kind: '文章',
     href: `#${article.route}`,
-  }))
+  })).concat(createStructuredSearch(projects, talks, albums))
   return `(function () {
   var pages = window.PAGES || {}
   var titles = window.PAGE_TITLES || {}
@@ -202,21 +398,58 @@ function createPrototypeContentScript(articles) {
   window.PAGES = pages
   window.PAGE_TITLES = titles
   var existing = (window.SEARCH_INDEX || []).filter(function (item) {
-    return item.kind !== 'Blog' && item.kind !== '文章'
+    var managedKind = ['Blog', '文章', 'Project', '项目', 'Talk', '演讲', '相册'].indexOf(item.kind) >= 0
+    var managedPage = ['#/projects', '#/talks', '#/photos'].indexOf(item.href) >= 0
+    return !managedKind && !managedPage
   })
   window.SEARCH_INDEX = ${JSON.stringify(search)}.concat(existing)
+  window.CONTENT_CONFIG = ${JSON.stringify({ site: config.site || {}, navigation, footerNavigation })}
+
+  var headerNav = document.querySelector('.nav-right')
+  var generatedNavigation = ${JSON.stringify(navigation)}
+  if (headerNav && generatedNavigation.length) {
+    Array.prototype.slice.call(headerNav.querySelectorAll('a[data-nav]')).forEach(function (link) { link.remove() })
+    var firstControl = headerNav.querySelector('[data-search]')
+    generatedNavigation.forEach(function (item) {
+      var link = document.createElement('a')
+      link.href = '#' + item.route
+      link.setAttribute('data-nav', item.key)
+      link.setAttribute('data-route', item.route)
+      link.setAttribute('aria-label', item.label)
+      link.textContent = item.label
+      headerNav.insertBefore(link, firstControl)
+    })
+  }
+
+  var footerNav = document.querySelector('.footer-links')
+  var generatedFooterNavigation = ${JSON.stringify(footerNavigation)}
+  if (footerNav && generatedFooterNavigation.length) {
+    footerNav.textContent = ''
+    generatedFooterNavigation.forEach(function (item) {
+      var link = document.createElement('a')
+      link.href = '#' + item.route
+      link.textContent = item.label
+      footerNav.appendChild(link)
+    })
+  }
 })()\n`
 }
 
 async function main() {
   const configPath = path.join(sourceDir, 'content.config.json')
   const config = JSON.parse(await fs.readFile(configPath, 'utf8'))
+  const [projects, talks, albums] = await Promise.all([
+    readJsonOptional(path.join(sourceDir, 'projects', 'projects.json')),
+    readJsonOptional(path.join(sourceDir, 'talks', 'talks.json')),
+    loadAlbums(),
+  ])
   await fs.mkdir(outputDir, { recursive: true })
   await Promise.all([
     fs.rm(path.join(outputDir, 'posts'), { recursive: true, force: true }),
     fs.rm(path.join(outputDir, 'assets'), { recursive: true, force: true }),
   ])
   await fs.mkdir(path.join(outputDir, 'posts'), { recursive: true })
+  await publishAlbumAssets(albums)
 
   const files = await findArticleFiles(sourceDir)
   const rendered = await Promise.all(files.map(renderArticle))
@@ -233,8 +466,11 @@ async function main() {
   const manifest = {
     generatedAt: new Date().toISOString(),
     site: config.site,
-    navigation: config.navigation || [],
-    projects: config.projects || [],
+    navigation: normalizeNavigation(config.navigation, true),
+    footerNavigation: normalizeNavigation(config.footerNavigation),
+    projects: projects || null,
+    talks: talks || null,
+    albums: albums.map(({ directory, photos, ...album }) => ({ ...album, photoCount: photos.length })),
     articles: summaries,
   }
   const search = summaries.map((article) => ({
@@ -243,8 +479,12 @@ async function main() {
     tags: article.tags,
     route: article.route,
     date: article.date,
-  }))
-  const contentScript = createPrototypeContentScript(articles)
+  })).concat(createStructuredSearch(projects, talks, albums).map((item) => ({
+    title: item.title,
+    kind: item.kind,
+    route: item.href,
+  })))
+  const contentScript = createPrototypeContentScript(articles, config, projects, talks, albums)
 
   await Promise.all([
     fs.writeFile(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
@@ -252,7 +492,7 @@ async function main() {
     fs.mkdir(path.dirname(contentScriptPath), { recursive: true })
       .then(() => fs.writeFile(contentScriptPath, contentScript)),
   ])
-  console.log(`Generated ${articles.length} articles from ${sourceDir}`)
+  console.log(`Generated ${articles.length} articles, ${albums.length} albums, ${projects ? 'projects' : 'no projects'}, and ${talks ? 'talks' : 'no talks'} from ${sourceDir}`)
 }
 
 main().catch((error) => {

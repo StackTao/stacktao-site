@@ -123,12 +123,15 @@
   function updateNav(route) {
     document.querySelectorAll('.nav-right a[data-nav]').forEach(function (a) {
       var key = a.getAttribute('data-nav')
-      var active = false
-      if (key === 'blog') active = route === '/posts' || route.indexOf('/posts/') === 0 || route === '/notes' || route.indexOf('/notes/') === 0 || route === '/podcasts' || route === '/streams'
-      if (key === 'projects') active = route === '/projects'
-      if (key === 'talks') active = route === '/talks' || route.indexOf('/talks/') === 0
-      if (key === 'photos') active = route === '/photos'
-      if (key === 'sponsors') active = route === '/sponsors' || route === '/collective'
+      var configuredRoute = a.getAttribute('data-route')
+      var active = configuredRoute
+        ? route === configuredRoute || (configuredRoute !== '/' && route.indexOf(configuredRoute + '/') === 0)
+        : false
+      if (!configuredRoute && key === 'blog') active = route === '/posts' || route.indexOf('/posts/') === 0 || route === '/notes' || route.indexOf('/notes/') === 0 || route === '/podcasts' || route === '/streams'
+      if (!configuredRoute && key === 'projects') active = route === '/projects'
+      if (!configuredRoute && key === 'talks') active = route === '/talks' || route.indexOf('/talks/') === 0
+      if (!configuredRoute && key === 'photos') active = route === '/photos'
+      if (!configuredRoute && key === 'sponsors') active = route === '/sponsors' || route === '/collective'
       a.classList.toggle('nav-active', active)
       if (active) a.setAttribute('aria-current', 'page')
       else a.removeAttribute('aria-current')

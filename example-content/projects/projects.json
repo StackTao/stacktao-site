@@ -1,0 +1,25 @@
+{
+  "title": "项目",
+  "description": "持续维护的开源工具与设计实验。",
+  "groups": [
+    {
+      "title": "当前维护",
+      "projects": [
+        {
+          "name": "Peak",
+          "summary": "面向开发者的性能观察工具，强调清楚的因果与可解释的反馈。",
+          "status": "Active",
+          "url": "https://github.com/StackTao",
+          "color": "#3f7666"
+        },
+        {
+          "name": "Type Forge",
+          "summary": "整理中文与西文混排实践的实验性排版工具。",
+          "status": "Research",
+          "url": "https://github.com/StackTao",
+          "color": "#8a6f45"
+        }
+      ]
+    }
+  ]
+}

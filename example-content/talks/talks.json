@@ -1,0 +1,41 @@
+{
+  "title": "演讲",
+  "description": "关于工具设计、开源协作与长期维护的分享。",
+  "talks": [
+    {
+      "title": "让工具经得起时间",
+      "series": "工具与长期主义",
+      "description": "从边界、接口与维护节奏讨论工具如何穿过时间。",
+      "lang": "zh",
+      "url": "#/posts/tools-that-last",
+      "events": [
+        {
+          "name": "StackTao Notes",
+          "date": "2026-08-29",
+          "location": "线上",
+          "language": "中文",
+          "links": [
+            { "label": "文章", "url": "#/posts/tools-that-last" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "安静的界面如何工作",
+      "description": "如何用克制的反馈与稳定的层级降低界面噪声。",
+      "lang": "zh",
+      "url": "#/posts/quiet-interface",
+      "events": [
+        {
+          "name": "Design Systems Meetup",
+          "date": "2026-08-17",
+          "location": "上海",
+          "language": "中文",
+          "links": [
+            { "label": "文章", "url": "#/posts/quiet-interface" }
+          ]
+        }
+      ]
+    }
+  ]
+}

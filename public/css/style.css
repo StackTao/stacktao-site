@@ -1090,6 +1090,14 @@ html.dark .icon-moon { display: inline; }
   break-inside: avoid;
 }
 
+.photo-album + .photo-album {
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule);
+}
+
+.photo-album > .prose { margin-bottom: 1.25rem; }
+
 .photo-toolbar {
   display: flex;
   justify-content: flex-end;

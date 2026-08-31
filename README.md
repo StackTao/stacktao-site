@@ -1,8 +1,8 @@
 # StackTao Site
 
-一个独立于原型目录的静态内容框架。这里的“框架”只负责把 Markdown 变成页面数据，不重新设计页面。
+一个独立于原型目录的静态内容框架。这里的“框架”负责把 Markdown 文章和 JSON 结构化内容变成页面数据，不重新设计页面。
 
-`public/css/style.css`、`public/js/site.js`、`public/js/pages.js` 和 `public/js/pages-longform.js` 是 `inkscape-45` 原型的原样快照，因此 ST 书写、水墨山峦、随机飞鸟、路由转场、导航、搜索、深浅色和文章排版都与原型一致。
+页面框架以 `inkscape-45` 原型为基础，因此 ST 书写、水墨山峦、随机飞鸟、路由转场、导航、搜索、深浅色和文章排版都保持原型效果；内容生成只在必要位置接入数据和路由。
 
 ## 本地运行
 
@@ -40,4 +40,4 @@ public/js/
 └── content-generated.js     # 注入原型 PAGES、文章列表和搜索项
 ```
 
-`content-generated.js` 会覆盖原型的 `/posts` 列表和同名文章路由，但不触碰视觉与动画脚本。正文会在构建阶段经过 HTML 白名单清理；浏览器不直接执行或解析 GitHub 仓库里的 Markdown。
+`content-generated.js` 会覆盖原型的 `/posts`、`/projects`、`/talks` 和 `/photos` 路由，并按配置更新顶部与页脚菜单，但不触碰视觉和 Canvas 动画。缺少某类 JSON 时继续使用原型内置页面。正文会在构建阶段经过 HTML 白名单清理；浏览器不直接执行或解析 GitHub 仓库里的 Markdown。

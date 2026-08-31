@@ -1,0 +1,26 @@
+{
+  "title": "旅途片段",
+  "slug": "journeys",
+  "date": "2026-08-01",
+  "description": "路过城市、山野与雨后的光。",
+  "photos": [
+    {
+      "src": "https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=1200&q=80",
+      "alt": "清晨的京都街巷",
+      "place": "京都",
+      "date": "2026"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200&q=80",
+      "alt": "山谷间穿过的日光",
+      "place": "云南",
+      "date": "2025"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1200&q=80",
+      "alt": "雾气覆盖的群山",
+      "place": "苏格兰",
+      "date": "2024"
+    }
+  ]
+}

@@ -9,22 +9,19 @@
     "email": "hi@example.com"
   },
   "navigation": [
-    { "label": "文章", "route": "/posts" },
-    { "label": "项目", "route": "/projects" },
-    { "label": "关于", "route": "/about" }
+    { "label": "文章", "route": "/posts", "key": "blog", "enabled": true },
+    { "label": "项目", "route": "/projects", "key": "projects", "enabled": true },
+    { "label": "演讲", "route": "/talks", "key": "talks", "enabled": true },
+    { "label": "相册", "route": "/photos", "key": "photos", "enabled": true },
+    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": true }
   ],
-  "projects": [
-    {
-      "name": "Peak",
-      "summary": "面向开发者的性能观察工具，强调清楚的因果与可解释的反馈。",
-      "status": "Active",
-      "url": "https://github.com/StackTao"
-    },
-    {
-      "name": "Type Forge",
-      "summary": "整理中文与西文混排实践的实验性排版工具。",
-      "status": "Research",
-      "url": "https://github.com/StackTao"
-    }
+  "footerNavigation": [
+    { "label": "笔记", "route": "/notes" },
+    { "label": "相册", "route": "/photos" },
+    { "label": "工具", "route": "/use" },
+    { "label": "演示", "route": "/demos" },
+    { "label": "书签", "route": "/bookmarks" },
+    { "label": "媒体", "route": "/media" },
+    { "label": "联系", "route": "/chat" }
   ]
 }
