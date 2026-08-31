@@ -33,7 +33,7 @@ function slugify(value) {
 
 function assetUrl(value, slug) {
   if (!value || /^(?:[a-z]+:|\/)/i.test(value)) return value
-  return `/content/assets/${slug}/${value.replace(/^\.\//, '')}`
+  return `content/assets/${slug}/${value.replace(/^\.\//, '')}`
 }
 
 function escapeHtml(value = '') {
@@ -237,7 +237,7 @@ function photoUrl(photo, album) {
   const source = String(photo.src || '').trim()
   if (/^https?:\/\//i.test(source)) return source
   const relative = source.replace(/^\.\//, '').split(path.sep).join('/')
-  return `/content/assets/albums/${album.slug}/${relative}`
+  return `content/assets/albums/${album.slug}/${relative}`
 }
 
 function createProjectsPage(data) {

@@ -64,7 +64,7 @@ featured: true
 - `slug` 默认取文章目录名，也可以在 Frontmatter 显式指定。
 - `h2` 和 `h3` 自动生成文章大纲。
 - 阅读时间、年份分组和搜索索引自动计算。
-- 相对图片路径会发布为 `/content/assets/<slug>/images/*`。
+- 相对图片路径会发布为 `content/assets/<slug>/images/*`。
 
 ## 站点与菜单配置
 
@@ -154,7 +154,7 @@ featured: true
 
 ## 相册数据
 
-每个相册独立一个目录。`src` 可以是相对于相册目录的图片路径，也可以是 `https://` 图片地址；本地图片会复制到 `/content/assets/albums/<slug>/`。
+每个相册独立一个目录。`src` 可以是相对于相册目录的图片路径，也可以是 `https://` 图片地址；本地图片会复制到 `content/assets/albums/<slug>/`。
 
 ```json
 {
