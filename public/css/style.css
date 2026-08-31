@@ -947,15 +947,54 @@ html.dark .icon-moon { display: inline; }
 }
 
 .footer {
-  text-align: center;
-  opacity: 0.35;
-  font-size: 0.85rem;
-  padding: 3rem 1rem 2rem;
+  padding: 0 0 2rem;
+  color: var(--fg-editorial);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.footer-inner {
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 1rem clamp(2.5rem, 5vw, 5.5rem) 0;
+  border-top: 1px solid var(--rule);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.footer-links,
+.footer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+}
+
+.footer-meta {
+  justify-content: flex-end;
+  text-align: right;
 }
 
 .footer a {
+  color: inherit;
+  opacity: 0.68;
   text-decoration: none;
   border: 0;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.footer a:hover,
+.footer a:focus-visible {
+  color: var(--fg-deeper);
+  opacity: 1;
+}
+
+.footer a:focus-visible {
+  outline: 1px solid var(--rule-strong);
+  outline-offset: 2px;
 }
 
 .socials {
@@ -2099,6 +2138,23 @@ body[data-route-kind='article'] .app-shell::after {
 
   #view,
   .footer { margin-left: 0; }
+
+  .footer {
+    padding-right: 1.2rem;
+    padding-left: 1.2rem;
+  }
+
+  .footer-inner {
+    padding: 0.9rem 0 0;
+    display: block;
+  }
+
+  .footer-links { margin-bottom: 0.7rem; }
+
+  .footer-meta {
+    justify-content: flex-start;
+    text-align: left;
+  }
 
   .home-page,
   .index-page,
