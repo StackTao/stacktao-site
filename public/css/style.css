@@ -2030,7 +2030,7 @@ body[data-route-kind='article'] .app-shell::after {
 .article-prose > .article-colophon {
   max-width: var(--prose-max-width);
   margin-right: 0;
-  margin-left: clamp(2.5rem, 9vw, 7.5rem);
+  margin-left: clamp(1.5rem, 4vw, 3.75rem);
 }
 
 .article-prose > p { line-height: 1.88; }
