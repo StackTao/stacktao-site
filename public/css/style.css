@@ -2320,6 +2320,115 @@ body[data-route-kind='article'] .app-shell::after {
   }
 }
 
+/* Podcasts: a short editorial reveal, then a still reading surface. */
+.podcast-page > h1 {
+  position: relative;
+}
+
+.podcast-page > h1::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -0.45rem;
+  width: 2.75rem;
+  height: 1px;
+  background: var(--rule-strong);
+  transform-origin: left center;
+}
+
+.podcast-episode {
+  position: relative;
+}
+
+.podcast-episode::before {
+  content: '';
+  position: absolute;
+  left: -0.8rem;
+  top: 0.45rem;
+  width: 2px;
+  height: 1rem;
+  background: var(--c-seal);
+  opacity: 0;
+  transform: scaleY(0.35);
+  transform-origin: center;
+}
+
+.podcast-episode > .item {
+  display: inline-block;
+  max-width: 100%;
+  transition: none;
+}
+
+.podcast-episode > .item:focus-visible {
+  outline: 1px solid var(--c-seal);
+  outline-offset: 4px;
+  opacity: 1;
+}
+
+.podcast-episode:focus-within::before {
+  opacity: 0.7;
+  transform: scaleY(1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .podcast-episode:has(> .item:hover)::before {
+    opacity: 0.7;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes podcast-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes podcast-rule-enter {
+  from { opacity: 0; transform: scaleX(0); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .podcast-page.slide-enter-content > h1 {
+    animation: podcast-enter 560ms var(--ease-ink) both;
+  }
+
+  .podcast-page.slide-enter-content > h1::after {
+    animation: podcast-rule-enter 600ms var(--ease-ink) 120ms both;
+  }
+
+  .podcast-page.slide-enter-content > p {
+    animation: podcast-enter 560ms var(--ease-ink) 60ms backwards;
+  }
+
+  .podcast-page.slide-enter-content > .podcast-episode {
+    animation: podcast-enter 640ms var(--ease-ink) both;
+    animation-delay: calc(120ms + var(--episode-stage, 0) * 45ms);
+  }
+
+  .podcast-episode::before {
+    transition: opacity 220ms var(--ease-ink), transform 300ms var(--ease-ink);
+  }
+
+  .podcast-episode > .item {
+    transition: opacity 220ms var(--ease-ink), transform 300ms var(--ease-ink);
+  }
+
+  .podcast-episode > .item:focus-visible {
+    transform: translateX(3px);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .podcast-episode > .item:hover { transform: translateX(3px); }
+    .podcast-episode > .item:active { transform: translateX(1px); }
+  }
+
+  .podcast-page.is-motion-paused *,
+  .podcast-page.is-motion-paused *::before,
+  .podcast-page.is-motion-paused *::after {
+    animation-play-state: paused;
+  }
+}
+
 @keyframes toc-enter {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

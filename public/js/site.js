@@ -423,6 +423,14 @@
     if (isIndexPage) main.classList.add('index-page')
     decorateSubnav(view)
     if (route === '/' && main) decorateHome(main)
+    if (route === '/podcasts' && main) {
+      main.classList.add('podcast-page')
+      main.classList.toggle('is-motion-paused', document.hidden)
+      main.querySelectorAll(':scope > [data-lang]').forEach(function (episode, index) {
+        episode.classList.add('podcast-episode')
+        episode.style.setProperty('--episode-stage', Math.min(index, 5))
+      })
+    }
     if (article) decorateArticle(article, route)
     decorateSidebarOutline(article)
     decorateYearGroups(view)
@@ -494,6 +502,11 @@
       }
     })
   }
+
+  document.addEventListener('visibilitychange', function () {
+    var podcasts = view.querySelector('.podcast-page')
+    if (podcasts) podcasts.classList.toggle('is-motion-paused', document.hidden)
+  })
 
   function playEnter(view) {
     var content = view.querySelector('.slide-enter-content') || view.firstElementChild
