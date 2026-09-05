@@ -772,9 +772,8 @@
     var inkRandom = null
     var inkSceneStarted = 0
     var inkStaticReady = false
-    var inkSettled = false
     var inkRevealEnd = 5200
-    // 飞鸟使用低频事件而不是常驻循环：飞行时启动 rAF，离场后只保留一个长间隔计时器。
+    // 飞鸟仍是低频事件；山体缓存完成后，只合成流雾与活动中的飞鸟。
     var inkBirdsEnabled = true
     var inkSceneSeed = (function () {
       if (window.crypto && window.crypto.getRandomValues) {
@@ -950,11 +949,11 @@
 
       var i = 0
       while (i < segments.length) {
-        if (inkRandom() < 0.22) {
+        if (inkRandom() < 0.07) {
           i += 1 + Math.floor(inkRandom() * 2)
           continue
         }
-        var count = Math.min(1 + Math.floor(inkRandom() * 2), segments.length - i)
+        var count = Math.min(4 + Math.floor(inkRandom() * 5), segments.length - i)
         var center = i + count * 0.5
         var distance = Math.abs(center - mainPeak) / Math.max(1, segments.length)
         fragments.push({
@@ -964,14 +963,14 @@
           offset: (inkRandom() - 0.5) * 0.85,
           width: mass.width * (0.72 + inkRandom() * 0.58),
           tone: mass.tone * (0.88 + inkRandom() * 0.18),
-          dry: inkRandom(),
-          revealAt: 680 + mass.delay + distance * 2050 + inkRandom() * 660,
-          revealDuration: 430 + inkRandom() * 420,
+          dry: inkRandom() * 0.46,
+          revealAt: 380 + mass.delay + distance * 1400,
+          revealDuration: 1100 + inkRandom() * 550,
         })
-        i += count + 1 + (inkRandom() < 0.34 ? 1 : 0)
+        i += count + (inkRandom() < 0.22 ? 1 : 0)
       }
 
-      var contourCount = mass.tone > 0.25 ? 3 : 2
+      var contourCount = mass.tone > 0.25 ? 2 : 1
       for (var contour = 0; contour < contourCount; contour++) {
         var offset = 10 + contour * (9 + inkRandom() * 5)
         for (var c = contour + 1; c < segments.length; c += 3 + Math.floor(inkRandom() * 4)) {
@@ -1075,13 +1074,13 @@
           var peakX = cellStart + (0.28 + inkRandom() * 0.2) / rangePeaks
           var valleyX = cellStart + (0.74 + inkRandom() * 0.14) / rangePeaks
           var edgeScale = rangeIndex === 0 || rangeIndex === rangePeaks - 1 ? 0.78 : 1
-          var peakY = (0.48 + inkRandom() * 0.38) * edgeScale
+          var peakY = (0.56 + inkRandom() * 0.3) * edgeScale
           var peakAnchor = { x: peakX, y: peakY }
           ridgeAnchors.push(peakAnchor)
           if (!highestAnchor || peakY > highestAnchor.y) highestAnchor = peakAnchor
           if (valleyX < 0.98) ridgeAnchors.push({
             x: valleyX,
-            y: 0.13 + inkRandom() * 0.2,
+            y: 0.25 + inkRandom() * 0.16,
           })
         }
         ridgeAnchors.push({ x: 1, y: 0 })
@@ -1317,7 +1316,7 @@
           width: config.width * (0.95 + inkRandom() * 0.1),
           base: config.base + (inkRandom() - 0.5) * 0.024,
           height: config.height * (0.92 + inkRandom() * 0.16),
-          peaks: config.peaks,
+          peaks: config.range ? Math.max(3, config.peaks - 2) : config.peaks,
           tone: config.tone * (0.92 + inkRandom() * 0.16),
           wash: config.wash * (0.9 + inkRandom() * 0.2),
           lineWidth: config.lineWidth,
@@ -1491,8 +1490,9 @@
       if (progress <= 0) return
       var top = mass.baseY - mass.height
       var gradient = target.createLinearGradient(0, top, 0, mass.baseY + mass.height * 0.2)
-      gradient.addColorStop(0, inkColor(mass.wash * 0.26 * progress))
-      gradient.addColorStop(0.48, inkColor(mass.wash * 0.42 * progress))
+      gradient.addColorStop(0, inkColor(mass.wash * 1.8 * progress))
+      gradient.addColorStop(0.48, inkColor(mass.wash * 2.4 * progress))
+      gradient.addColorStop(0.8, inkColor(mass.wash * 0.65 * progress))
       gradient.addColorStop(1, inkColor(0))
       target.fillStyle = gradient
       target.fillRect(mass.points[0].x, top, mass.points[mass.points.length - 1].x - mass.points[0].x, mass.baseY + mass.height * 0.2 - top)
@@ -1837,6 +1837,25 @@
         var box = mistBandBox(band)
         ctx.globalAlpha = clamp(band.settled + veil, 0, 0.46)
         ctx.drawImage(inkMistMasks[band.mask], box.x, box.y, box.width, box.height)
+      }
+      ctx.restore()
+    }
+
+    // 静态山体只复制位图；两三张小尺寸雾蒙版缓慢穿行，不重算山体笔触。
+    function driftMountainMist(elapsed) {
+      var reveal = smoothstep((elapsed - 1400) / 3000)
+      if (reveal <= 0) return
+      ctx.save()
+      ctx.globalCompositeOperation = 'destination-out'
+      for (var i = 0; i < inkMistBands.length; i++) {
+        var band = inkMistBands[i]
+        var box = mistBandBox(band)
+        var phase = elapsed / (7200 + i * 1900) + i * 2.1
+        var driftX = Math.sin(phase) * inkWidth * (i === 0 ? 0.085 : 0.055)
+        var driftY = Math.sin(phase * 0.73) * inkHeight * 0.012
+        ctx.globalAlpha = reveal * (i === 0 ? 0.48 : 0.36)
+        ctx.drawImage(inkMistMasks[band.mask], box.x + driftX, box.y + driftY,
+          box.width, box.height * 1.4)
       }
       ctx.restore()
     }
@@ -2617,32 +2636,33 @@
           else buildStaticScene()
         }
         blitLayer(staticCanvas)
-        inkSettled = true
       }
       else {
         drawRevealFrame(elapsed)
         cutMistLive(elapsed)
       }
 
-      if (!reduced) drawBirds(elapsed)
+      if (!reduced) {
+        driftMountainMist(elapsed)
+        drawBirds(elapsed)
+      }
+      canvas.dataset.inkMotion = reduced ? 'still' : 'flowing'
     }
 
     function runInkFrame(now) {
       inkFrame = 0
-      if (document.hidden || prefersReducedMotion()) return
+      if (document.hidden) return
+      if (prefersReducedMotion()) {
+        compositeFrame(now, true)
+        return
+      }
       var elapsed = Math.max(0, now - inkSceneStarted)
       var birdActive = inkBirdEvent
         && inkBirdEvent.birds.length
         && elapsed >= inkBirdEvent.start
         && elapsed < inkBirdEvent.start + inkBirdEvent.duration
-      // 揭示结束且没有飞鸟排程时画面永久静止：画完最后一帧就不再申请 rAF，
-      // 此后整个页面零后台开销。
-      if (elapsed >= inkRevealEnd && !inkBirdEvent) {
-        compositeFrame(now, false)
-        return
-      }
-      // 增量烘焙之后单帧只重画正在生长的笔画，揭示期不再需要节流。
-      var interval = elapsed < inkRevealEnd || birdActive ? 0 : 42
+      // 笔触生长和飞鸟逐帧绘制；纯流雾以 30fps 合成缓存，限制长期绘制成本。
+      var interval = elapsed < inkRevealEnd || birdActive ? 0 : 1000 / 30
       if (now - inkLastFrame >= interval) {
         inkLastFrame = now
         compositeFrame(now, false)
@@ -2651,7 +2671,6 @@
     }
 
     function startInkFrame() {
-      if (inkSettled && !inkBirdEvent) return
       if (!inkFrame && !document.hidden && !prefersReducedMotion()) {
         inkFrame = requestAnimationFrame(runInkFrame)
       }
@@ -2666,7 +2685,6 @@
       fitInkCanvas()
       inkRandom = seededRandom((inkSceneSeed + (inkWidth <= 760 ? 104729 : 0)) >>> 0)
       inkStaticReady = false
-      inkSettled = false
       buildInkScene()
       inkSceneStarted = performance.now()
       if (document.hidden) inkHiddenAt = inkSceneStarted
