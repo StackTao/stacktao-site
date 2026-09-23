@@ -747,141 +747,212 @@
     var width = 1
     var height = 1
     var ratio = 1
-    var segments = []
-    var drawn = 0
+    var strokes = []
     var elapsed = 0
     var previousTime = 0
+    var lastPaint = 0
     var frame = 0
     var resizeTimer = 0
+    var generation = 0
 
     function randomBetween(min, max) {
       return min + Math.random() * (max - min)
     }
 
-    function traceCurrent(x, y, heading, reach, delay, strength) {
+    function makeStroke(side, start) {
+      var mobile = width < 760
+      var left = width >= 1024 ? 164 : 0
+      var span = width - left
+      var upward = Math.random() < 0.5
+      var x = side === 0 ? left + span * randomBetween(0.04, 0.17) : width * randomBetween(0.88, 1)
+      var y = upward ? height + 20 : -20
+      var heading = (upward ? -1 : 1) * Math.PI / 2 + randomBetween(-0.3, 0.3)
+      if (mobile) x = side === 0 ? width * randomBetween(0.02, 0.3) : width * randomBetween(0.7, 0.98)
+      var points = [{ x: x, y: y }]
+      var angle = heading
       var phase = randomBetween(0, Math.PI * 2)
-      var curl = randomBetween(0.35, 0.65) * (Math.random() < 0.5 ? -1 : 1)
-      var count = width < 760 ? 5 : Math.floor(randomBetween(10, 16))
-      var spacing = randomBetween(6, 11)
-      for (var strand = 0; strand < count; strand++) {
-        var offset = (strand - (count - 1) / 2) * spacing
-        var px = x - Math.sin(heading) * offset
-        var py = y + Math.cos(heading) * offset
-        var angle = heading
-        var time = delay + randomBetween(0, 1600)
-        var steps = Math.floor(reach * randomBetween(0.65, 1.15))
-        var shade = strength * randomBetween(0.4, 1)
-        var bend = randomBetween(-0.14, 0.14)
-        for (var step = 0; step < steps; step++) {
-          var progress = step / steps
-          // 长线共享风向，局部偏转与疏密变化让线束逐渐散开。
-          var target = heading + Math.sin(progress * 5 + phase) * curl
-            + Math.sin(progress * 9 + phase + strand * 0.12) * 0.14
-            + offset * progress * 0.0025 + bend * progress
-          angle += (target - angle) * 0.035
-          var distance = 2.8
-          var nx = px + Math.cos(angle) * distance
-          var ny = py + Math.sin(angle) * distance
-          time += 28 + progress * 12
-          var taper = Math.pow(Math.sin(Math.PI * progress), 0.6)
-          segments.push({ x: px, y: py, nx: nx, ny: ny, time: time, opacity: taper * shade, weight: strand % 4 === 0 ? 1 : 0.65 })
-          // 起笔允许落在画外，进入画面后才检查离场。
-          if (step > 30 && (nx < -60 || nx > width + 60 || ny < -60 || ny > height + 60)) break
-          px = nx
-          py = ny
+      var curl = randomBetween(0.45, 1.1) * (Math.random() < 0.5 ? -1 : 1)
+      var count = Math.floor(Math.min(290, height / 3.5) * randomBetween(0.65, 1.3))
+      var bend = 0
+      for (var i = 0; i < count; i++) {
+        if (i % 18 === 0) bend = randomBetween(-0.22, 0.22)
+        var progress = i / count
+        var target = heading + Math.sin(progress * 5 + phase) * curl + bend
+        angle += (target - angle) * 0.065
+        x += Math.cos(angle) * 3.5
+        y += Math.sin(angle) * 3.5
+        points.push({ x: x, y: y })
+        if (i > 25 && (x < left - 40 || x > width + 40 || y < -40 || y > height + 40)) break
+      }
+      var branches = []
+      var flecks = []
+      var branchCount = Math.floor(randomBetween(mobile ? 2 : 3, mobile ? 4 : 8))
+      for (var b = 0; b < branchCount; b++) {
+        var at = randomBetween(0.18, 0.77)
+        var index = Math.floor(at * (points.length - 2))
+        var anchor = points[index]
+        var tangent = Math.atan2(points[index + 1].y - anchor.y, points[index + 1].x - anchor.x)
+        var direction = Math.random() < 0.5 ? -1 : 1
+        var branchAngle = tangent + direction * randomBetween(0.35, 0.95)
+        var branchPoints = [{ x: anchor.x, y: anchor.y }]
+        var gaps = []
+        var dry = Math.random() < 0.45
+        var length = Math.floor(randomBetween(12, mobile ? 26 : 42))
+        var bx = anchor.x
+        var by = anchor.y
+        for (var j = 1; j <= length; j++) {
+          branchAngle += direction * 0.012 + randomBetween(-0.045, 0.045)
+          bx += Math.cos(branchAngle) * 2.4
+          by += Math.sin(branchAngle) * 2.4
+          branchPoints.push({ x: bx, y: by })
+          gaps[j] = dry && j > 3 && Math.random() < 0.18
         }
+        branches.push({ points: branchPoints, gaps: gaps, at: at, opacity: randomBetween(0.5, 0.8) })
+        // 墨点附着于笔触末端，随支脉出现；不作为独立漂浮粒子。
+        if (Math.random() < 0.65) {
+          for (var dot = 0; dot < 3; dot++) {
+            flecks.push({ x: bx + randomBetween(-7, 7), y: by + randomBetween(-7, 7), radius: randomBetween(0.5, 1.5), angle: branchAngle, at: at + 0.2, opacity: randomBetween(0.25, 0.6) })
+          }
+        }
+      }
+      return {
+        side: side,
+        points: points,
+        branches: branches,
+        flecks: flecks,
+        start: start,
+        grow: randomBetween(9000, 14000),
+        rest: randomBetween(1800, 3500),
+        fade: randomBetween(6500, 10000),
+        weight: randomBetween(0.65, 1),
+        opacity: randomBetween(0.65, 1),
       }
     }
 
-    function drawSegment(segment) {
-      context.globalAlpha = segment.opacity
-      context.lineWidth = segment.weight
+    function tracePen(points, progress, gaps) {
+      var end = Math.max(0, Math.min(1, progress)) * (points.length - 1)
+      var whole = Math.floor(end)
       context.beginPath()
-      context.moveTo(segment.x, segment.y)
-      context.lineTo(segment.nx, segment.ny)
+      context.moveTo(points[0].x, points[0].y)
+      for (var p = 1; p <= whole; p++) {
+        if (gaps && gaps[p]) context.moveTo(points[p].x, points[p].y)
+        else context.lineTo(points[p].x, points[p].y)
+      }
+      // 插值笔尖，断笔的位置在生成时确定，不逐帧闪动。
+      if (whole < points.length - 1 && !(gaps && gaps[whole + 1])) {
+        var from = points[whole]
+        var to = points[whole + 1]
+        context.lineTo(from.x + (to.x - from.x) * (end - whole), from.y + (to.y - from.y) * (end - whole))
+      }
       context.stroke()
-      context.globalAlpha = 1
     }
 
-    function setInk() {
+    function drawArt(reduced) {
       context.setTransform(ratio, 0, 0, ratio, 0, 0)
+      context.clearRect(0, 0, width, height)
       context.lineCap = 'round'
+      context.lineJoin = 'round'
       context.strokeStyle = document.documentElement.classList.contains('dark')
-        ? 'rgba(168,174,175,0.33)'
-        : 'rgba(112,120,119,0.3)'
+        ? 'rgba(165,173,171,0.34)'
+        : 'rgba(111,117,112,0.36)'
+      context.fillStyle = context.strokeStyle
+      var entry = reduced ? 1 : Math.min(1, elapsed / 1600)
+      for (var s = 0; s < strokes.length; s++) {
+        var stroke = strokes[s]
+        var age = elapsed - stroke.start
+        var life = stroke.grow + stroke.rest + stroke.fade
+        if (!reduced && age > life) {
+          stroke = strokes[s] = makeStroke(stroke.side, elapsed + randomBetween(200, 1400))
+          generation++
+          age = elapsed - stroke.start
+        }
+        if (!reduced && age < 0) continue
+        var growth = reduced ? 1 : Math.min(1, age / stroke.grow)
+        // 笔速有轻微起伏；每一笔的生命周期独立，画面不会整体重播。
+        growth -= Math.sin(growth * Math.PI * 2) * 0.06
+        var fade = reduced ? 0 : Math.max(0, (age - stroke.grow - stroke.rest) / stroke.fade)
+        var alpha = 1 - fade * fade * (3 - 2 * fade)
+        var ink = entry * stroke.opacity * alpha
+        context.globalAlpha = ink
+        context.lineWidth = stroke.weight
+        tracePen(stroke.points, growth)
+        stroke.branches.forEach(function (branch) {
+          var reveal = Math.max(0, Math.min(1, (growth - branch.at) / 0.22))
+          if (!reveal) return
+          context.globalAlpha = ink * branch.opacity * Math.min(1, reveal * 4)
+          context.lineWidth = stroke.weight * 0.7
+          tracePen(branch.points, reveal, branch.gaps)
+        })
+        stroke.flecks.forEach(function (fleck) {
+          var reveal = Math.max(0, Math.min(1, (growth - fleck.at) * 12))
+          if (!reveal) return
+          context.globalAlpha = ink * fleck.opacity * reveal
+          context.beginPath()
+          context.ellipse(fleck.x, fleck.y, fleck.radius, fleck.radius * 0.55, fleck.angle, 0, Math.PI * 2)
+          context.fill()
+        })
+      }
+      context.globalAlpha = 1
+      canvas.dataset.ambientState = reduced ? 'still' : 'flowing'
+      canvas.dataset.ambientGeneration = String(generation)
     }
 
-    function redrawGrowth() {
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      setInk()
-      for (var i = 0; i < drawn; i++) drawSegment(segments[i])
-    }
-
-    function animateGrowth(now) {
+    function animateArt(now) {
       frame = 0
       if (document.hidden || prefersReducedMotion()) return
       if (previousTime) elapsed += Math.min(80, now - previousTime)
       previousTime = now
-      while (drawn < segments.length && segments[drawn].time <= elapsed) drawSegment(segments[drawn++])
-      canvas.dataset.ambientDrawn = String(drawn)
-      canvas.dataset.ambientState = drawn < segments.length ? 'growing' : 'settled'
-      if (drawn < segments.length) frame = requestAnimationFrame(animateGrowth)
+      if (now - lastPaint >= 1000 / 30) {
+        lastPaint = now
+        drawArt(false)
+      }
+      frame = requestAnimationFrame(animateArt)
     }
 
-    function syncGrowth() {
+    function syncArt() {
       cancelAnimationFrame(frame)
       frame = 0
       previousTime = 0
-      if (prefersReducedMotion()) drawn = segments.length
-      redrawGrowth()
-      canvas.dataset.ambientDrawn = String(drawn)
-      if (document.hidden) canvas.dataset.ambientState = 'paused'
-      else if (prefersReducedMotion()) canvas.dataset.ambientState = 'still'
-      else if (drawn < segments.length) frame = requestAnimationFrame(animateGrowth)
-      else canvas.dataset.ambientState = 'settled'
+      if (document.hidden) {
+        canvas.dataset.ambientState = 'paused'
+        return
+      }
+      drawArt(prefersReducedMotion())
+      if (!prefersReducedMotion()) frame = requestAnimationFrame(animateArt)
     }
 
-    function resetGrowth() {
+    function resetArt() {
       cancelAnimationFrame(frame)
       width = Math.max(1, innerWidth)
       height = Math.max(1, innerHeight)
       ratio = Math.min(devicePixelRatio || 1, 1.5)
       canvas.width = Math.round(width * ratio)
       canvas.height = Math.round(height * ratio)
-      segments = []
-      drawn = 0
+      strokes = []
       elapsed = 0
-      var mobile = width < 760
-      var reach = Math.min(420, height / 2.8)
-      if (mobile) {
-        traceCurrent(width * 0.08, -24, Math.PI / 2 - 0.22, reach * 0.65, 0, 0.75)
-        traceCurrent(width * 0.94, height + 24, -Math.PI / 2 - 0.18, reach * 0.7, 800, 0.65)
-      } else {
-        var left = width >= 1024 ? 164 : 0
-        var margin = width - left
-        // 主线由下向上舒展，远处的一组从右上入画，弱横流连接留白。
-        traceCurrent(left + margin * randomBetween(0.07, 0.13), height + 28, -Math.PI / 2 + 0.12, reach, 0, 1)
-        traceCurrent(width * randomBetween(0.92, 0.97), -28, Math.PI / 2 + 0.14, reach * 0.9, 600, 0.75)
-        traceCurrent(left - 24, height * randomBetween(0.35, 0.65), randomBetween(-0.45, -0.15), reach * 0.75, 1700, 0.38)
+      lastPaint = 0
+      generation = 0
+      var count = width < 760 ? 4 : 9
+      for (var i = 0; i < count; i++) {
+        // 错开的起笔与退场，让长线、短线和留白一直交替存在。
+        strokes.push(makeStroke(i % 2, -i * 1900))
       }
-      segments.sort(function (a, b) { return a.time - b.time })
-      canvas.dataset.ambientSegments = String(segments.length)
-      syncGrowth()
+      syncArt()
     }
 
     window.addEventListener('resize', function () {
       if (width === innerWidth && height === innerHeight && ratio === Math.min(devicePixelRatio || 1, 1.5)) return
       clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(resetGrowth, 180)
+      resizeTimer = setTimeout(resetArt, 180)
     }, { passive: true })
-    window.addEventListener('hashchange', resetGrowth)
-    document.addEventListener('visibilitychange', syncGrowth)
+    window.addEventListener('hashchange', resetArt)
+    document.addEventListener('visibilitychange', syncArt)
     if (motionQuery) {
-      if (motionQuery.addEventListener) motionQuery.addEventListener('change', syncGrowth)
-      else motionQuery.addListener(syncGrowth)
+      if (motionQuery.addEventListener) motionQuery.addEventListener('change', syncArt)
+      else motionQuery.addListener(syncArt)
     }
-    new MutationObserver(syncGrowth).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    resetGrowth()
+    new MutationObserver(syncArt).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    resetArt()
   }
 
   if (!location.hash) location.replace('#/')

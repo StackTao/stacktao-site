@@ -2040,6 +2040,8 @@ body[data-route-kind='article'] .app-shell::after {
 }
 
 .article-prose > h1:first-of-type {
+  background: var(--c-bg);
+  box-shadow: 0 0 22px 18px var(--c-bg);
   max-width: 17ch;
   margin-bottom: 0.55em;
   font-size: clamp(2.9rem, 5vw, 4.35rem);
