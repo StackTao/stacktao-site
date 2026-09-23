@@ -1358,35 +1358,24 @@ body.overlay-open {
 
 .share-line a { border: 0 !important; }
 
+/* 随机细线从边缘生长，阅读区域保持透明。 */
 .art-canvas {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   pointer-events: none;
-  --canvas-veil: 0.84;
-  --ink-drift-x: 0px;
-  --ink-drift-y: 0px;
-  --ink-scroll-y: 0px;
-  opacity: var(--canvas-veil);
-  transform: translate3d(var(--ink-drift-x), calc(var(--ink-drift-y) + var(--ink-scroll-y)), 0) scale(1.018);
-  transform-origin: center;
-  transition: transform 1.45s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
-  -webkit-mask-image: radial-gradient(ellipse 42% 54% at 50% 46%, transparent 0 44%, rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.48) 79%, black 100%);
-  mask-image: radial-gradient(ellipse 42% 54% at 50% 46%, transparent 0 44%, rgba(0, 0, 0, 0.08) 58%, rgba(0, 0, 0, 0.48) 79%, black 100%);
+  -webkit-mask-image: linear-gradient(90deg, black, transparent 36% 82%, black);
+  mask-image: linear-gradient(90deg, black, transparent 36% 82%, black);
 }
 
-/* Canvas 原本一上来就是满强度，而正文要花 1 秒以上淡入，背景反而比内容更抢眼。
-   让画面整体一起醒来，并且比内容慢半拍。 */
-@media (prefers-reduced-motion: no-preference) {
+@media (max-width: 760px) {
   .art-canvas {
-    animation: canvas-wake 2.2s var(--ease-ink) 0.12s both 1;
+    opacity: 0.65;
+    -webkit-mask-image: linear-gradient(180deg, black, transparent 20% 80%, black);
+    mask-image: linear-gradient(180deg, black, transparent 20% 80%, black);
   }
-}
-
-@keyframes canvas-wake {
-  from { opacity: 0; }
-  to { opacity: var(--canvas-veil); }
 }
 
 .app-shell {
@@ -1509,11 +1498,6 @@ body[data-route-kind='article'] .app-shell::after {
   }
   .home-page > h1:first-child { font-size: 2.7rem; }
   .article-prose > h1:first-of-type { font-size: 2.2rem; }
-  .art-canvas {
-    --canvas-veil: 0.66;
-    -webkit-mask-image: radial-gradient(ellipse 72% 48% at 50% 46%, transparent 0 50%, rgba(0, 0, 0, 0.1) 63%, rgba(0, 0, 0, 0.54) 82%, black 100%);
-    mask-image: radial-gradient(ellipse 72% 48% at 50% 46%, transparent 0 50%, rgba(0, 0, 0, 0.1) 63%, rgba(0, 0, 0, 0.54) 82%, black 100%);
-  }
 }
 
 @media (max-width: 1180px) {
@@ -1875,10 +1859,6 @@ body[data-route-kind='article'] .app-shell::after {
     padding-left: clamp(2.5rem, 5vw, 5.5rem);
   }
 
-  .art-canvas {
-    -webkit-mask-image: radial-gradient(ellipse 41% 44% at 56% 43%, transparent 0 40%, rgba(0, 0, 0, 0.08) 56%, rgba(0, 0, 0, 0.48) 78%, black 100%);
-    mask-image: radial-gradient(ellipse 41% 44% at 56% 43%, transparent 0 40%, rgba(0, 0, 0, 0.08) 56%, rgba(0, 0, 0, 0.48) 78%, black 100%);
-  }
 }
 
 @media (min-width: 1024px) and (max-height: 680px) {
@@ -2544,7 +2524,6 @@ body[data-route-kind='article'] .app-shell::after {
     animation: none !important;
   }
 
-  .art-canvas { transform: none !important; }
   .nav-right > a[data-nav],
   .nav-right > a[data-nav]::before,
   .magic-link,
