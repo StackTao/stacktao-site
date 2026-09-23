@@ -758,31 +758,35 @@
       return min + Math.random() * (max - min)
     }
 
-    function traceCurrent(x, y, heading, reach, delay) {
+    function traceCurrent(x, y, heading, reach, delay, strength) {
       var phase = randomBetween(0, Math.PI * 2)
-      var curl = randomBetween(0.55, 1.2) * (Math.random() < 0.5 ? -1 : 1)
-      var count = width < 760 ? 4 : Math.floor(randomBetween(5, 9))
-      var spacing = randomBetween(3, 6)
+      var curl = randomBetween(0.35, 0.65) * (Math.random() < 0.5 ? -1 : 1)
+      var count = width < 760 ? 5 : Math.floor(randomBetween(10, 16))
+      var spacing = randomBetween(6, 11)
       for (var strand = 0; strand < count; strand++) {
         var offset = (strand - (count - 1) / 2) * spacing
         var px = x - Math.sin(heading) * offset
         var py = y + Math.cos(heading) * offset
         var angle = heading
-        var time = delay + strand * randomBetween(90, 170)
-        var steps = Math.floor(reach * randomBetween(0.8, 1.15))
+        var time = delay + randomBetween(0, 1600)
+        var steps = Math.floor(reach * randomBetween(0.65, 1.15))
+        var shade = strength * randomBetween(0.4, 1)
+        var bend = randomBetween(-0.14, 0.14)
         for (var step = 0; step < steps; step++) {
           var progress = step / steps
-          // 共享流场保持线束秩序，长度、起笔和弯曲产生自然差异。
-          var target = heading + Math.sin(progress * 3.8 + phase) * curl
-            + Math.sin(progress * 7 + phase) * 0.18 + offset * progress * 0.012
-          angle += (target - angle) * 0.055
+          // 长线共享风向，局部偏转与疏密变化让线束逐渐散开。
+          var target = heading + Math.sin(progress * 5 + phase) * curl
+            + Math.sin(progress * 9 + phase + strand * 0.12) * 0.14
+            + offset * progress * 0.0025 + bend * progress
+          angle += (target - angle) * 0.035
           var distance = 2.8
           var nx = px + Math.cos(angle) * distance
           var ny = py + Math.sin(angle) * distance
-          time += 26
-          var taper = Math.pow(Math.sin(Math.PI * progress), 0.65)
-          segments.push({ x: px, y: py, nx: nx, ny: ny, time: time, opacity: taper, weight: strand % 3 === 0 ? 0.9 : 0.6 })
-          if (nx < -12 || nx > width + 12 || ny < -12 || ny > height + 12) break
+          time += 28 + progress * 12
+          var taper = Math.pow(Math.sin(Math.PI * progress), 0.6)
+          segments.push({ x: px, y: py, nx: nx, ny: ny, time: time, opacity: taper * shade, weight: strand % 4 === 0 ? 1 : 0.65 })
+          // 起笔允许落在画外，进入画面后才检查离场。
+          if (step > 30 && (nx < -60 || nx > width + 60 || ny < -60 || ny > height + 60)) break
           px = nx
           py = ny
         }
@@ -848,20 +852,17 @@
       drawn = 0
       elapsed = 0
       var mobile = width < 760
-      var reach = mobile ? randomBetween(28, 40) : randomBetween(70, 105)
-      // 原创流线构图：错落的短线束，不使用树枝分叉或整屏循环。
+      var reach = Math.min(420, height / 2.8)
       if (mobile) {
-        traceCurrent(width * randomBetween(0.08, 0.22), 8, Math.PI / 2 - 0.4, reach, 0)
-        traceCurrent(width * randomBetween(0.8, 0.94), height - 8, -Math.PI / 2 - 0.4, reach, 480)
+        traceCurrent(width * 0.08, -24, Math.PI / 2 - 0.22, reach * 0.65, 0, 0.75)
+        traceCurrent(width * 0.94, height + 24, -Math.PI / 2 - 0.18, reach * 0.7, 800, 0.65)
       } else {
         var left = width >= 1024 ? 164 : 0
-        traceCurrent(left + 12, height * randomBetween(0.44, 0.74), randomBetween(-0.7, -0.25), reach, 0)
-        traceCurrent(width - 12, height * randomBetween(0.3, 0.65), Math.PI + randomBetween(-0.4, 0.4), reach, 500)
-        if (Math.random() < 0.5) {
-          traceCurrent(width * randomBetween(0.86, 0.94), 8, Math.PI / 2 + 0.3, reach * 0.7, 900)
-        } else {
-          traceCurrent(width * randomBetween(0.17, 0.26), height - 8, -Math.PI / 2 + 0.4, reach * 0.8, 900)
-        }
+        var margin = width - left
+        // 主线由下向上舒展，远处的一组从右上入画，弱横流连接留白。
+        traceCurrent(left + margin * randomBetween(0.07, 0.13), height + 28, -Math.PI / 2 + 0.12, reach, 0, 1)
+        traceCurrent(width * randomBetween(0.92, 0.97), -28, Math.PI / 2 + 0.14, reach * 0.9, 600, 0.75)
+        traceCurrent(left - 24, height * randomBetween(0.35, 0.65), randomBetween(-0.45, -0.15), reach * 0.75, 1700, 0.38)
       }
       segments.sort(function (a, b) { return a.time - b.time })
       canvas.dataset.ambientSegments = String(segments.length)

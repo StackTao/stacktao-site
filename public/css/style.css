@@ -1366,8 +1366,15 @@ body.overlay-open {
   height: 100%;
   z-index: 1;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, black, transparent 36% 82%, black);
-  mask-image: linear-gradient(90deg, black, transparent 36% 82%, black);
+  -webkit-mask-image: linear-gradient(90deg, black 0 14%, transparent 38% 82%, black 98%);
+  mask-image: linear-gradient(90deg, black 0 14%, transparent 38% 82%, black 98%);
+}
+
+@media (min-width: 761px) and (max-width: 1279px) {
+  .art-canvas {
+    -webkit-mask-image: linear-gradient(90deg, black 0 13%, transparent 30% 92%, black);
+    mask-image: linear-gradient(90deg, black 0 13%, transparent 30% 92%, black);
+  }
 }
 
 @media (max-width: 760px) {
