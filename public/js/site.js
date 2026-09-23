@@ -870,7 +870,7 @@
     function inkColor(alpha) {
       var dark = document.documentElement.classList.contains('dark')
       var rgb = dark ? [207, 201, 187] : [59, 56, 51]
-      var themeScale = dark ? 0.82 : 1
+      var themeScale = dark ? 0.66 : 1
       return 'rgba(' + rgb.join(',') + ',' + clamp(alpha * themeScale, 0, 0.42) + ')'
     }
 
@@ -962,7 +962,7 @@
           count: count,
           offset: (inkRandom() - 0.5) * 0.85,
           width: mass.width * (0.72 + inkRandom() * 0.58),
-          tone: mass.tone * (0.88 + inkRandom() * 0.18),
+          tone: mass.tone * (0.5 + inkRandom() * 0.18),
           dry: inkRandom() * 0.46,
           revealAt: 380 + mass.delay + distance * 1400,
           revealDuration: 1100 + inkRandom() * 550,
@@ -1039,6 +1039,37 @@
         }
       }
 
+      if (mass.trees) {
+        for (var treeIndex = 0; treeIndex < 7; treeIndex++) {
+          var anchor = mass.points[Math.floor(mass.points.length * (0.17 + inkRandom() * 0.6))]
+          var treeHeight = (10 + inkRandom() * 15) * Math.min(1.2, inkWidth / 900)
+          var lean = (inkRandom() - 0.5) * treeHeight * 0.45
+          var treeStart = 1900 + mass.delay + treeIndex * 60
+          fragments.push({ type: 'hatch', x1: anchor.x, y1: anchor.y + 2,
+            x2: anchor.x + lean, y2: anchor.y - treeHeight,
+            width: 0.9, tone: mass.tone * 0.85, dry: 0.25, revealAt: treeStart, revealDuration: 950 })
+          for (var tier = 0; tier < 4; tier++) {
+            var level = 0.32 + tier * 0.17
+            var rootX = anchor.x + lean * level
+            var rootY = anchor.y - treeHeight * level
+            for (var side = -1; side <= 1; side += 2) {
+              var reach = treeHeight * (0.46 - tier * 0.08) * (0.75 + inkRandom() * 0.4)
+              fragments.push({ type: 'hatch', x1: rootX, y1: rootY,
+                x2: rootX + side * reach, y2: rootY - treeHeight * 0.06,
+                width: 0.65, tone: mass.tone * 0.75, dry: 0.35,
+                revealAt: treeStart + 180, revealDuration: 850 })
+              for (var needle = 0; needle < 4; needle++) {
+                var needleX = rootX + side * reach * (0.35 + needle * 0.2)
+                fragments.push({ type: 'hatch', x1: needleX - 2, y1: rootY - 1,
+                  x2: needleX + side * 3, y2: rootY - 3 - inkRandom() * 3,
+                  width: 1 + inkRandom(), tone: mass.tone * 0.8, dry: 0.55,
+                  revealAt: treeStart + 300, revealDuration: 800 })
+              }
+            }
+          }
+        }
+      }
+
       for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex++) {
         var fragment = fragments[fragmentIndex]
         fragment.revealAt = Math.min(4380, fragment.revealAt)
@@ -1065,7 +1096,15 @@
       var noiseSeed = 19 + index * 37 + Math.floor(inkRandom() * 900)
       var mainCenter = 0.27 + inkRandom() * 0.42
       var ridgeAnchors = []
-      if (config.range) {
+      if (config.profile) {
+        ridgeAnchors = config.profile.map(function (height, index) {
+          return { x: index / (config.profile.length - 1), y: index === 0 || index === config.profile.length - 1 ? 0 : height }
+        })
+        mainCenter = ridgeAnchors.reduce(function (peak, point) {
+          return point.y > peak.y ? point : peak
+        }, ridgeAnchors[0]).x
+      }
+      else if (config.range) {
         var rangePeaks = Math.max(3, config.peaks)
         var highestAnchor = null
         ridgeAnchors.push({ x: 0, y: 0 })
@@ -1104,7 +1143,7 @@
         ]
       }
       var sidePeaks = []
-      for (var peak = 1; peak < (config.range ? 1 : config.peaks); peak++) {
+      for (var peak = 1; peak < (config.profile || config.range ? 1 : config.peaks); peak++) {
         var peakCenter = 0.12 + inkRandom() * 0.76
         if (Math.abs(peakCenter - mainCenter) < 0.15)
           peakCenter = clamp(peakCenter + (peakCenter < mainCenter ? -0.16 : 0.16), 0.1, 0.9)
@@ -1127,12 +1166,12 @@
             smoothMass += currentPeak.height * Math.pow(bump, 1.35)
           }
         }
-        var envelope = Math.pow(Math.max(0, Math.sin(Math.PI * position)), 0.62)
+        var envelope = config.profile ? 1 : Math.pow(Math.max(0, Math.sin(Math.PI * position)), 0.62)
         var grain = valueNoise(position, 2.25, noiseSeed) * 0.046
-          + valueNoise(position, 7.4, noiseSeed + 11) * 0.022
-          + valueNoise(position, 19.6, noiseSeed + 29) * 0.0065
+          + valueNoise(position, 9.4, noiseSeed + 11) * 0.042
+          + valueNoise(position, 31.6, noiseSeed + 29) * 0.019
         var grainWeight = 0.34 + 0.66 * (1 - Math.pow(clamp(smoothMass, 0, 1), 1.35))
-        grain *= grainWeight
+        grain *= config.profile ? 1.8 * smoothstep(Math.min(position, 1 - position) * 12) : grainWeight
         points.push({
           x: x0 + (x1 - x0) * position,
           y: baseY - height * clamp(smoothMass * envelope + grain * envelope, 0, 1.06),
@@ -1257,6 +1296,8 @@
 
       var mass = {
         points: points,
+        textureSeed: noiseSeed,
+        trees: !!config.trees,
         segments: curveSegments(points, height),
         washBlooms: washBlooms,
         washStrokes: washStrokes,
@@ -1276,53 +1317,21 @@
 
     function buildInkScene() {
       var mobile = inkWidth <= 760
-      var templates = mobile
-        ? [
-            [
-              { range: true, x: -0.18, width: 1.36, base: 0.69, height: 0.14, peaks: 5, tone: 0.1, wash: 0.014, lineWidth: 0.5, delay: 20 },
-              { range: true, x: -0.2, width: 1.38, base: 0.9, height: 0.27, peaks: 4, tone: 0.22, wash: 0.038, lineWidth: 0.8, delay: 260 },
-              { x: -0.34, width: 0.62, base: 1.02, height: 0.35, peaks: 4, tone: 0.31, wash: 0.052, lineWidth: 0.98, delay: 430 },
-            ],
-            [
-              { range: true, x: -0.16, width: 1.34, base: 0.67, height: 0.13, peaks: 6, tone: 0.09, wash: 0.013, lineWidth: 0.48, delay: 30 },
-              { range: true, x: -0.18, width: 1.36, base: 0.91, height: 0.29, peaks: 4, tone: 0.23, wash: 0.04, lineWidth: 0.82, delay: 250 },
-              { x: 0.73, width: 0.61, base: 1.01, height: 0.36, peaks: 4, tone: 0.32, wash: 0.054, lineWidth: 1, delay: 420 },
-            ],
-          ]
-        : [
-            [
-              { range: true, x: -0.12, width: 1.24, base: 0.6, height: 0.12, peaks: 7, tone: 0.075, wash: 0.01, lineWidth: 0.42, delay: 10 },
-              { range: true, x: -0.11, width: 1.23, base: 0.74, height: 0.18, peaks: 6, tone: 0.14, wash: 0.021, lineWidth: 0.58, delay: 150 },
-              { range: true, x: -0.14, width: 1.28, base: 0.92, height: 0.28, peaks: 5, tone: 0.22, wash: 0.038, lineWidth: 0.8, delay: 310 },
-              { x: -0.18, width: 0.46, base: 1.02, height: 0.4, peaks: 4, tone: 0.34, wash: 0.06, lineWidth: 1.04, delay: 470 },
-            ],
-            [
-              { range: true, x: -0.13, width: 1.26, base: 0.58, height: 0.11, peaks: 6, tone: 0.07, wash: 0.009, lineWidth: 0.4, delay: 20 },
-              { range: true, x: -0.1, width: 1.22, base: 0.73, height: 0.19, peaks: 5, tone: 0.145, wash: 0.022, lineWidth: 0.6, delay: 150 },
-              { range: true, x: -0.15, width: 1.3, base: 0.93, height: 0.3, peaks: 5, tone: 0.23, wash: 0.04, lineWidth: 0.82, delay: 300 },
-              { x: 0.72, width: 0.47, base: 1.01, height: 0.39, peaks: 4, tone: 0.34, wash: 0.06, lineWidth: 1.04, delay: 480 },
-            ],
-            [
-              { range: true, x: -0.14, width: 1.28, base: 0.61, height: 0.13, peaks: 7, tone: 0.08, wash: 0.011, lineWidth: 0.43, delay: 15 },
-              { range: true, x: -0.12, width: 1.25, base: 0.76, height: 0.2, peaks: 6, tone: 0.15, wash: 0.023, lineWidth: 0.62, delay: 145 },
-              { range: true, x: -0.15, width: 1.3, base: 0.91, height: 0.27, peaks: 4, tone: 0.215, wash: 0.037, lineWidth: 0.79, delay: 315 },
-              { x: 0.68, width: 0.52, base: 1.03, height: 0.42, peaks: 5, tone: 0.36, wash: 0.064, lineWidth: 1.08, delay: 470 },
-            ],
-          ]
-      var configs = templates[Math.floor(inkRandom() * templates.length)].map(function (config) {
-        return {
-          range: config.range,
-          x: config.x + (inkRandom() - 0.5) * 0.025,
-          width: config.width * (0.95 + inkRandom() * 0.1),
-          base: config.base + (inkRandom() - 0.5) * 0.024,
-          height: config.height * (0.92 + inkRandom() * 0.16),
-          peaks: config.range ? Math.max(3, config.peaks - 2) : config.peaks,
-          tone: config.tone * (0.92 + inkRandom() * 0.16),
-          wash: config.wash * (0.9 + inkRandom() * 0.2),
-          lineWidth: config.lineWidth,
-          delay: config.delay,
-        }
-      })
+      // 远山连接两岸，近山用不对称陡壁立起；江面留在下方，不再堆叠平行波浪。
+      var distant = [0.12, 0.34, 0.28, 0.65, 0.51, 0.76, 0.46, 0.38, 0.61, 0.42, 0.68, 0.27, 0.1]
+      var cliffs = [0, 0.12, 0.19, 0.57, 0.52, 0.91, 0.98, 0.67, 0.72, 0.38, 0.33, 0.1, 0]
+      var shoulder = [0.06, 0.24, 0.65, 0.61, 0.89, 0.78, 1, 0.94, 0.52, 0.41, 0.22, 0.09, 0]
+      var configs = mobile ? [
+        { x: -0.2, width: 1.4, base: 0.86, height: 0.27, tone: 0.15, wash: 0.035, lineWidth: 0.5, delay: 0, profile: distant },
+        { x: 0.65, width: 0.65, base: 0.96, height: 0.42, tone: 0.32, wash: 0.085, lineWidth: 0.7, delay: 350, profile: cliffs },
+        { x: -0.3, width: 0.72, base: 1.03, height: 0.34, tone: 0.45, wash: 0.13, lineWidth: 0.9, delay: 700, profile: shoulder, trees: true },
+      ] : [
+        { x: 0.08, width: 0.94, base: 0.76, height: 0.3, tone: 0.15, wash: 0.038, lineWidth: 0.5, delay: 0, profile: distant },
+        { x: 0.55, width: 0.55, base: 0.86, height: 0.46, tone: 0.23, wash: 0.066, lineWidth: 0.65, delay: 180, profile: shoulder },
+        { x: 0.05, width: 0.48, base: 0.91, height: 0.58, tone: 0.32, wash: 0.09, lineWidth: 0.75, delay: 350, profile: cliffs },
+        { x: 0.8, width: 0.29, base: 0.96, height: 0.48, tone: 0.55, wash: 0.19, lineWidth: 1, delay: 570, profile: [0, 0.18, 0.47, 0.4, 0.79, 0.83, 0.63, 0.72, 1, 0.92, 0.62, 0.25, 0.12], trees: true },
+        { x: 0.1, width: 0.24, base: 1.03, height: 0.35, tone: 0.64, wash: 0.22, lineWidth: 1.1, delay: 760, profile: shoulder, trees: true },
+      ]
       inkMasses = []
       for (var i = 0; i < configs.length; i++) inkMasses.push(buildMountain(configs[i], i))
       buildRevealQueues()
@@ -1486,16 +1495,131 @@
 
     // 以下五个函数把原先揉在 drawWash 里的各类笔画拆成可以单独绘制的单位，让揭示期
     // 能够按完成时间逐笔烘焙。每个函数都显式设置自己的 lineCap 与虚线，不依赖调用顺序。
+    // 每座山只生成一次局部纹理；墨面、披麻皴与纸粒共享固定种子。
+    function mountainWashCache(mass) {
+      var dark = document.documentElement.classList.contains('dark')
+      if (mass.cache && mass.cache.dark === dark) return mass.cache
+      var left = Math.floor(mass.points[0].x - 2)
+      var top = Math.floor(Math.min.apply(null, mass.points.map(function (point) { return point.y })) - 3)
+      var width = Math.ceil(mass.points[mass.points.length - 1].x - left + 3)
+      var height = Math.ceil(mass.baseY + mass.height * 0.2 - top + 3)
+      var layer = document.createElement('canvas')
+      layer.width = Math.ceil(width * inkDpr)
+      layer.height = Math.ceil(height * inkDpr)
+      var brush = layer.getContext('2d')
+      brush.setTransform(inkDpr, 0, 0, inkDpr, -left * inkDpr, -top * inkDpr)
+      var random = seededRandom(mass.textureSeed)
+      brush.save()
+      traceMass(brush, mass)
+      brush.clip()
+      var wash = brush.createLinearGradient(0, top, 0, mass.baseY)
+      wash.addColorStop(0, inkColor(mass.wash * 1.4))
+      wash.addColorStop(0.46, inkColor(mass.wash * 2.2))
+      wash.addColorStop(0.78, inkColor(mass.wash * 0.9))
+      wash.addColorStop(1, inkColor(0))
+      brush.fillStyle = wash
+      brush.fillRect(left, top, width, height)
+
+      // 不等宽的岩面从山脊垂落，分出受墨的阴面与留白的阳面。
+      for (var rib = 2; rib < mass.points.length - 3; rib += 3 + Math.floor(random() * 4)) {
+        var peak = mass.points[rib]
+        var depth = mass.baseY - peak.y
+        if (depth < 12) continue
+        var length = depth * (0.5 + random() * 0.42)
+        var spread = (8 + random() * 22) * Math.min(1.6, width / 340)
+        var bend = (random() - 0.62) * spread * 2
+        var shade = brush.createLinearGradient(peak.x, peak.y, peak.x + bend, peak.y + length)
+        shade.addColorStop(0, inkColor(mass.tone * (0.22 + random() * 0.2)))
+        shade.addColorStop(0.65, inkColor(mass.tone * 0.12))
+        shade.addColorStop(1, inkColor(0))
+        brush.fillStyle = shade
+        brush.beginPath()
+        brush.moveTo(peak.x - spread * 0.35, peak.y - 2)
+        brush.bezierCurveTo(peak.x + spread, peak.y + length * 0.2,
+          peak.x + bend - spread, peak.y + length * 0.65, peak.x + bend, peak.y + length)
+        brush.lineTo(peak.x + bend + spread, peak.y + length * 0.94)
+        brush.bezierCurveTo(peak.x + bend + spread * 0.3, peak.y + length * 0.55,
+          peak.x + spread * 0.7, peak.y + length * 0.13, peak.x + spread * 0.5, peak.y)
+        brush.fill()
+
+        // 同一岩面的细笔彼此呼应，疏密变化，避免均匀排线。
+        for (var strand = 0; strand < 9; strand++) {
+          var x = peak.x + (random() - 0.3) * spread
+          var y = peak.y + random() * depth * 0.14
+          var strokeLength = length * (0.32 + random() * 0.65)
+          brush.beginPath()
+          brush.moveTo(x, y)
+          for (var step = 1; step <= 9; step++) {
+            var t = step / 9
+            brush.lineTo(x + bend * t + Math.sin(t * 7 + rib) * spread * 0.2
+              + (random() - 0.5) * 3, y + strokeLength * t)
+          }
+          brush.lineWidth = 0.35 + random() * 0.8
+          brush.strokeStyle = inkColor(mass.tone * (0.12 + random() * 0.28))
+          brush.setLineDash([2 + random() * 7, 0.5 + random() * 2])
+          brush.stroke()
+        }
+      }
+      brush.setLineDash([])
+      // 积墨与飞白：颗粒集中在皴纹附近，山脚逐渐散入纸面。
+      for (var grain = 0; grain < Math.min(6500, width * height / 28); grain++) {
+        var point = mass.points[Math.floor(random() * mass.points.length)]
+        var depth = mass.baseY - point.y
+        var drop = Math.pow(random(), 1.5)
+        var x = point.x + (random() - 0.5) * 12
+        var y = point.y + drop * depth
+        var density = 0.45 + valueNoise(x / width, 14, mass.textureSeed) * 0.3
+        brush.fillStyle = inkColor(mass.tone * density * (1 - drop) * (0.12 + random() * 0.3))
+        brush.fillRect(x, y, 0.35 + random() * 1.1, 0.6 + random() * 2.6)
+      }
+      if (mass.trees) {
+        for (var moss = 0; moss < 160; moss++) {
+          var rock = mass.points[2 + Math.floor(random() * (mass.points.length - 4))]
+          var mossY = rock.y + 2 + Math.pow(random(), 2) * 24
+          brush.beginPath()
+          brush.ellipse(rock.x + (random() - 0.5) * 11, mossY,
+            0.7 + random() * 1.4, 0.5 + random(), random(), 0, Math.PI * 2)
+          brush.fillStyle = inkColor(mass.tone * (0.3 + random() * 0.4))
+          brush.fill()
+        }
+      }
+      brush.restore()
+      mass.cache = { canvas: layer, x: left, y: top, width: width, height: height, dark: dark }
+      return mass.cache
+    }
+
     function paintWashBase(target, mass, progress) {
       if (progress <= 0) return
-      var top = mass.baseY - mass.height
-      var gradient = target.createLinearGradient(0, top, 0, mass.baseY + mass.height * 0.2)
-      gradient.addColorStop(0, inkColor(mass.wash * 1.8 * progress))
-      gradient.addColorStop(0.48, inkColor(mass.wash * 2.4 * progress))
-      gradient.addColorStop(0.8, inkColor(mass.wash * 0.65 * progress))
-      gradient.addColorStop(1, inkColor(0))
-      target.fillStyle = gradient
-      target.fillRect(mass.points[0].x, top, mass.points[mass.points.length - 1].x - mass.points[0].x, mass.baseY + mass.height * 0.2 - top)
+      var cache = mountainWashCache(mass)
+      target.save()
+      if (progress < 1) {
+        if (!cache.reveal) {
+          cache.reveal = document.createElement('canvas')
+          cache.reveal.width = cache.canvas.width
+          cache.reveal.height = cache.canvas.height
+        }
+        var wet = cache.reveal.getContext('2d')
+        wet.clearRect(0, 0, cache.reveal.width, cache.reveal.height)
+        wet.globalCompositeOperation = 'source-over'
+        wet.drawImage(cache.canvas, 0, 0)
+        wet.globalCompositeOperation = 'destination-in'
+        var front = cache.reveal.height * progress * 1.35
+        var edge = wet.createLinearGradient(0, front - cache.reveal.height * 0.32, 0, front)
+        edge.addColorStop(0, 'rgba(0,0,0,1)')
+        edge.addColorStop(1, 'rgba(0,0,0,0)')
+        wet.fillStyle = edge
+        wet.fillRect(0, 0, cache.reveal.width, cache.reveal.height)
+        target.globalAlpha = smoothstep(progress * 2)
+        target.drawImage(cache.reveal, cache.x, cache.y, cache.width, cache.height)
+      }
+      else {
+        target.drawImage(cache.canvas, cache.x, cache.y, cache.width, cache.height)
+        if (cache.reveal) {
+          cache.reveal.width = cache.reveal.height = 0
+          cache.reveal = null
+        }
+      }
+      target.restore()
     }
 
     function paintWashBloom(target, bloom, progress) {
@@ -1796,8 +1920,8 @@
             { mask: 1, x: 0.18, y: 0.84, width: 0.5, height: 0.085, settled: 0.1 },
           ]
         : [
-            { mask: 0, x: 0.5, y: 0.68, width: 0.9, height: 0.068, settled: 0.13 },
-            { mask: 1, x: 0.55, y: 0.82, width: 0.74, height: 0.076, settled: 0.105 },
+            { mask: 0, x: 0.5, y: 0.72, width: 0.9, height: 0.095, settled: 0.2 },
+            { mask: 1, x: 0.55, y: 0.87, width: 0.74, height: 0.065, settled: 0.18 },
             { mask: 0, x: 0.14, y: 0.9, width: 0.34, height: 0.082, settled: 0.09 },
           ]
     }
@@ -1856,6 +1980,29 @@
         ctx.globalAlpha = reveal * (i === 0 ? 0.48 : 0.36)
         ctx.drawImage(inkMistMasks[band.mask], box.x + driftX, box.y + driftY,
           box.width, box.height * 1.4)
+      }
+      ctx.restore()
+    }
+
+    function drawRiver(elapsed, reduced) {
+      var reveal = reduced ? 1 : smoothstep((elapsed - 1800) / 2400)
+      if (reveal <= 0) return
+      var random = seededRandom(inkSceneSeed + 4099)
+      ctx.save()
+      ctx.lineCap = 'round'
+      for (var i = 0; i < 28; i++) {
+        var x = inkWidth * (0.26 + random() * 0.7)
+        var y = inkHeight * (0.91 + random() * 0.085)
+        var width = 12 + random() * 65
+        var phase = reduced ? 0 : elapsed / (2100 + i * 45) + i
+        var drift = Math.sin(phase) * 7
+        ctx.globalAlpha = reveal * (0.7 + Math.sin(phase * 0.6) * 0.2)
+        ctx.strokeStyle = inkColor(0.09 + random() * 0.08)
+        ctx.lineWidth = 0.4 + random() * 0.45
+        ctx.beginPath()
+        ctx.moveTo(x + drift, y)
+        ctx.quadraticCurveTo(x + width * 0.5 + drift, y - 0.8, x + width + drift, y)
+        ctx.stroke()
       }
       ctx.restore()
     }
@@ -2646,6 +2793,7 @@
         driftMountainMist(elapsed)
         drawBirds(elapsed)
       }
+      drawRiver(elapsed, reduced)
       canvas.dataset.inkMotion = reduced ? 'still' : 'flowing'
     }
 
