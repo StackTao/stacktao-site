@@ -1385,6 +1385,15 @@ body.overlay-open {
   }
 }
 
+/* 窄屏长文占满宽度，电流只留在顶部和最下缘。 */
+@media (max-width: 1023px) {
+  body[data-route-kind='article'] .art-canvas {
+    opacity: 0.65;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 15% 94%, rgba(0, 0, 0, 0.3));
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 15% 94%, rgba(0, 0, 0, 0.3));
+  }
+}
+
 .app-shell {
   position: relative;
   z-index: 2;

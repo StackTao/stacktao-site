@@ -759,87 +759,78 @@
       return min + Math.random() * (max - min)
     }
 
+    function boltPath(from, to, spread, levels) {
+      var points = [from, to]
+      for (var level = 0; level < levels; level++) {
+        var divided = [points[0]]
+        for (var i = 1; i < points.length; i++) {
+          var a = points[i - 1]
+          var b = points[i]
+          var angle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2
+          var offset = randomBetween(-spread, spread)
+          divided.push({ x: (a.x + b.x) / 2 + Math.cos(angle) * offset, y: (a.y + b.y) / 2 + Math.sin(angle) * offset })
+          divided.push(b)
+        }
+        points = divided
+        spread *= 0.58
+      }
+      return points
+    }
+
     function makeStroke(side, start) {
       var mobile = width < 760
       var left = width >= 1024 ? 164 : 0
       var span = width - left
       var upward = Math.random() < 0.5
-      var x = side === 0 ? left + span * randomBetween(0.04, 0.17) : width * randomBetween(0.88, 1)
-      var y = upward ? height + 20 : -20
-      var heading = (upward ? -1 : 1) * Math.PI / 2 + randomBetween(-0.3, 0.3)
-      if (mobile) x = side === 0 ? width * randomBetween(0.02, 0.3) : width * randomBetween(0.7, 0.98)
-      var points = [{ x: x, y: y }]
-      var angle = heading
-      var phase = randomBetween(0, Math.PI * 2)
-      var curl = randomBetween(0.45, 1.1) * (Math.random() < 0.5 ? -1 : 1)
-      var count = Math.floor(Math.min(290, height / 3.5) * randomBetween(0.65, 1.3))
-      var bend = 0
-      for (var i = 0; i < count; i++) {
-        if (i % 18 === 0) bend = randomBetween(-0.22, 0.22)
-        var progress = i / count
-        var target = heading + Math.sin(progress * 5 + phase) * curl + bend
-        angle += (target - angle) * 0.065
-        x += Math.cos(angle) * 3.5
-        y += Math.sin(angle) * 3.5
-        points.push({ x: x, y: y })
-        if (i > 25 && (x < left - 40 || x > width + 40 || y < -40 || y > height + 40)) break
+      var fromX = side === 0 ? left + span * randomBetween(0.04, 0.13) : width * randomBetween(0.92, 0.99)
+      var toX = side === 0 ? left + span * randomBetween(0.06, 0.18) : width * randomBetween(0.87, 0.98)
+      if (mobile) {
+        fromX = width * (side === 0 ? randomBetween(0.1, 0.3) : randomBetween(0.7, 0.9))
+        toX = fromX + randomBetween(-width * 0.18, width * 0.18)
       }
+      var from = { x: fromX, y: upward ? height + 12 : -12 }
+      var to = { x: toX, y: height * (upward ? randomBetween(0.08, 0.4) : randomBetween(0.6, 0.92)) }
+      var points = boltPath(from, to, Math.min(mobile ? 32 : 65, height * 0.085), 5)
       var branches = []
-      var flecks = []
-      var branchCount = Math.floor(randomBetween(mobile ? 2 : 3, mobile ? 4 : 8))
+      var branchCount = Math.floor(randomBetween(mobile ? 2 : 4, mobile ? 4 : 8))
       for (var b = 0; b < branchCount; b++) {
-        var at = randomBetween(0.18, 0.77)
+        var at = randomBetween(0.16, 0.8)
         var index = Math.floor(at * (points.length - 2))
         var anchor = points[index]
         var tangent = Math.atan2(points[index + 1].y - anchor.y, points[index + 1].x - anchor.x)
         var direction = Math.random() < 0.5 ? -1 : 1
-        var branchAngle = tangent + direction * randomBetween(0.35, 0.95)
-        var branchPoints = [{ x: anchor.x, y: anchor.y }]
-        var gaps = []
-        var dry = Math.random() < 0.45
-        var length = Math.floor(randomBetween(12, mobile ? 26 : 42))
-        var bx = anchor.x
-        var by = anchor.y
-        for (var j = 1; j <= length; j++) {
-          branchAngle += direction * 0.012 + randomBetween(-0.045, 0.045)
-          bx += Math.cos(branchAngle) * 2.4
-          by += Math.sin(branchAngle) * 2.4
-          branchPoints.push({ x: bx, y: by })
-          gaps[j] = dry && j > 3 && Math.random() < 0.18
-        }
-        branches.push({ points: branchPoints, gaps: gaps, at: at, opacity: randomBetween(0.5, 0.8) })
-        // 墨点附着于笔触末端，随支脉出现；不作为独立漂浮粒子。
-        if (Math.random() < 0.65) {
-          for (var dot = 0; dot < 3; dot++) {
-            flecks.push({ x: bx + randomBetween(-7, 7), y: by + randomBetween(-7, 7), radius: randomBetween(0.5, 1.5), angle: branchAngle, at: at + 0.2, opacity: randomBetween(0.25, 0.6) })
-          }
-        }
+        var angle = tangent + direction * randomBetween(0.5, 1.15)
+        var length = randomBetween(mobile ? 30 : 60, mobile ? 80 : 160)
+        var tip = { x: anchor.x + Math.cos(angle) * length, y: anchor.y + Math.sin(angle) * length }
+        branches.push({
+          points: boltPath(anchor, tip, length * 0.15, 4),
+          at: index / (points.length - 1),
+          delay: randomBetween(60, 160),
+          duration: randomBetween(180, 420),
+          opacity: randomBetween(0.45, 0.75),
+        })
       }
       return {
         side: side,
         points: points,
         branches: branches,
-        flecks: flecks,
         start: start,
-        grow: randomBetween(9000, 14000),
-        rest: randomBetween(1800, 3500),
-        fade: randomBetween(6500, 10000),
-        weight: randomBetween(0.65, 1),
-        opacity: randomBetween(0.65, 1),
+        grow: randomBetween(550, 950),
+        rest: randomBetween(900, 1500),
+        fade: randomBetween(4500, 7000),
+        weight: randomBetween(0.9, 1.25),
+        opacity: randomBetween(0.7, 1),
       }
     }
 
-    function tracePen(points, progress, gaps) {
+    function tracePen(points, progress) {
       var end = Math.max(0, Math.min(1, progress)) * (points.length - 1)
       var whole = Math.floor(end)
       context.beginPath()
       context.moveTo(points[0].x, points[0].y)
-      for (var p = 1; p <= whole; p++) {
-        if (gaps && gaps[p]) context.moveTo(points[p].x, points[p].y)
-        else context.lineTo(points[p].x, points[p].y)
-      }
-      // 插值笔尖，断笔的位置在生成时确定，不逐帧闪动。
-      if (whole < points.length - 1 && !(gaps && gaps[whole + 1])) {
+      for (var p = 1; p <= whole; p++) context.lineTo(points[p].x, points[p].y)
+      // 折线路径只生成一次，笔尖连续推进，不逐帧抖动或闪屏。
+      if (whole < points.length - 1) {
         var from = points[whole]
         var to = points[whole + 1]
         context.lineTo(from.x + (to.x - from.x) * (end - whole), from.y + (to.y - from.y) * (end - whole))
@@ -853,23 +844,20 @@
       context.lineCap = 'round'
       context.lineJoin = 'round'
       context.strokeStyle = document.documentElement.classList.contains('dark')
-        ? 'rgba(165,173,171,0.34)'
-        : 'rgba(111,117,112,0.36)'
-      context.fillStyle = context.strokeStyle
-      var entry = reduced ? 1 : Math.min(1, elapsed / 1600)
+        ? 'rgba(165,173,171,0.42)'
+        : 'rgba(111,117,112,0.4)'
+      var entry = reduced ? 1 : Math.min(1, elapsed / 600)
       for (var s = 0; s < strokes.length; s++) {
         var stroke = strokes[s]
         var age = elapsed - stroke.start
         var life = stroke.grow + stroke.rest + stroke.fade
         if (!reduced && age > life) {
-          stroke = strokes[s] = makeStroke(stroke.side, elapsed + randomBetween(200, 1400))
+          stroke = strokes[s] = makeStroke(stroke.side, elapsed + randomBetween(300, 1100))
           generation++
           age = elapsed - stroke.start
         }
         if (!reduced && age < 0) continue
         var growth = reduced ? 1 : Math.min(1, age / stroke.grow)
-        // 笔速有轻微起伏；每一笔的生命周期独立，画面不会整体重播。
-        growth -= Math.sin(growth * Math.PI * 2) * 0.06
         var fade = reduced ? 0 : Math.max(0, (age - stroke.grow - stroke.rest) / stroke.fade)
         var alpha = 1 - fade * fade * (3 - 2 * fade)
         var ink = entry * stroke.opacity * alpha
@@ -877,20 +865,13 @@
         context.lineWidth = stroke.weight
         tracePen(stroke.points, growth)
         stroke.branches.forEach(function (branch) {
-          var reveal = Math.max(0, Math.min(1, (growth - branch.at) / 0.22))
+          var reveal = reduced ? 1 : Math.max(0, Math.min(1, (age - stroke.grow * branch.at - branch.delay) / branch.duration))
           if (!reveal) return
           context.globalAlpha = ink * branch.opacity * Math.min(1, reveal * 4)
-          context.lineWidth = stroke.weight * 0.7
-          tracePen(branch.points, reveal, branch.gaps)
+          context.lineWidth = stroke.weight * 0.6
+          tracePen(branch.points, reveal)
         })
-        stroke.flecks.forEach(function (fleck) {
-          var reveal = Math.max(0, Math.min(1, (growth - fleck.at) * 12))
-          if (!reveal) return
-          context.globalAlpha = ink * fleck.opacity * reveal
-          context.beginPath()
-          context.ellipse(fleck.x, fleck.y, fleck.radius, fleck.radius * 0.55, fleck.angle, 0, Math.PI * 2)
-          context.fill()
-        })
+
       }
       context.globalAlpha = 1
       canvas.dataset.ambientState = reduced ? 'still' : 'flowing'
@@ -932,10 +913,10 @@
       elapsed = 0
       lastPaint = 0
       generation = 0
-      var count = width < 760 ? 4 : 9
+      var count = width < 760 ? 2 : 4
       for (var i = 0; i < count; i++) {
-        // 错开的起笔与退场，让长线、短线和留白一直交替存在。
-        strokes.push(makeStroke(i % 2, -i * 1900))
+        // 随机错开的放电与余迹，让页边持续变化，不整体重播。
+        strokes.push(makeStroke(i % 2, -i * 1700))
       }
       syncArt()
     }
