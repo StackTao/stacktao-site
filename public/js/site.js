@@ -753,7 +753,6 @@
     var lastPaint = 0
     var frame = 0
     var resizeTimer = 0
-    var generation = 0
 
     function randomBetween(min, max) {
       return min + Math.random() * (max - min)
@@ -784,58 +783,66 @@
       })
     }
 
-    function makeStroke(side, start) {
+    function makeStroke(side, start, depth) {
       var mobile = width < 760
       var left = width >= 1024 ? 164 : 0
-      var span = width - left
-      var upward = Math.random() < 0.8
-      var fromX = side === 0 ? left + span * randomBetween(0.04, 0.13) : width * randomBetween(0.92, 0.99)
-      var toX = side === 0 ? left + span * randomBetween(0.06, 0.18) : width * randomBetween(0.87, 0.98)
-      if (mobile) {
-        fromX = width * (side === 0 ? randomBetween(0.1, 0.3) : randomBetween(0.7, 0.9))
-        toX = fromX + randomBetween(-width * 0.18, width * 0.18)
+      var margin = mobile ? width * 0.42 : Math.max(72, (width - left) * (width >= 1024 ? 0.19 : 0.11))
+      var minX = side === 0 ? left + 14 : width - margin
+      var maxX = side === 0 ? left + margin : width - 14
+      var span = maxX - minX
+      var inward = side === 0 ? 1 : -1
+      function edgeX(x) { return Math.max(minX, Math.min(maxX, x)) }
+      var rootX = side === 0 ? minX + span * (0.12 + depth * 0.55) : maxX - span * (0.12 + depth * 0.55)
+      var treeHeight = height * (mobile ? randomBetween(0.14, 0.2) : randomBetween(0.52, 0.72) - depth * 0.14)
+      var from = { x: rootX, y: height + 12 }
+      // 粗干、回折、斜出的骨干枝：有木质结构，而非等距抽枝的草茎。
+      var knots = [from,
+        { x: edgeX(rootX + inward * span * 0.35), y: height - treeHeight * 0.3 },
+        { x: edgeX(rootX + inward * span * 0.15), y: height - treeHeight * 0.56 },
+        { x: edgeX(rootX + inward * span * randomBetween(0.5, 0.7)), y: height - treeHeight }]
+      var points = [from]
+      for (var k = 1; k < knots.length; k++) {
+        points = points.concat(veinPath(knots[k - 1], knots[k], mobile ? 3 : 8, 3).slice(1))
       }
-      var from = { x: fromX, y: upward ? height + 12 : -12 }
-      var to = { x: toX, y: height * (upward ? randomBetween(0.08, 0.4) : randomBetween(0.6, 0.92)) }
-      var points = veinPath(from, to, Math.min(mobile ? 32 : 65, height * 0.085), 5)
       var branches = []
-      var branchCount = Math.floor(randomBetween(mobile ? 2 : 4, mobile ? 4 : 8))
-      for (var b = 0; b < branchCount; b++) {
-        var at = b === 0 ? randomBetween(0.12, 0.23) : 0.22 + Math.sqrt(Math.random()) * 0.55
-        var index = Math.floor(at * (points.length - 2))
+      for (var b = 0; b < 3; b++) {
+        var index = Math.floor((0.38 + b * 0.2 + randomBetween(-0.04, 0.04)) * (points.length - 1))
         var anchor = points[index]
-        var tangent = Math.atan2(points[index + 1].y - anchor.y, points[index + 1].x - anchor.x)
-        var direction = Math.random() < 0.5 ? -1 : 1
-        var angle = tangent + direction * randomBetween(0.5, 1.15)
-        var length = randomBetween(mobile ? 30 : 60, mobile ? 80 : 160)
-        var tip = { x: anchor.x + Math.cos(angle) * length, y: anchor.y + Math.sin(angle) * length }
-        var branch = {
-          points: veinPath(anchor, tip, length * 0.15, 4),
-          at: index / (points.length - 1),
-          delay: randomBetween(220, 650),
-          duration: randomBetween(1500, 3000),
-          opacity: randomBetween(0.45, 0.75),
-          weight: 0.6,
-          bud: Math.random() < 0.7,
-          budSize: randomBetween(mobile ? 4 : 5, mobile ? 6 : 9),
-          phase: randomBetween(0, Math.PI * 2),
+        var tip = {
+          x: b % 2 ? randomBetween(minX + span * 0.55, maxX) : randomBetween(minX, minX + span * 0.35),
+          y: anchor.y - treeHeight * randomBetween(0.18, 0.3),
         }
-        branches.push(branch)
-        if (!mobile && Math.random() < 0.35) {
-          var forkIndex = Math.floor(branch.points.length * 0.6)
-          var fork = branch.points[forkIndex]
-          var forkAngle = angle - direction * randomBetween(0.4, 0.8)
-          branches.push({
-            points: veinPath(fork, { x: fork.x + Math.cos(forkAngle) * length * 0.4, y: fork.y + Math.sin(forkAngle) * length * 0.4 }, length * 0.04, 3),
-            at: branch.at,
-            delay: branch.delay + branch.duration * forkIndex / (branch.points.length - 1) + 180,
-            duration: randomBetween(1000, 1800),
-            opacity: branch.opacity * 0.7,
-            weight: 0.4,
-            bud: true,
-            budSize: randomBetween(3.5, 6),
-            phase: randomBetween(0, Math.PI * 2),
-          })
+        var limb = {
+          points: veinPath(anchor, tip, mobile ? 5 : 14, 4),
+          at: index / (points.length - 1),
+          delay: randomBetween(100, 300),
+          duration: randomBetween(1800, 2600),
+          opacity: 0.85,
+          weight: 0.48,
+          flowers: [],
+        }
+        branches.push(limb)
+        for (var t = 0; t < 2; t++) {
+          var forkIndex = Math.floor((0.4 + t * 0.35) * (limb.points.length - 1))
+          var fork = limb.points[forkIndex]
+          var twigTip = {
+            x: edgeX(fork.x + randomBetween(-span * 0.3, span * 0.3)),
+            y: fork.y - randomBetween(mobile ? 8 : 20, mobile ? 22 : 52),
+          }
+          var twig = {
+            points: veinPath(fork, twigTip, mobile ? 2 : 4, 3),
+            at: limb.at,
+            delay: limb.delay + limb.duration * forkIndex / (limb.points.length - 1),
+            duration: randomBetween(1600, 2600),
+            opacity: 0.8,
+            weight: 0.15,
+            flowers: [],
+          }
+          // 花生在短枝的节点，疏密不齐，不排成一串。
+          var flowerIndex = Math.floor(randomBetween(3, 7))
+          twig.flowers.push({ index: flowerIndex, size: randomBetween(mobile ? 4 : 6, mobile ? 6 : 8) * (1 - depth * 0.2), delay: randomBetween(0, 1600), phase: randomBetween(0, Math.PI * 2) })
+          if (Math.random() < 0.35) twig.flowers.push({ index: Math.max(1, flowerIndex - 3), size: randomBetween(2, 3), delay: randomBetween(1000, 3000), phase: randomBetween(0, Math.PI * 2), bud: true })
+          branches.push(twig)
         }
       }
       return {
@@ -843,11 +850,9 @@
         points: points,
         branches: branches,
         start: start,
-        grow: randomBetween(8000, 14000),
-        rest: randomBetween(4000, 6000),
-        fade: randomBetween(8000, 12000),
-        weight: randomBetween(0.9, 1.25),
-        opacity: randomBetween(0.7, 1),
+        grow: 2400,
+        weight: (mobile ? 3 : 5.5) * (1 - depth * 0.4),
+        opacity: 0.58 - depth * 0.38,
       }
     }
 
@@ -860,7 +865,7 @@
       for (var p = 1; p <= whole; p++) {
         context.lineTo(points[p].x, points[p].y)
         if (p % 4 === 0) {
-          context.lineWidth = weight * (1 - p / (points.length - 1) * 0.65)
+          context.lineWidth = weight * (1 - p / (points.length - 1) * 0.9)
           context.stroke()
           context.beginPath()
           context.moveTo(points[p].x, points[p].y)
@@ -872,36 +877,65 @@
         var to = points[whole + 1]
         context.lineTo(from.x + (to.x - from.x) * (end - whole), from.y + (to.y - from.y) * (end - whole))
       }
-      context.lineWidth = weight * (1 - progress * 0.65)
+      context.lineWidth = weight * (1 - progress * 0.9)
       context.stroke()
       context.lineWidth = weight
     }
 
-    function drawBud(branch, progress, ink, reduced) {
-      if (!branch.bud || progress <= 0) return
-      var points = branch.points
-      var tip = points[points.length - 1]
-      var before = points[points.length - 2]
-      var opening = progress * progress * (3 - 2 * progress)
-      var size = branch.budSize * opening
-      var sway = reduced ? 0 : Math.sin(elapsed * 0.0012 + branch.phase) * 0.12
-      context.save()
-      context.translate(tip.x, tip.y)
-      context.rotate(Math.atan2(tip.y - before.y, tip.x - before.x) + sway)
-      context.globalAlpha = ink * opening
-      context.fillStyle = document.documentElement.classList.contains('dark')
-        ? 'rgba(151,170,124,0.62)'
-        : 'rgba(101,130,80,0.58)'
-      // 两片叶芽从同一个枝尖展开，根部固定，只有叶片轻轻摆动。
-      for (var side = -1; side <= 1; side += 2) {
-        var length = size * (side < 0 ? 0.8 : 1)
+    function drawBlossoms(branch, age, ink, reduced) {
+      var dark = document.documentElement.classList.contains('dark')
+      branch.flowers.forEach(function (flower) {
+        var flowerAge = age - flower.delay
+        var season = 42000 + flower.phase * 2000
+        var cycleAge = flowerAge < 0 ? flowerAge : flowerAge % season
+        var progress = reduced ? 1 : Math.max(0, Math.min(1, cycleAge / 2600))
+        var fading = reduced ? 1 : Math.min(1, Math.max(0, (season - cycleAge) / 6000))
+        if (!progress) return
+        var opening = progress * progress * (3 - 2 * progress)
+        var tip = branch.points[flower.index]
+        var sway = reduced ? 0 : Math.sin(elapsed * 0.0006 + flower.phase) * 0.025
+        var size = flower.size
+        context.save()
+        context.translate(tip.x, tip.y)
+        context.rotate(flower.phase + sway)
+        context.globalAlpha = ink * Math.min(1, progress * 4) * fading
+        // 先有深色花苞，再缓缓展开五瓣；花心与细蕊保持可辨识。
+        context.fillStyle = dark ? '#b97885' : '#b36c78'
         context.beginPath()
-        context.moveTo(0, 0)
-        context.bezierCurveTo(length * 0.15, side * length * 0.55, length * 0.6, side * length * 0.55, length, side * length * 0.36)
-        context.bezierCurveTo(length * 0.75, side * length * 0.02, length * 0.3, side * length * 0.05, 0, 0)
+        context.arc(0, 0, size * (0.27 - opening * 0.1), 0, Math.PI * 2)
         context.fill()
-      }
-      context.restore()
+        if (flower.bud) { context.restore(); return }
+        context.fillStyle = dark ? 'rgba(219,161,171,0.88)' : 'rgba(197,127,141,0.8)'
+        context.strokeStyle = dark ? 'rgba(233,188,192,0.5)' : 'rgba(152,79,96,0.45)'
+        context.lineWidth = 0.55
+        for (var petal = 0; petal < 5; petal++) {
+          var angle = petal * Math.PI * 2 / 5
+          var reach = size * 0.48 * opening
+          context.beginPath()
+          context.ellipse(Math.cos(angle) * reach, Math.sin(angle) * reach,
+            size * 0.52 * opening, size * 0.5 * opening, angle, 0, Math.PI * 2)
+          context.fill()
+          context.stroke()
+        }
+        if (opening > 0.5) {
+          context.strokeStyle = dark ? '#ead2bb' : '#997849'
+          context.fillStyle = context.strokeStyle
+          context.lineWidth = 0.45
+          for (var stamen = 0; stamen < 7; stamen++) {
+            var a = stamen * Math.PI * 2 / 7 + 0.3
+            var x = Math.cos(a) * size * 0.46 * opening
+            var y = Math.sin(a) * size * 0.46 * opening
+            context.beginPath()
+            context.moveTo(0, 0)
+            context.lineTo(x, y)
+            context.stroke()
+            context.beginPath()
+            context.arc(x, y, 0.6, 0, Math.PI * 2)
+            context.fill()
+          }
+        }
+        context.restore()
+      })
     }
 
     function drawArt(reduced) {
@@ -910,40 +944,32 @@
       context.lineCap = 'round'
       context.lineJoin = 'round'
       context.strokeStyle = document.documentElement.classList.contains('dark')
-        ? 'rgba(165,173,171,0.42)'
-        : 'rgba(111,117,112,0.4)'
+        ? 'rgba(173,162,151,0.55)'
+        : 'rgba(106,89,78,0.5)'
       var entry = reduced ? 1 : Math.min(1, elapsed / 1800)
       for (var s = 0; s < strokes.length; s++) {
         var stroke = strokes[s]
         var age = elapsed - stroke.start
-        var life = stroke.grow + stroke.rest + stroke.fade
-        if (!reduced && age > life) {
-          stroke = strokes[s] = makeStroke(stroke.side, elapsed + randomBetween(600, 1800))
-          generation++
-          age = elapsed - stroke.start
-        }
         if (!reduced && age < 0) continue
-        var growth = reduced ? 1 : Math.min(1, age / stroke.grow)
-        var fade = reduced ? 0 : Math.max(0, (age - stroke.grow - stroke.rest) / stroke.fade)
-        var alpha = 1 - fade * fade * (3 - 2 * fade)
-        var ink = entry * stroke.opacity * alpha
+        // 树架只显现一次并保留；后续仅短枝展伸、花苞开放。
+        var ink = entry * stroke.opacity * (reduced ? 1 : Math.max(0, Math.min(1, age / 2400)))
         context.globalAlpha = ink
         context.lineWidth = stroke.weight
-        tracePen(stroke.points, growth)
+        tracePen(stroke.points, 1)
         stroke.branches.forEach(function (branch) {
           var reveal = reduced ? 1 : Math.max(0, Math.min(1, (age - stroke.grow * branch.at - branch.delay) / branch.duration))
           if (!reveal) return
           context.globalAlpha = ink * branch.opacity * Math.min(1, reveal * 4)
           context.lineWidth = stroke.weight * branch.weight
           tracePen(branch.points, reveal)
-          var sprout = reduced ? 1 : Math.max(0, Math.min(1, (age - stroke.grow * branch.at - branch.delay - branch.duration) / 1600))
-          drawBud(branch, sprout, ink * 0.85, reduced)
+          var bloomAge = age - stroke.grow * branch.at - branch.delay - branch.duration
+          drawBlossoms(branch, bloomAge, ink, reduced)
         })
 
       }
       context.globalAlpha = 1
       canvas.dataset.ambientState = reduced ? 'still' : 'flowing'
-      canvas.dataset.ambientGeneration = String(generation)
+      canvas.dataset.ambientGeneration = String(Math.floor(elapsed / 55000))
     }
 
     function animateArt(now) {
@@ -980,11 +1006,10 @@
       strokes = []
       elapsed = 0
       lastPaint = 0
-      generation = 0
       var count = width < 760 ? 2 : 4
       for (var i = 0; i < count; i++) {
-        // 首次从空白错时起笔，随后独立生长、停留和淡去。
-        strokes.push(makeStroke(i % 2, i * 2200))
+        // 远近树架错时显现；花枝持续开放，树干不反复消失。
+        strokes.push(makeStroke(i % 2, i * 2000, Math.floor(i / 2) * 0.8))
       }
       syncArt()
     }
