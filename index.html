@@ -8,8 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500;600;700;800&family=Noto+Serif+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=paper-wall-1" />
-  <link rel="stylesheet" href="css/guestbook.css?v=paper-wall-1" />
+  <link rel="stylesheet" href="css/style.css?v=studio-1" />
+  <link rel="stylesheet" href="css/guestbook.css?v=studio-1" />
+  <link rel="stylesheet" href="css/studio.css?v=studio-1" />
   <script>
     (function () {
       var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -20,38 +21,12 @@
   </script>
 </head>
 <body>
+  <a class="studio-skip" href="#view">跳到正文</a>
   <div id="nprogress"><div class="bar"></div></div>
   <div class="app-shell">
     <header class="nav-wrap">
-      <a href="#/" class="logo" aria-label="StackTao 首页">
-        <svg width="50" height="50" viewBox="0 0 50 50" fill="none" aria-hidden="true" focusable="false">
-          <defs>
-            <mask id="stacktao-mark" maskUnits="userSpaceOnUse" x="0" y="0" width="50" height="50">
-              <text x="2" y="38" fill="white" font-family="Georgia, serif" font-size="31" font-style="italic" font-weight="700">ST</text>
-            </mask>
-          </defs>
-          <path class="logo-ink" mask="url(#stacktao-mark)" pathLength="350" d="M-12 6 C-2 7 10 8 20 12 C16 8 8 8 5 14 C2 20 9 22 16 23 C23 24 25 29 22 35 C18 42 8 42 5 36 C3 32 6 29 10 31 C16 35 21 40 27 36 C31 32 30 24 31 16 C28 16 25 15 25 13 C31 10 41 10 46 13 C43 16 38 17 34 16 C34 23 34 31 33 40 C33 47 33 55 33 62"/>
-        </svg>
-      </a>
-      <aside class="nav-profile" aria-label="个人简介">
-        <div class="nav-profile-label">About · StackTao</div>
-        <p class="nav-profile-role">开发者工具作者<br>开源内容维护者</p>
-        <p class="nav-profile-summary">关注 IDE 工作流、AI 编程协作与静态内容系统。</p>
-        <dl class="nav-profile-facts">
-          <div>
-            <dt>Now</dt>
-            <dd><a href="#/projects">ShowDoc RunAPI<br>Claude Code Guide<br>StackTao Site</a></dd>
-          </div>
-        </dl>
-        <a class="nav-profile-contact" href="https://github.com/StackTao" target="_blank" rel="noreferrer">github.com/StackTao</a>
-        <div class="nav-profile-live" data-reading-status role="progressbar" aria-label="页面阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div class="nav-profile-live-head">
-            <span data-reading-label>Page</span>
-            <output data-reading-value>00%</output>
-          </div>
-          <span class="nav-profile-live-track" aria-hidden="true"><span data-reading-bar></span></span>
-        </div>
-      </aside>
+      <a href="#/" class="logo" aria-label="StackTao 首页"><span class="studio-brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>StackTao<span class="studio-brand-dot">.</span></span></a>
+
       <nav class="nav-right">
         <a href="#/posts" data-nav="blog" aria-label="文章">文章</a>
         <a href="#/projects" data-nav="projects" aria-label="项目">项目</a>
@@ -72,9 +47,17 @@
       </nav>
     </header>
 
-    <div id="view"></div>
+    <div class="nav-profile-live" data-reading-status role="progressbar" aria-label="页面阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="nav-profile-live-head">
+            <span data-reading-label>Page</span>
+            <output data-reading-value>00%</output>
+          </div>
+          <span class="nav-profile-live-track" aria-hidden="true"><span data-reading-bar></span></span>
+        </div>
+    <div id="view" tabindex="-1"></div>
 
     <footer class="footer copyright">
+      <a class="studio-rss" href="#/feed" aria-label="RSS 订阅">RSS ↗</a>
       <div class="footer-inner">
         <nav class="footer-links" aria-label="页脚导航">
           <a href="#/notes">Notes</a>
@@ -114,7 +97,8 @@
   <script src="js/pages.js"></script>
   <script src="js/pages-longform.js?v=inkscape-45"></script>
   <script src="js/content-generated.js?v=content-ai-1"></script>
-  <script src="js/guestbook.js?v=paper-wall-1"></script>
-  <script src="js/site.js?v=paper-wall-1"></script>
+  <script src="js/guestbook.js?v=studio-1"></script>
+  <script src="js/studio.js?v=studio-1"></script>
+  <script src="js/site.js?v=studio-1"></script>
 </body>
 </html>

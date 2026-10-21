@@ -1,6 +1,6 @@
 # StackTao Site
 
-一个独立于原型目录的静态内容框架。这里的“框架”负责把 Markdown 文章和 JSON 结构化内容变成页面数据，不重新设计页面。
+一个独立于原型目录的静态内容框架。这里的“框架”负责把 Markdown 文章和 JSON 结构化内容变成页面数据，使用独立的 Personal Studio 视觉层展示内容。
 
 GitHub Pages：<https://stacktao.github.io/stacktao-site/>
 
@@ -47,3 +47,7 @@ public/js/
 ## 纸笺留言墙（本机交互预览）
 
 导航「留言」或 `#/guestbook` 可进入。支持手写、打字、预览张贴、查看与收回。留言保存在当前浏览器的 localStorage，没有公开发布或多人同步。关闭书写台会保留当前会话草稿；刷新仅保留已张贴留言。设计和存储边界见 [docs/guestbook.md](docs/guestbook.md)。
+
+## Personal Studio 设计
+
+顶部导航、可切换的首页卡片、统一的阅读版式与纸笺留言墙。设计原则、参考来源、动效和验收范围见 [docs/studio.md](docs/studio.md)。

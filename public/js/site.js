@@ -139,77 +139,6 @@
     })
   }
 
-  var cyclicalYears = {
-    2021: '辛丑',
-    2022: '壬寅',
-    2023: '癸卯',
-    2024: '甲辰',
-    2025: '乙巳',
-    2026: '丙午',
-  }
-  var chineseDigits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九']
-  var chineseMonths = {
-    Jan: '一月',
-    Feb: '二月',
-    Mar: '三月',
-    Apr: '四月',
-    May: '五月',
-    Jun: '六月',
-    Jul: '七月',
-    Aug: '八月',
-    Sep: '九月',
-    Oct: '十月',
-    Nov: '十一月',
-    Dec: '十二月',
-  }
-
-  function chineseYear(year) {
-    return String(year).split('').map(function (digit) {
-      return chineseDigits[Number(digit)]
-    }).join('')
-  }
-
-  function editorialYear(year) {
-    return (cyclicalYears[year] ? cyclicalYears[year] + ' · ' : '') + chineseYear(year)
-  }
-
-  function chineseNumber(value) {
-    var number = Number(value)
-    if (number < 10) return chineseDigits[number]
-    if (number === 10) return '十'
-    if (number < 20) return '十' + chineseDigits[number - 10]
-    if (number < 100) {
-      var ones = number % 10
-      return chineseDigits[Math.floor(number / 10)] + '十' + (ones ? chineseDigits[ones] : '')
-    }
-    return String(value)
-  }
-
-  function chineseDay(value) {
-    var day = Number(value)
-    if (day <= 10) return '初' + chineseNumber(day)
-    if (day < 20) return chineseNumber(day)
-    if (day === 20) return '二十'
-    if (day < 30) return '廿' + chineseDigits[day - 20]
-    if (day === 30) return '三十'
-    return '三十一'
-  }
-
-  function formatEditorialMeta(value, yearOverride) {
-    var article = value.match(/^([A-Z][a-z]{2})\s+(\d+),\s+(\d{4})\s*·\s*(\d+)min(.*)$/)
-    if (article && chineseMonths[article[1]]) {
-      var year = Number(article[3])
-      var yearName = cyclicalYears[year] || chineseYear(year)
-      return yearName + '年' + chineseMonths[article[1]] + chineseDay(article[2]) + ' · 约' + chineseNumber(article[4]) + '分钟' + article[5]
-    }
-    var list = value.match(/^([A-Z][a-z]{2})\s+(\d+)\s*·\s*(\d+)min(.*)$/)
-    if (list && chineseMonths[list[1]]) {
-      var yearPrefix = yearOverride ? (cyclicalYears[yearOverride] || chineseYear(yearOverride)) + '年' : ''
-      return yearPrefix + chineseMonths[list[1]] + chineseDay(list[2]) + ' · 约' + chineseNumber(list[3]) + '分钟' + list[4]
-    }
-    return value
-  }
-
   function findRouteYear(route) {
     var pageKeys = ['/posts', '/notes']
     for (var pageIndex = 0; pageIndex < pageKeys.length; pageIndex++) {
@@ -227,20 +156,6 @@
       }
     }
     return 0
-  }
-
-  function makeSignature(className) {
-    var signature = document.createElement('div')
-    signature.className = className
-    var name = document.createElement('span')
-    name.textContent = 'StackTao'
-    var seal = document.createElement('span')
-    seal.className = 'seal-mark'
-    seal.textContent = 'ST'
-    seal.setAttribute('aria-hidden', 'true')
-    signature.appendChild(name)
-    signature.appendChild(seal)
-    return signature
   }
 
   function decorateSubnav(root) {
@@ -268,12 +183,6 @@
   }
 
   function decorateSidebarOutline(article) {
-    var profile = document.querySelector('.nav-profile')
-    if (!profile) return
-    var existing = profile.querySelector('.nav-profile-outline')
-    if (existing) existing.remove()
-    profile.classList.toggle('is-article-outline', !!article)
-    profile.setAttribute('aria-label', article ? '文章大纲' : '个人简介')
     sidebarOutlineHeadings = []
     sidebarOutlineButtons = []
     if (!article) return
@@ -304,86 +213,19 @@
       sidebarOutlineButtons.push(button)
     })
 
-    var reading = profile.querySelector('.nav-profile-live')
-    profile.insertBefore(outline, reading || null)
+    var details = document.createElement('details')
+    details.className = 'studio-outline'
+    details.open = window.innerWidth >= 1280
+    var summary = document.createElement('summary')
+    summary.textContent = '本文目录'
+    details.append(summary, outline)
+    var meta = article.querySelector('.post-meta')
+    article.insertBefore(details, meta ? meta.nextSibling : article.firstChild)
     updateSidebarOutlineActive()
   }
 
-  function decorateYearGroups(root) {
-    root.querySelectorAll('[data-year-group]').forEach(function (group) {
-      var label = group.querySelector('.year-label')
-      var year = label && Number(label.textContent.trim())
-      if (label && year) label.textContent = editorialYear(year)
-      group.querySelectorAll('.post-row .meta').forEach(function (meta) {
-        meta.textContent = formatEditorialMeta(meta.textContent.trim())
-      })
-    })
-  }
-
   function decorateHome(main) {
-    main.classList.add('home-page')
-    var anchor = null
-    for (var i = 0; i < main.children.length; i++) {
-      if (main.children[i].tagName === 'HR') {
-        anchor = main.children[i]
-        break
-      }
-    }
-    if (!anchor) return
-
-    var heading = main.querySelector(':scope > h1:first-child')
-    var introParagraphs = []
-    var deferredHomeParagraphs = []
-    for (var paragraphIndex = 0; paragraphIndex < main.children.length; paragraphIndex++) {
-      var child = main.children[paragraphIndex]
-      if (child === anchor) break
-      if (child.tagName === 'P') introParagraphs.push(child)
-    }
-    if (heading && introParagraphs.length) {
-      var intro = document.createElement('section')
-      intro.className = 'home-intro'
-      var masthead = document.createElement('div')
-      masthead.className = 'home-masthead'
-      var story = document.createElement('div')
-      story.className = 'home-story'
-      main.insertBefore(intro, heading)
-      intro.appendChild(masthead)
-      intro.appendChild(story)
-      masthead.appendChild(heading)
-      introParagraphs[0].classList.add('home-deck')
-      masthead.appendChild(introParagraphs[0])
-      masthead.appendChild(makeSignature('signature-line'))
-      for (var introIndex = 1; introIndex < introParagraphs.length; introIndex++) {
-        if (introIndex < 3) story.appendChild(introParagraphs[introIndex])
-        else deferredHomeParagraphs.push(introParagraphs[introIndex])
-      }
-    }
-    else main.insertBefore(makeSignature('signature-line'), anchor)
-
-    var postsPage = (window.PAGES || {})['/posts']
-    if (!postsPage) return
-    var template = document.createElement('template')
-    template.innerHTML = postsPage
-    var source = template.content.querySelector('[data-year-group]')
-    if (!source) return
-    var recent = source.cloneNode(true)
-    recent.classList.add('home-recent')
-    var rows = recent.querySelectorAll('.post-row')
-    for (var rowIndex = rows.length - 1; rowIndex >= 3; rowIndex--) rows[rowIndex].remove()
-    main.insertBefore(recent, anchor)
-
-    var tail = document.createElement('section')
-    tail.className = 'home-tail'
-    main.insertBefore(tail, anchor)
-    for (var deferredIndex = 0; deferredIndex < deferredHomeParagraphs.length; deferredIndex++) {
-      tail.appendChild(deferredHomeParagraphs[deferredIndex])
-    }
-    var tailNode = anchor
-    while (tailNode) {
-      var nextTailNode = tailNode.nextSibling
-      tail.appendChild(tailNode)
-      tailNode = nextTailNode
-    }
+    if (window.Studio) window.Studio.home(main)
   }
 
   function decorateArticle(article, route) {
@@ -396,22 +238,9 @@
     if (title && year) {
       var kicker = document.createElement('div')
       kicker.className = 'article-kicker'
-      kicker.textContent = (route.indexOf('/notes/') === 0 ? '札记' : '文章') + ' · ' + chineseYear(year)
+      kicker.textContent = (route.indexOf('/notes/') === 0 ? 'NOTES' : 'WRITING') + ' / ' + year
       article.insertBefore(kicker, title)
     }
-    if (meta) meta.textContent = formatEditorialMeta(originalMeta, year)
-    var firstParagraph = null
-    for (var i = 0; i < article.children.length; i++) {
-      if (article.children[i].tagName === 'P' && !article.children[i].classList.contains('share-line')) {
-        firstParagraph = article.children[i]
-        break
-      }
-    }
-    if (firstParagraph && /^[\u3400-\u9fff\uf900-\ufaff]/.test(firstParagraph.textContent.trim())) {
-      article.classList.add('has-cjk-lead')
-    }
-    var share = article.querySelector('.share-line')
-    if (share) article.insertBefore(makeSignature('article-colophon'), share)
   }
 
   function decoratePage(route) {
@@ -434,7 +263,7 @@
     }
     if (article) decorateArticle(article, route)
     decorateSidebarOutline(article)
-    decorateYearGroups(view)
+    if (window.Studio) window.Studio.decorate(view, route)
   }
 
   var light = document.querySelector('.lightbox')
@@ -580,7 +409,10 @@
     if (!route) route = '/'
     if (route.charAt(0) === '#' && route.charAt(1) !== '/') {
       var el = document.querySelector(route)
-      if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+      if (el) {
+        el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+        if (route === '#view') el.focus({ preventScroll: true })
+      }
       return
     }
     var next = '#/' + route.replace(/^\//, '')
