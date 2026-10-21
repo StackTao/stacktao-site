@@ -16,8 +16,11 @@
       <div class="gb-heading-bottom"><button class="gb-button gb-primary" data-gb="write"><span aria-hidden="true">＋</span> 留一张纸笺</button><span class="gb-local">本机预览 · 留言仅保存在当前浏览器</span></div>
     </header>
     <section class="gb-wall-section" aria-label="留言墙">
-      <div class="gb-wall-label"><span>纸笺墙 <span data-count>00</span></span><span>捏住纸角，轻轻挪一挪。</span></div>
+      <div class="gb-wall-label"><span>纸笺墙 <span data-count>00</span></span><span>拿起，挪一挪，贴在喜欢的位置。</span></div>
+      <div class="gb-wall-tools"><p>拖动整张纸笺重新摆放，点按阅读。</p><button class="gb-text-button" data-arrange aria-pressed="false">摆放纸笺</button></div>
+      <span class="journal-sr-only" id="gb-move-help">Enter 查看；空格拿起，方向键移动，Shift 加快，空格或 Enter 贴好，Escape 取消。触屏先开启摆放纸笺。</span>
       <div class="gb-wall" data-wall></div>
+      <button class="gb-add-paper" data-gb="write"><span class="gb-add-mark" aria-hidden="true">＋</span><span>这里，留给你。</span><small>拿一张纸，写点什么</small></button>
       <p class="gb-status" role="status" aria-live="polite" data-status></p>
       <button class="gb-text-button" data-gb="undo-delete" hidden>恢复刚才的纸笺</button>
     </section>
@@ -104,79 +107,136 @@
       try { localStorage.setItem(KEY, JSON.stringify(next)); notes = next; return true }
       catch (_) { error('浏览器未能保存，请保留这张纸后重试，或收回一些旧纸笺腾出空间。'); status('保存未完成，原有纸笺没有改变。'); return false }
     }
-    var liftedSlot = null, paperGrip = null, paperPointer = null, paperX = 0, paperY = 0, paperTurn = 0, paperClick = null
-    function putDown() {
-      if (!liftedSlot) return
-      var grip = paperGrip, id = paperPointer
-      paperPointer = null
-      liftedSlot.classList.remove('is-lifted', 'is-handling')
-      liftedSlot.style.removeProperty('--paper-x'); liftedSlot.style.removeProperty('--paper-y'); liftedSlot.style.removeProperty('--paper-turn')
-      grip.setAttribute('aria-pressed', 'false')
-      liftedSlot = paperGrip = null; paperTurn = 0
-      if (id !== null && grip.hasPointerCapture(id)) grip.releasePointerCapture(id)
+    var layoutKey = KEY + '-positions-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
+    var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null
+    try {
+      var saved = JSON.parse(localStorage.getItem(layoutKey) || '{}')
+      ;['wide', 'narrow'].forEach(function (mode) {
+        Object.entries(saved[mode] || {}).slice(0, 32).forEach(function (entry) {
+          var p = entry[1]
+          if (p && Number.isFinite(p.x) && p.x >= 0 && p.x <= 1 && Number.isFinite(p.y) && p.y >= 0 && p.y <= 16000 && Number.isFinite(p.z) && p.z >= 0 && p.z < 1e9) Object.defineProperty(layouts[mode], entry[0], { value:p, writable:true, enumerable:true, configurable:true })
+        })
+      })
+    } catch (_) {}
+    function positionOf(el) { return Object.prototype.hasOwnProperty.call(layouts[layoutMode], el.dataset.note) ? layouts[layoutMode][el.dataset.note] : null }
+    function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
+    function wallLayout() {
+      finishPaper(true)
+      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.floor(width / 310))
+      layoutMode = width < 600 ? 'narrow' : 'wide'
+      wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
+      var cards = Array.from(wall.querySelectorAll('[data-note]')), maxX = Math.max(0, width - paperWidth - 32), bottom = 0
+      var occupied = cards.map(function (el) { return positionOf(el) }).filter(Boolean)
+      cards.forEach(function (el) {
+        var p = positionOf(el), height = el.offsetHeight || 240
+        if (!p) {
+          var slot = 0, x, y
+          do {
+            x = columns === 1 ? .5 : (slot % columns) / (columns - 1)
+            y = 28 + Math.floor(slot / columns) * (height + 48); slot++
+          } while (occupied.some(function (other) { return Math.abs((other.x - x) * maxX) < paperWidth + 16 && Math.abs(other.y - y) < height + 24 }))
+          p = { x:x, y:y, z:cards.indexOf(el) + 1 }
+          Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true }); occupied.push(p)
+        }
+        paintPaper(el, 16 + p.x * maxX, p.y); el.style.zIndex = String(p.z)
+        bottom = Math.max(bottom, p.y + height)
+      })
+      wall.style.height = Math.max(620, bottom + 180) + 'px'
     }
-    function pickUp(grip) {
-      putDown()
-      paperGrip = grip; liftedSlot = grip.parentElement
-      liftedSlot.classList.add('is-lifted')
-      liftedSlot.style.setProperty('--paper-y', '-6px')
-      grip.setAttribute('aria-pressed', 'true')
+    function startPaper(el, pointerId, x, y) {
+      if (drag) return
+      var p = positionOf(el)
+      drag = { el:el, pointer:pointerId, startX:x, startY:y, x:parseFloat(el.style.left), y:p.y, originX:parseFloat(el.style.left), originY:p.y, active:pointerId === null }
+      if (drag.active) liftPaper()
     }
-    function hangPaper(note) {
-      var slot = document.createElement('div'); slot.className = 'gb-paper-slot'
-      var grip = document.createElement('button'); grip.type = 'button'; grip.className = 'gb-paper-grip'
-      grip.textContent = '捏住'; grip.setAttribute('aria-label', note.getAttribute('aria-label').replace('查看', '拿起') + '，左右方向键转动，Escape 放下')
-      grip.setAttribute('aria-pressed', 'false')
-      slot.append(note, grip); wall.appendChild(slot)
+    function liftPaper() {
+      drag.active = true
+      drag.el.classList.add('is-lifted'); drag.el.classList.remove('gb-just-pinned')
+      drag.el.style.zIndex = '1000000000'; drag.el.setAttribute('aria-pressed', 'true')
+    }
+    function movePaper(x, y) {
+      var maxX = Math.max(16, wall.clientWidth - drag.el.offsetWidth - 16), maxY = Math.max(16, wall.clientHeight - drag.el.offsetHeight - 24)
+      drag.x = Math.max(16, Math.min(maxX, x)); drag.y = Math.max(16, Math.min(maxY, y))
+      paintPaper(drag.el, drag.x, drag.y)
+      drag.el.style.setProperty('--carry-angle', Math.max(-3, Math.min(3, (drag.x - drag.originX) * .025)) + 'deg')
+    }
+    function finishPaper(cancelled) {
+      if (!drag) return
+      var held = drag; drag = null
+      var el = held.el, p = positionOf(el)
+      if (held.active && !cancelled) {
+        var next = { wide:{}, narrow:{} }, ids = notes.map(function (n) { return n.id }).concat(['sample'], removed ? [removed.id] : [])
+        ;['wide', 'narrow'].forEach(function (mode) { ids.forEach(function (id) { if (Object.prototype.hasOwnProperty.call(layouts[mode], id)) Object.defineProperty(next[mode], id, { value:layouts[mode][id], writable:true, enumerable:true, configurable:true }) }) })
+        var maxX = Math.max(0, wall.clientWidth - el.offsetWidth - 32)
+        var top = Math.max.apply(null, Object.values(next[layoutMode]).map(function (p) { return p.z }).concat([0]))
+        var placed = { x:maxX ? (held.x - 16) / maxX : .5, y:held.y, z:top + 1 }
+        Object.defineProperty(next[layoutMode], el.dataset.note, { value:placed, writable:true, enumerable:true, configurable:true })
+        try { localStorage.setItem(layoutKey, JSON.stringify(next)); layouts = next; p = placed; status('贴好了，位置已保存在这个浏览器。') }
+        catch (_) { cancelled = true; status('位置未能保存，纸笺已放回原处。留言内容没有改变。') }
+      }
+      suppressNoteClick = held.active
+      el.classList.remove('is-lifted'); el.style.removeProperty('--carry-angle'); el.setAttribute('aria-pressed', 'false'); el.style.zIndex = String(p.z)
+      if (cancelled) paintPaper(el, held.originX, held.originY)
+      if (held.pointer !== null && el.hasPointerCapture(held.pointer)) el.releasePointerCapture(held.pointer)
     }
     wall.addEventListener('pointerdown', function (e) {
-      var grip = e.target.closest('.gb-paper-grip')
-      if (!grip || !e.isPrimary || e.button !== 0 || paperPointer !== null) return
-      paperClick = grip; pickUp(grip); paperPointer = e.pointerId; paperX = e.clientX; paperY = e.clientY
-      liftedSlot.classList.add('is-handling'); grip.setPointerCapture(paperPointer)
+      var el = e.target.closest('[data-note]')
+      if (!drag && e.isPrimary) suppressNoteClick = false
+      if (!el || drag || !e.isPrimary || e.button !== 0 || (e.pointerType === 'touch' && !touchArrange)) return
+      startPaper(el, e.pointerId, e.clientX, e.clientY)
+      el.setPointerCapture(e.pointerId)
     }, {signal:signal})
     wall.addEventListener('pointermove', function (e) {
-      if (e.pointerId !== paperPointer) return
-      var x = e.clientX - paperX, y = e.clientY - paperY
-      paperTurn = Math.max(-5, Math.min(5, x * .09))
-      liftedSlot.style.setProperty('--paper-x', Math.max(-12, Math.min(12, x * .15)) + 'px')
-      liftedSlot.style.setProperty('--paper-y', Math.max(-12, Math.min(4, -6 + y * .12)) + 'px')
-      liftedSlot.style.setProperty('--paper-turn', paperTurn + 'deg')
+      if (!drag || e.pointerId !== drag.pointer) return
+      var x = e.clientX - drag.startX, y = e.clientY - drag.startY
+      if (!drag.active && Math.hypot(x, y) < 6) return
+      if (!drag.active) liftPaper()
+      movePaper(drag.originX + x, drag.originY + y)
     }, {signal:signal})
     ;['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
-      wall.addEventListener(type, function (e) { if (e.pointerId === paperPointer) putDown() }, {signal:signal})
+      wall.addEventListener(type, function (e) { if (drag && e.pointerId === drag.pointer) finishPaper(type !== 'pointerup') }, {signal:signal})
     })
     wall.addEventListener('click', function (e) {
-      var grip = e.target.closest('.gb-paper-grip'); if (!grip) return
-      if (paperClick === grip && e.detail !== 0) { paperClick = null; return }
-      paperClick = null
-      if (paperGrip === grip) putDown(); else pickUp(grip)
+      if (suppressNoteClick && e.detail !== 0) { e.stopPropagation(); e.preventDefault(); suppressNoteClick = false }
     }, {signal:signal})
+    wall.addEventListener('dragstart', function (e) { e.preventDefault() }, {signal:signal})
     wall.addEventListener('keydown', function (e) {
-      if (!e.target.closest('.gb-paper-grip')) return
-      if (e.key === 'Escape') { putDown(); return }
-      if (paperGrip !== e.target || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
-      e.preventDefault(); paperTurn = Math.max(-5, Math.min(5, paperTurn + (e.key === 'ArrowLeft' ? -1.5 : 1.5)))
-      liftedSlot.style.setProperty('--paper-turn', paperTurn + 'deg')
+      var el = e.target.closest('[data-note]'); if (!el) return
+      if (e.key === 'Escape') { finishPaper(true); return }
+      if (e.key === ' ' || (e.key === 'Enter' && drag)) {
+        e.preventDefault()
+        if (drag) finishPaper(false); else startPaper(el, null, 0, 0)
+        return
+      }
+      if (!drag || drag.el !== el || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return
+      e.preventDefault(); var step = e.shiftKey ? 30 : 10
+      movePaper(drag.x + (e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0), drag.y + (e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0))
     }, {signal:signal})
-    wall.addEventListener('focusout', function (e) { if (e.target === paperGrip) putDown() }, {signal:signal})
-    window.addEventListener('blur', putDown, {signal:signal})
-    document.addEventListener('visibilitychange', function () { if (document.hidden) putDown() }, {signal:signal})
+    wall.addEventListener('keyup', function (e) { if (e.key === ' ' && e.target.closest('[data-note]')) e.preventDefault() }, {signal:signal})
+    wall.addEventListener('focusout', function (e) { if (drag && drag.el === e.target) finishPaper(true) }, {signal:signal})
+    arrange.addEventListener('click', function () {
+      finishPaper(true); touchArrange = !touchArrange
+      wall.classList.toggle('is-arranging', touchArrange); arrange.setAttribute('aria-pressed', String(touchArrange)); arrange.textContent = touchArrange ? '摆好了' : '摆放纸笺'
+    }, {signal:signal})
+    window.addEventListener('blur', function () { finishPaper(true) }, {signal:signal})
+    document.addEventListener('visibilitychange', function () { if (document.hidden) finishPaper(true) }, {signal:signal})
     function renderWall(newId) {
-      putDown(); paperClick = null
-      wall.replaceChildren()
+      finishPaper(true); suppressNoteClick = false; wall.replaceChildren()
       $('[data-count]').textContent = String(notes.length).padStart(2, '0')
-      notes.forEach(function (note, index) {
+      ;(notes.length ? notes : [sample]).forEach(function (note, index) {
         var el = card(note, true)
-        el.style.setProperty('--note-angle', [-1.6, 1.1, -0.6, 1.8][index % 4] + 'deg')
+        el.style.setProperty('--note-angle', [-1.6, 1.1, -.6, 1.8][index % 4] + 'deg')
+        el.setAttribute('aria-describedby', 'gb-move-help'); el.setAttribute('aria-pressed', 'false')
         if (note.id === newId) el.classList.add('gb-just-pinned')
-        hangPaper(el)
+        wall.appendChild(el)
       })
-      if (!notes.length) { var example = card(sample, true); example.classList.add('gb-example'); hangPaper(example) }
-      var add = document.createElement('button'); add.className = 'gb-add-paper'; add.dataset.gb = 'write'
-      add.innerHTML = '<span class="gb-add-mark" aria-hidden="true">＋</span><span>这里，留给你。</span><small>拿一张纸，写点什么</small>'
-      wall.appendChild(add)
+      wallLayout()
     }
+    if (window.ResizeObserver) {
+      var lastWidth = 0
+      wallObserver = new ResizeObserver(function () { if (wall.clientWidth !== lastWidth) { lastWidth = wall.clientWidth; wallLayout() } })
+      wallObserver.observe(wall)
+    } else window.addEventListener('resize', wallLayout, {signal:signal})
     function redraw() {
       ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 600, 360)
       ctx.lineCap = 'round'; ctx.lineJoin = 'round'
@@ -269,7 +329,7 @@
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     renderWall()
-    cleanup=function(){putDown();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){finishPaper(true);if(wallObserver)wallObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,destroy:function(){cleanup();cleanup=function(){}}}
 })()

@@ -1,6 +1,15 @@
 (function () {
-  var disposers = []
-  function destroy() { disposers.forEach(function (dispose) { dispose() }); disposers = [] }
+  var disposers = [], motions = new Set(), motionByElement = new WeakMap()
+  function motion(el, frames, duration) {
+    var previous = motionByElement.get(el)
+    if (previous) { previous.cancel(); motions.delete(previous) }
+    if (!el.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    var animation = el.animate(frames, { duration: duration, easing: 'cubic-bezier(.2,.75,.25,1)' })
+    motionByElement.set(el, animation); motions.add(animation)
+    animation.onfinish = function () { motions.delete(animation) }
+    return animation
+  }
+  function destroy() { motions.forEach(function (animation) { animation.cancel() }); motions.clear(); disposers.forEach(function (dispose) { dispose() }); disposers = [] }
   function node(tag, className, text) {
     var el = document.createElement(tag)
     if (className) el.className = className
@@ -269,6 +278,8 @@
   function contactSheet(main) {
     var grid = main.querySelector('.photo-grid')
     if (!grid) return
+    var active = true
+    disposers.push(function () { active = false })
     var photos = Array.from(grid.querySelectorAll('img'))
     if (!photos.length) return
     grid.classList.add('contact-source')
@@ -336,7 +347,7 @@
       })
       if (reveal) buttons[current].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
     }
-    image.addEventListener('load', function () { loading.hidden = true; stage.setAttribute('aria-busy', 'false') })
+    image.addEventListener('load', function () { if (!active) return; loading.hidden = true; stage.setAttribute('aria-busy', 'false'); motion(image, [{ opacity: .2, clipPath: 'inset(0 0 8% 0)', transform: 'scale(1.025)' }, { opacity: 1, clipPath: 'inset(0)', transform: 'scale(1)' }], 520) })
     image.addEventListener('error', function () { loading.textContent = '这张照片暂时无法加载，试试下一张。'; stage.setAttribute('aria-busy', 'false') })
     previous.addEventListener('click', function () { select(current - 1, true) })
     next.addEventListener('click', function () { select(current + 1, true) })
@@ -515,7 +526,7 @@
     var list = node('div', 'project-register')
     list.setAttribute('role', 'group')
     list.setAttribute('aria-label', '选择一个项目')
-    var page = node('div', 'project-notebook')
+    var page = node('div', 'project-notebook'), selectedProject = -1
     var count = node('span', 'project-page-number')
     var title = node('h2')
     var description = node('p', 'project-note-description')
@@ -532,6 +543,10 @@
       return button
     })
     function select(index) {
+      if (index === selectedProject) return
+      var direction = index > selectedProject ? 1 : -1
+      if (selectedProject >= 0) motion(page, [{ opacity: .35, transform: 'perspective(900px) rotateY(' + (direction * 9) + 'deg) translateX(' + (direction * 10) + 'px)' }, { opacity: 1, transform: 'perspective(900px) rotateY(0deg) translateX(0)' }], 460)
+      selectedProject = index
       var project = projects[index]
       var name = project.querySelector('.project-name').textContent
       title.textContent = name
@@ -566,15 +581,40 @@
   }
 
   function talkIndex(main) {
+    var controller = new AbortController()
+    disposers.push(function () { controller.abort() })
     main.querySelectorAll('.talk-block').forEach(function (block, index) {
       var sessions = Array.from(block.querySelectorAll('.talk-pres, .pres-links'))
       if (!sessions.length) return
-      var details = node('details', 'talk-recordings')
-      details.open = index === 0
-      details.appendChild(node('summary', '', '展开分享记录 · ' + block.querySelectorAll('.talk-pres').length))
-      sessions.forEach(function (session) { details.appendChild(session) })
+      var details = node('details', 'talk-recordings'), body = node('div', 'talk-recordings-body'), transition = null, expanded = index === 0
+      details.open = expanded
+      var summary = node('summary', '', (expanded ? '收起' : '展开') + '分享记录 · ' + block.querySelectorAll('.talk-pres').length)
+      var count = block.querySelectorAll('.talk-pres').length
+      details.append(summary, body)
+      sessions.forEach(function (session) { body.appendChild(session) })
+      summary.addEventListener('click', function (event) {
+        event.preventDefault()
+        var start = details.getBoundingClientRect().height
+        if (transition) { transition.onfinish = null; transition.cancel() }
+        expanded = !expanded
+        details.open = true
+        summary.textContent = (expanded ? '收起' : '展开') + '分享记录 · ' + count
+        var end = expanded ? summary.offsetHeight + body.offsetHeight : summary.offsetHeight
+        transition = motion(details, [{ height: start + 'px' }, { height: end + 'px' }], 340)
+        if (transition) transition.onfinish = function () { details.open = expanded; motions.delete(transition); transition = null }
+        else details.open = expanded
+      }, {signal:controller.signal})
       block.appendChild(details)
       block.prepend(node('span', 'talk-index-number', String(index + 1).padStart(2, '0')))
+    })
+  }
+
+  function podcastSleeves(main) {
+    main.querySelectorAll(':scope > [data-lang]').forEach(function (episode) {
+      episode.classList.add('podcast-sleeve')
+      var disc = node('span', 'podcast-disc')
+      disc.setAttribute('aria-hidden', 'true')
+      episode.prepend(disc)
     })
   }
 
@@ -592,6 +632,7 @@
     if (route === '/photos') { main.classList.add('studio-photos'); contactSheet(main) }
     if (route === '/posts' || route === '/notes') readingOpening(main)
     if (route === '/talks') talkIndex(main)
+    if (route === '/podcasts') podcastSleeves(main)
     if (labels[route]) {
       var title = main.querySelector(':scope > h1')
       if (!title) { title = node('h1'); main.prepend(title) }

@@ -434,3 +434,28 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
   .reading-source, .reading-page { grid-column: 1 / -1; }
   #view .post-row > span:first-of-type, #view .journal-entry h3 { font-size: 16px; }
 }
+
+/* Content-specific motion: page hinge, photographic reveal, unfolding records. */
+.project-notebook { transform-origin: left center; }
+.project-register button { position: relative; }
+.project-register button::before { content: ''; position: absolute; left: -12px; top: 22px; bottom: 22px; width: 2px; background: var(--c-seal); transform: scaleY(0); transform-origin: top; transition: transform .4s var(--studio-ease); }
+.project-register button[aria-pressed='true']::before { transform: scaleY(1); }
+.contact-frame { transition: opacity .2s, border-color .2s, transform .35s var(--studio-ease); }
+.contact-frame:hover, .contact-frame:focus-visible { transform: translateY(-4px) rotate(-2deg); }
+.talk-recordings { overflow: hidden; }
+.talk-recordings-body { display: flow-root; }
+.talk-recordings summary::marker { color: var(--c-seal); }
+#view .post-row > span:first-of-type { transform: none; }
+#view .post-row { position: relative; }
+#view .post-row::after { content: ''; position: absolute; bottom: -1px; left: 0; height: 1px; width: 100%; background: var(--fg-light); transform: scaleX(0); transform-origin: left; transition: transform .4s var(--studio-ease); }
+#view .post-row:hover::after, #view .post-row:focus-visible::after { transform: scaleX(1); }
+.podcast-sleeve { position: relative; padding: 22px 0 22px 88px; border-bottom: 1px solid var(--rule); }
+.podcast-disc { position: absolute; top: 24px; left: 0; width: 62px; height: 62px; border-radius: 50%; border: 1px solid var(--rule-strong); background: repeating-radial-gradient(circle, transparent 0 4px, var(--rule) 4px 5px); transition: transform 1.1s cubic-bezier(.15,.65,.2,1); }
+.podcast-disc::before { content: ''; position: absolute; inset: 21px; border: 5px solid var(--c-seal); border-radius: 50%; background: var(--c-bg); }
+.podcast-disc::after { content: ''; position: absolute; left: 29px; top: 8px; width: 3px; height: 8px; border-radius: 2px; background: var(--fg-light); }
+.podcast-sleeve:hover .podcast-disc, .podcast-sleeve:focus-within .podcast-disc { transform: rotate(240deg); }
+.circles > a { transition: transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s; }
+.circles > a:hover, .circles > a:focus-visible { transform: translateY(-5px) rotate(-8deg); box-shadow: 0 10px 16px -8px #00000050; }
+@media (prefers-reduced-motion: reduce) {
+  #view .podcast-disc, #view .contact-frame, #view .circles > a, #view .post-row::after, #view .project-register button::before { transition: none; transform: none; }
+}
