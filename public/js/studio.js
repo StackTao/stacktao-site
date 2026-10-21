@@ -37,9 +37,9 @@
     var posts = Array.from(source('/posts').querySelectorAll('.post-row')).slice(0, 6)
     var projects = Array.from(source('/projects').querySelectorAll('.project-grid .item')).slice(0, 3)
     var intro = node('header', 'journal-intro')
-    intro.append(node('p', 'journal-overline', 'PERSONAL JOURNAL'))
-    var title = node('h1', '', '你好，我是 ')
-    title.appendChild(node('span', 'journal-name', name + '。'))
+    intro.append(node('p', 'journal-overline', '一个人的自留地 / PERSONAL JOURNAL'))
+    var title = node('h1')
+    title.appendChild(node('span', 'journal-name', name + '.'))
     intro.append(title, node('p', 'journal-bio', config.description || '写代码，也写一些关于工具、设计和日常的观察。这个博客用来存放做过的东西，以及还在慢慢想的问题。'))
     var wandering = node('p', 'journal-wandering')
     wandering.append(document.createTextNode('大多时候在'), link('#/posts', '写字'), document.createTextNode('，偶尔'), link('#/photos', '看看别处'), document.createTextNode('。你可以随意逛逛。'))
@@ -63,9 +63,9 @@
     var letterInner = node('div')
     var letterText = node('div', 'journal-letter-text')
     letterText.append(node('p', '', '互联网很大，能在这里遇见，已经是一件有意思的事。'), node('p', '', '不必有什么特别的见解。一句问候，一幅涂鸦，或者只是写下今天的心情。'))
-    var invitation = link('#/guestbook', '留一张你的手写纸笺 ↗', 'journal-inline-link')
+    var invitation = link('#/guestbook', '在墙上留一点痕迹 ↗', 'journal-inline-link')
     invitation.tabIndex = -1
-    letterText.append(invitation, node('small', '', '纸笺目前只保存在你的浏览器里。'))
+    letterText.append(invitation, node('small', '', '目前只保存在你的浏览器里。'))
     letterInner.appendChild(letterText)
     letterBody.appendChild(letterInner)
     letterButton.addEventListener('click', function () {
@@ -88,7 +88,7 @@
     heading.id = 'journal-writing-title'
     var shuffle = node('button', 'journal-shuffle', '随手翻翻 ')
     shuffle.type = 'button'
-    var shuffleMark = node('span', '', '↝')
+    var shuffleMark = node('span', '', '⚄')
     shuffleMark.setAttribute('aria-hidden', 'true')
     shuffle.appendChild(shuffleMark)
     head.append(heading, shuffle)
@@ -156,6 +156,7 @@
       if (!choices.length) return
       var index = choices[Math.floor(Math.random() * choices.length)]
       unfold(index)
+      motion(shuffleMark, [{ transform: 'rotate(-110deg) scale(.7)' }, { transform: 'rotate(0) scale(1)' }], 420)
       entries[index].button.focus({ preventScroll: true })
       entries[index].root.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
       status.textContent = '翻到了：' + posts[index].querySelector('span').textContent.trim()
@@ -285,6 +286,16 @@
     grid.classList.add('contact-source')
     var toolbar = main.querySelector('.photo-toolbar')
     var room = node('section', 'contact-room')
+    var roomTools = node('div', 'contact-room-tools')
+    var lightSwitch = node('button', 'contact-light-switch', '熄灯看图')
+    lightSwitch.type = 'button'; lightSwitch.setAttribute('aria-pressed', 'false')
+    lightSwitch.addEventListener('click', function () {
+      var dark = room.classList.toggle('is-darkroom')
+      lightSwitch.setAttribute('aria-pressed', String(dark))
+      lightSwitch.textContent = dark ? '开灯，回到纸面' : '熄灯看图'
+    })
+    roomTools.append(node('span', '', 'LIGHT TABLE / 手动翻片'), lightSwitch)
+    room.appendChild(roomTools)
     room.setAttribute('aria-label', '照片阅览台')
     var stage = node('div', 'contact-stage')
     stage.tabIndex = 0
@@ -528,6 +539,7 @@
     list.setAttribute('aria-label', '选择一个项目')
     var page = node('div', 'project-notebook'), selectedProject = -1
     var count = node('span', 'project-page-number')
+    var monogram = node('span', 'project-monogram'); monogram.setAttribute('aria-hidden', 'true'); page.appendChild(monogram)
     var title = node('h2')
     var description = node('p', 'project-note-description')
     var destination = link('', '打开项目 ↗', 'journal-inline-link')
@@ -550,6 +562,7 @@
       var project = projects[index]
       var name = project.querySelector('.project-name').textContent
       title.textContent = name
+      monogram.textContent = String(index + 1).padStart(2, '0')
       count.textContent = 'PROJECT NOTES / ' + String(index + 1).padStart(2, '0')
       var desc = project.querySelector('.project-desc')
       description.textContent = desc ? desc.textContent : ''
@@ -567,6 +580,12 @@
     }
     desk.append(list, page)
     grid.replaceWith(desk)
+    var categories = main.querySelector('.toc-nav')
+    if (categories) {
+      var drawer = node('details', 'project-categories')
+      drawer.appendChild(node('summary', '', '按分类翻找'))
+      categories.before(drawer); drawer.appendChild(categories)
+    }
     select(0)
   }
 
@@ -618,26 +637,79 @@
     })
   }
 
+  function readingType(article) {
+    var type = 'serif'
+    try { type = localStorage.getItem('stacktao-reading-type') || type } catch (_) {}
+    var controls = node('div', 'reading-types')
+    controls.setAttribute('role', 'group'); controls.setAttribute('aria-label', '正文排字')
+    controls.appendChild(node('span', '', '正文排字'))
+    var buttons = ['serif', 'sans'].map(function (value) {
+      var button = node('button', '', value === 'serif' ? '宋体' : '黑体')
+      button.type = 'button'
+      button.addEventListener('click', function () {
+        type = value; sync()
+        try { localStorage.setItem('stacktao-reading-type', type) } catch (_) {}
+      })
+      controls.appendChild(button)
+      return button
+    })
+    function sync() {
+      article.dataset.readingType = type === 'sans' ? 'sans' : 'serif'
+      buttons.forEach(function (button, index) { button.setAttribute('aria-pressed', String((index === 0 ? 'serif' : 'sans') === article.dataset.readingType)) })
+    }
+    sync()
+    var meta = article.querySelector('.post-meta')
+    if (meta) meta.after(controls)
+    else article.querySelector('h1').after(controls)
+  }
+
   function decorate(view, route) {
     var main = view.querySelector('main')
     var article = view.querySelector('article.article-prose')
-    if (article) articleTrail(article, route)
-    if (!main || route === '/') return
+    if (article) { articleTrail(article, route); readingType(article) }
+    if (!main || route === '/' || route === '/guestbook') return
+    main.classList.add('folio-page')
+    main.dataset.folio = route.slice(1).split('/')[0]
     var labels = {
-      '/posts': ['文字', 'WRITING / 想法的存档'], '/notes': ['随手记', 'NOTES / 过程也是答案'],
-      '/projects': ['作品与实验', 'PROJECTS / 把想法变成现实'], '/talks': ['分享与对话', 'TALKS / 让想法相遇'],
-      '/photos': ['视线之外', 'PHOTOGRAPHY / 留住一个瞬间'], '/podcasts': ['声音里的想法', 'ON AIR / 慢慢聊']
+      '/posts': ['文字', 'Collected words', '把做过的事、没想通的问题，慢慢写下来。'],
+      '/notes': ['随手记', 'In the margins', '还没成为文章的想法，也值得留下。'],
+      '/projects': ['造物记', 'Work in progress', '一些工具，一些实验。一边使用，一边打磨。'],
+      '/talks': ['当面聊聊', 'Out loud', '从一个人的思考，到一群人的对话。'],
+      '/photos': ['沿途', 'Through the viewfinder', '暂时离开屏幕，看看别处。'],
+      '/podcasts': ['声音来信', 'On the record', '留一点时间，听一段完整的对话。'],
+      '/sponsors': ['同行的人', 'With gratitude', '谢谢你，让这些小事得以继续。'],
+      '/bookmarks': ['常翻的书签', 'A small shelf', '收藏不在多，在于还会回来。'],
+      '/use': ['手边的东西', 'Everyday tools', '工作与日常里，真正用得上的物件。'],
+      '/demos': ['小玩意', 'Loose experiments', '不必成为作品，也可以先做出来。'],
+      '/streams': ['一起折腾', 'Live notes', '想法发生的现场，和留存下来的过程。'],
+      '/media': ['书影音', 'On the shelf', '读过、看过、听过。留一点回味。'],
+      '/feed': ['更新小报', 'The latest pages', '新写下的，一页接着一页。']
     }
     if (route === '/projects') { main.classList.add('studio-projects'); projectDesk(main) }
     if (route === '/photos') { main.classList.add('studio-photos'); contactSheet(main) }
     if (route === '/posts' || route === '/notes') readingOpening(main)
     if (route === '/talks') talkIndex(main)
     if (route === '/podcasts') podcastSleeves(main)
-    if (labels[route]) {
-      var title = main.querySelector(':scope > h1')
-      if (!title) { title = node('h1'); main.prepend(title) }
-      title.textContent = labels[route][0]
-      main.prepend(node('p', 'studio-eyebrow', labels[route][1]), title)
+    var title = main.querySelector(':scope > h1, :scope > .prose > h1')
+    if (labels[route] || title) {
+      if (!title) title = node('h1')
+      var heading = node('header', 'folio-heading')
+      if (labels[route]) {
+        title.textContent = labels[route][0]
+        heading.append(node('p', 'folio-edition', labels[route][1]), title, node('p', 'folio-description', labels[route][2]))
+      } else heading.append(node('p', 'folio-edition', 'From the journal'), title)
+      main.prepend(heading)
+      if (['/posts','/notes','/podcasts','/talks','/streams'].includes(route)) {
+        var sections = node('nav', 'folio-sections')
+        sections.setAttribute('aria-label', '记录分类')
+        ;[['/posts','长文'],['/notes','随手记'],['/podcasts','播客'],['/talks','演讲'],['/streams','直播']].forEach(function (item) {
+          if (!(window.PAGES || {})[item[0]]) return
+          var entry = link('#' + item[0], item[1])
+          if (item[0] === route) entry.setAttribute('aria-current', 'page')
+          sections.appendChild(entry)
+        })
+        heading.after(sections)
+      }
     }
   }
   window.Studio = { home: home, decorate: decorate, destroy: destroy }
