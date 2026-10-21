@@ -758,29 +758,33 @@
       return min + Math.random() * (max - min)
     }
 
-    function veinPath(from, to, spread, levels) {
-      var points = [from, to]
-      for (var level = 0; level < levels; level++) {
-        var divided = [points[0]]
-        for (var i = 1; i < points.length; i++) {
-          var a = points[i - 1]
-          var b = points[i]
-          var angle = Math.atan2(b.y - a.y, b.x - a.x) + Math.PI / 2
-          var offset = randomBetween(-spread, spread)
-          divided.push({ x: (a.x + b.x) / 2 + Math.cos(angle) * offset, y: (a.y + b.y) / 2 + Math.sin(angle) * offset })
-          divided.push(b)
-        }
-        points = divided
-        spread *= 0.5
+    function branchPath(from, to, bend, levels, tangent) {
+      var dx = to.x - from.x
+      var dy = to.y - from.y
+      var length = Math.hypot(dx, dy)
+      var angle = tangent === undefined ? Math.atan2(dy, dx) : tangent
+      var normalX = -dy / length
+      var normalY = dx / length
+      var first = {
+        x: from.x + Math.cos(angle) * length * 0.28 + dx * 0.08,
+        y: from.y + Math.sin(angle) * length * 0.28 + dy * 0.08,
       }
-      // 保留自然弯折，柔化细碎尖角；起点和终点保持不变。
-      return points.map(function (point, index) {
-        if (!index || index === points.length - 1) return point
-        return {
-          x: points[index - 1].x * 0.2 + point.x * 0.6 + points[index + 1].x * 0.2,
-          y: points[index - 1].y * 0.2 + point.y * 0.6 + points[index + 1].y * 0.2,
-        }
-      })
+      var last = {
+        x: to.x - dx * 0.24 + normalX * bend,
+        y: to.y - dy * 0.24 + normalY * bend,
+      }
+      var points = []
+      var steps = Math.pow(2, levels)
+      // 连续曲率代替随机折线；子枝先顺着母枝，再逐渐向外舒展。
+      for (var i = 0; i <= steps; i++) {
+        var t = i / steps
+        var u = 1 - t
+        points.push({
+          x: u * u * u * from.x + 3 * u * u * t * first.x + 3 * u * t * t * last.x + t * t * t * to.x,
+          y: u * u * u * from.y + 3 * u * u * t * first.y + 3 * u * t * t * last.y + t * t * t * to.y,
+        })
+      }
+      return points
     }
 
     function makeStroke(side, start, depth) {
@@ -795,15 +799,12 @@
       var rootX = side === 0 ? minX + span * (0.12 + depth * 0.55) : maxX - span * (0.12 + depth * 0.55)
       var treeHeight = height * (mobile ? randomBetween(0.14, 0.2) : randomBetween(0.52, 0.72) - depth * 0.14)
       var from = { x: rootX, y: height + 12 }
-      // 粗干、回折、斜出的骨干枝：有木质结构，而非等距抽枝的草茎。
-      var knots = [from,
-        { x: edgeX(rootX + inward * span * 0.35), y: height - treeHeight * 0.3 },
-        { x: edgeX(rootX + inward * span * 0.15), y: height - treeHeight * 0.56 },
-        { x: edgeX(rootX + inward * span * randomBetween(0.5, 0.7)), y: height - treeHeight }]
-      var points = [from]
-      for (var k = 1; k < knots.length; k++) {
-        points = points.concat(veinPath(knots[k - 1], knots[k], mobile ? 3 : 8, 3).slice(1))
+      var to = {
+        x: edgeX(rootX + inward * span * randomBetween(0.4, 0.7)),
+        y: height - treeHeight,
       }
+      var points = branchPath(from, to, -inward * span * randomBetween(0.18, 0.32), 5,
+        -Math.PI / 2 + inward * randomBetween(0.08, 0.22))
       var branches = []
       for (var b = 0; b < 3; b++) {
         var index = Math.floor((0.38 + b * 0.2 + randomBetween(-0.04, 0.04)) * (points.length - 1))
@@ -813,7 +814,8 @@
           y: anchor.y - treeHeight * randomBetween(0.18, 0.3),
         }
         var limb = {
-          points: veinPath(anchor, tip, mobile ? 5 : 14, 4),
+          points: branchPath(anchor, tip, randomBetween(-span * 0.12, span * 0.12), 4,
+            Math.atan2(points[index + 1].y - anchor.y, points[index + 1].x - anchor.x)),
           at: index / (points.length - 1),
           delay: randomBetween(100, 300),
           duration: randomBetween(1800, 2600),
@@ -830,7 +832,8 @@
             y: fork.y - randomBetween(mobile ? 8 : 20, mobile ? 22 : 52),
           }
           var twig = {
-            points: veinPath(fork, twigTip, mobile ? 2 : 4, 3),
+            points: branchPath(fork, twigTip, randomBetween(-4, 4), 3,
+              Math.atan2(limb.points[forkIndex + 1].y - fork.y, limb.points[forkIndex + 1].x - fork.x)),
             at: limb.at,
             delay: limb.delay + limb.duration * forkIndex / (limb.points.length - 1),
             duration: randomBetween(1600, 2600),
@@ -858,28 +861,35 @@
 
     function tracePen(points, progress) {
       var end = Math.max(0, Math.min(1, progress)) * (points.length - 1)
+      if (!end) return
       var whole = Math.floor(end)
-      var weight = context.lineWidth
-      context.beginPath()
-      context.moveTo(points[0].x, points[0].y)
-      for (var p = 1; p <= whole; p++) {
-        context.lineTo(points[p].x, points[p].y)
-        if (p % 4 === 0) {
-          context.lineWidth = weight * (1 - p / (points.length - 1) * 0.9)
-          context.stroke()
-          context.beginPath()
-          context.moveTo(points[p].x, points[p].y)
-        }
-      }
-      // 笔尖连续前进，笔重沿生长方向渐细。
+      var visible = points.slice(0, whole + 1)
       if (whole < points.length - 1) {
         var from = points[whole]
         var to = points[whole + 1]
-        context.lineTo(from.x + (to.x - from.x) * (end - whole), from.y + (to.y - from.y) * (end - whole))
+        visible.push({ x: from.x + (to.x - from.x) * (end - whole), y: from.y + (to.y - from.y) * (end - whole) })
       }
-      context.lineWidth = weight * (1 - progress * 0.9)
-      context.stroke()
-      context.lineWidth = weight
+      // 一次填充连续收细的轮廓，消除分段线宽带来的接头和深色叠痕。
+      var edges = visible.map(function (point, index) {
+        var before = visible[Math.max(0, index - 1)]
+        var after = visible[Math.min(visible.length - 1, index + 1)]
+        var angle = Math.atan2(after.y - before.y, after.x - before.x) + Math.PI / 2
+        var radius = context.lineWidth * (1 - Math.min(index, end) / (points.length - 1) * 0.94) / 2
+        return { x: point.x, y: point.y, nx: Math.cos(angle) * radius, ny: Math.sin(angle) * radius }
+      })
+      context.save()
+      context.fillStyle = context.strokeStyle
+      context.beginPath()
+      edges.forEach(function (point, index) {
+        if (!index) context.moveTo(point.x + point.nx, point.y + point.ny)
+        else context.lineTo(point.x + point.nx, point.y + point.ny)
+      })
+      for (var i = edges.length - 1; i >= 0; i--) {
+        context.lineTo(edges[i].x - edges[i].nx, edges[i].y - edges[i].ny)
+      }
+      context.closePath()
+      context.fill()
+      context.restore()
     }
 
     function drawBlossoms(branch, age, ink, reduced) {
@@ -888,7 +898,7 @@
         var flowerAge = age - flower.delay
         var season = 42000 + flower.phase * 2000
         var cycleAge = flowerAge < 0 ? flowerAge : flowerAge % season
-        var progress = reduced ? 1 : Math.max(0, Math.min(1, cycleAge / 2600))
+        var progress = reduced ? 1 : Math.max(0, Math.min(1, cycleAge / (7000 + flower.phase * 400)))
         var fading = reduced ? 1 : Math.min(1, Math.max(0, (season - cycleAge) / 6000))
         if (!progress) return
         var opening = progress * progress * (3 - 2 * progress)
@@ -910,14 +920,17 @@
         context.lineWidth = 0.55
         for (var petal = 0; petal < 5; petal++) {
           var angle = petal * Math.PI * 2 / 5
-          var reach = size * 0.48 * opening
+          var petalProgress = reduced ? 1 : Math.max(0, Math.min(1, (progress - petal * 0.035) / (1 - petal * 0.035)))
+          var unfold = petalProgress * petalProgress * (3 - 2 * petalProgress)
+          var reach = size * 0.48 * unfold
           context.beginPath()
           context.ellipse(Math.cos(angle) * reach, Math.sin(angle) * reach,
-            size * 0.52 * opening, size * 0.5 * opening, angle, 0, Math.PI * 2)
+            size * 0.52 * unfold, size * (0.18 + 0.32 * unfold) * unfold, angle, 0, Math.PI * 2)
           context.fill()
           context.stroke()
         }
         if (opening > 0.5) {
+          context.globalAlpha *= Math.min(1, (opening - 0.5) / 0.3)
           context.strokeStyle = dark ? '#ead2bb' : '#997849'
           context.fillStyle = context.strokeStyle
           context.lineWidth = 0.45
