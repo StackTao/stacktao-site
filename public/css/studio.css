@@ -464,7 +464,7 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
 body:has([data-guestbook]) { background: #c9c3b5; }
 body:has([data-guestbook]) :is(.nav-wrap,.footer,.back-to-top,.nav-profile-live) { display: none !important; }
 body:has([data-guestbook]) #view { min-height: 100svh; }
-#view main.guestbook-page { max-width: none !important; width: 100%; padding: 0 !important; margin: 0; min-height: 100svh; background-color: #d0cabc; background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"), radial-gradient(ellipse at 20% 5%, #f7f2df66, transparent 65%), radial-gradient(ellipse at 90% 90%, #625e4c20, transparent 55%), linear-gradient(100deg,#c7c1b5,#d6d0c2 43%,#c4bfb3); color: #605c51; }
+#view main.guestbook-page { max-width: none !important; width: 100%; padding: 0 !important; margin: 0; min-height: 100svh; background: #96968d url('../assets/materials/street-wall-v1.jpg') repeat center top / 1536px 1024px; color: #30352f; }
 #view .guestbook-page .gb-wall-section { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 #view .guestbook-page .gb-wall[data-wall] { min-height: 100svh; background: transparent; border: 0; }
 .gb-wall-invitation { position: absolute; top: 38px; left: clamp(25px,5vw,74px); padding: 0; border: 0; background: none; text-align: left; color: #797465; transform: rotate(-1deg); text-shadow: 0 1px 0 #f5efdd9c; }
@@ -479,8 +479,6 @@ body:has([data-guestbook]) #view { min-height: 100svh; }
 #view .gb-wall > .gb-wall-mark:hover, #view .gb-wall > .gb-wall-mark:focus-visible { transform: rotate(var(--note-angle)); box-shadow: none; }
 .gb-wall-mark .gb-note-content { aspect-ratio: auto; min-height: 145px; overflow: visible; }
 .gb-wall-mark .gb-note-content p { font: 25px/1.7 var(--font-kai); padding: 22px 20px 10px; letter-spacing: .06em; }
-.gb-wall-mark[data-medium='engraving'] .gb-note-content { color: #7c7567; text-shadow: 0 1px 0 #ede6d5, 0 -1px 1px #55504485; }
-.gb-wall-mark[data-medium='engraving'] svg path { stroke: #817969; filter: drop-shadow(0 1px 0 #ede6d5); }
 .gb-wall-mark[data-medium='ink'] .gb-note-content { color: #454a43; opacity: .82; }
 .gb-wall-mark .gb-note-foot { border: 0; margin: 0 20px; padding: 10px 0; color: #787164; font-family: var(--font-kai); }
 .gb-wall-mark .gb-note-content svg { height: auto; aspect-ratio: 5 / 3; }
@@ -488,11 +486,38 @@ body:has([data-guestbook]) #view { min-height: 100svh; }
 .guestbook-page .gb-materials button { padding: 14px 8px; border: 1px solid var(--rule); border-radius: 3px; background: transparent; color: var(--fg-light); font-size: 13px; text-align: left; }
 .gb-materials button small { display: block; font-size: 9px; margin-top: 7px; opacity: .65; }
 .guestbook-page .gb-materials button[aria-pressed='true'] { color: var(--fg-deeper); background: var(--surface-soft); border-color: var(--fg-light); }
-.gb-writing-paper[data-medium='engraving'], .gb-preview:has([data-medium='engraving']), .gb-detail:has([data-medium='engraving']) [data-detail-note] { background: #d0cabc url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"); box-shadow: inset 0 1px 8px #524b3710; }
-.gb-writing-paper[data-medium='ink'], .gb-preview:has([data-medium='ink']), .gb-detail:has([data-medium='ink']) [data-detail-note] { background: #d0cabc url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"); }
-.gb-writing-paper[data-medium='engraving'] textarea { color: #7c7567; text-shadow: 0 1px 0 #ede6d5, 0 -1px 1px #55504485; }
+.gb-writing-paper[data-medium='engraving'], .gb-preview:has([data-medium='engraving']), .gb-detail:has([data-medium='engraving']) [data-detail-note] { background: #96968d url('../assets/materials/street-wall-v1.jpg') center / 1536px 1024px; }
+.gb-writing-paper[data-medium='ink'], .gb-preview:has([data-medium='ink']), .gb-detail:has([data-medium='ink']) [data-detail-note] { background: #96968d url('../assets/materials/street-wall-v1.jpg') center / 1536px 1024px; }
+.gb-writing-paper[data-medium='engraving'] textarea { color: #4f524c; text-shadow: 0 1px 0 #d9dbca; }
 .gb-pen-row.is-engraving .gb-inks { display: none; }
 .guestbook-page .gb-status { position: fixed; bottom: 28px; left: 50%; transform: translate(-50%,8px); z-index: 30; max-width: calc(100% - 40px); width: max-content; padding: 10px 16px; margin: 0; border-radius: 4px; background: #33372ee6; color: #f5f0e4; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
 .guestbook-page .gb-status.is-visible { opacity: 1; transform: translate(-50%,0); }
 .guestbook-page .gb-undo-wall { position: fixed; bottom: 18px; right: 24px; z-index: 31; color: #48483c; background: #e7e0ce; padding: 8px 12px; }
 @media (max-width: 600px) { .gb-materials { gap: 5px; } .gb-materials button small { line-height: 1.5; } .gb-wall-mark .gb-note-content p { font-size: 23px; } }
+
+/* Original sticker art and recessed, grain-broken engraving. */
+body:has([data-guestbook]) { background: #96968d; }
+.gb-wall-invitation { color: #e1edb6; text-shadow: 0 1px 2px #22282a; }
+.gb-wall-invitation:hover { color: #f2f6d9; }
+.gb-carved-art { overflow: visible; }
+.gb-carved-glyph { font-family: 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); font-weight: 600; letter-spacing: 1.1px; }
+#view .gb-wall-mark[data-medium='engraving'] .gb-note-content { text-shadow: none; color: #686c62; min-height: 0; }
+#view .gb-carved-art path { filter: none; }
+#view .gb-wall-mark[data-medium='engraving'] .gb-note-foot { color: #424a43; text-shadow: 0 1px 0 #d9dbca88; }
+#view .gb-wall-mark[data-medium='ink'] .gb-note-content { opacity: .92; }
+.gb-wall > .gb-note.is-distant .gb-note-content { visibility: hidden; }
+#view .gb-note[data-medium='sticker'] { background: transparent; border: 0; box-shadow: none; }
+#view .gb-note[data-medium='sticker']::before, #view .gb-note[data-medium='sticker']::after { display: none; }
+.gb-note[data-medium='sticker'] .gb-note-content { aspect-ratio: 1; overflow: visible; filter: drop-shadow(1px 3px 1px #19251d55); }
+.gb-wall > [data-medium='sticker'] .gb-note-foot { display: none; }
+.gb-sticker-picker { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 30px 15px; background: var(--surface-soft); }
+.gb-sticker-picker button { width: 100px; padding: 10px; border: 1px solid transparent; background: transparent; border-radius: 12px; transition: transform .2s; }
+.gb-sticker-picker button[aria-pressed='true'] { border-color: var(--c-seal); transform: rotate(-5deg); }
+.gb-sticker-picker svg { width: 100%; display: block; }
+.gb-materials { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.gb-mark-size { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-size: 11px; color: var(--fg-light); }
+.gb-mark-size select { background: var(--surface); border: 1px solid var(--rule); color: var(--fg); padding: 6px; border-radius: 3px; }
+.gb-mark-size span { margin-left: auto; font-size: 10px; }
+.gb-preview .gb-note { width: min(100%,var(--mark-size,280px)); margin-inline: auto; }
+[data-ink='#e9edcf'] { background: #e9edcf; } [data-ink='#d7f557'] { background: #d7f557; } [data-ink='#6286ee'] { background: #6286ee; } [data-ink='#f47760'] { background: #f47760; }
+@media (max-width:600px) { .gb-materials { grid-template-columns: repeat(2,minmax(0,1fr)); } .gb-mark-size { flex-wrap: wrap; } .gb-mark-size span { flex-basis:100%; margin: 0; } .gb-inks { gap: 7px; } .gb-sticker-picker { gap: 8px; } }

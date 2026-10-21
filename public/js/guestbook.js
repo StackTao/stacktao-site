@@ -1,9 +1,11 @@
 (function () {
   var KEY = 'stacktao-paper-wall-v1'
-  var inks = ['#343832', '#3f5870', '#a45743']
+  var WALL_LIMIT = 300
+  var markWidths = { small:210, medium:280, large:350 }
+  var inks = ['#343832', '#3f5870', '#a45743', '#e9edcf', '#d7f557', '#6286ee', '#f47760']
   var papers = ['ivory', 'sage', 'rose']
   var cleanup = function () {}
-  var draft = { mode: 'draw', strokes: [], text: '', name: '', paper: 'ivory', ink: inks[0], width: 2.4, medium: 'engraving' }
+  var draft = { mode: 'draw', strokes: [], text: '', name: '', paper: 'ivory', ink: '#d7f557', width: 4.5, medium: 'ink', size:'medium', sticker:'spark' }
   var sample = { id: 'sample', mode: 'text', text: '山海有归期，\n风雨有相逢。', name: '墙上的题字', paper: 'ivory', medium: 'engraving', date: '', strokes: [] }
 
   window.PAGES = window.PAGES || {}
@@ -21,14 +23,16 @@
     <dialog class="gb-dialog" data-composer aria-labelledby="gb-dialog-title">
       <div class="gb-dialog-head"><div><p class="gb-eyebrow" data-step>01 / 写下此刻</p><h2 id="gb-dialog-title">慢慢写，不必工整。</h2></div><button class="gb-close" data-gb="close" aria-label="关闭，保留未完成纸笺">×</button></div>
       <div data-editor>
-        <div class="gb-materials" aria-label="留下痕迹的方式"><button data-medium="engraving" aria-pressed="true">刻在墙上<small>留下凹下去的笔画</small></button><button data-medium="ink" aria-pressed="false">写在墙上<small>一点墨，一笔涂画</small></button><button data-medium="paper" aria-pressed="false">贴一张纸<small>可以拿起，重新贴好</small></button></div>
+        <div class="gb-materials" aria-label="留下痕迹的方式"><button data-medium="engraving" aria-pressed="true">刻画<small>凹槽与刮痕</small></button><button data-medium="ink" aria-pressed="false">涂鸦<small>在旧墙上继续画</small></button><button data-medium="paper" aria-pressed="false">纸条<small>一句话，一张纸</small></button><button data-medium="sticker" aria-pressed="false">贴纸<small>贴上一点自己的颜色</small></button></div>
+        <div class="gb-sticker-picker" data-stickers hidden aria-label="选择贴纸"></div>
+        <label class="gb-mark-size">占墙大小 <select data-size aria-label="占墙大小"><option value="small">小一点</option><option value="medium" selected>适中</option><option value="large">大一点</option></select><span>留下空间，也留给下一个人。</span></label>
         <div class="gb-tools"><div class="gb-segment" aria-label="书写方式"><button data-mode="draw" aria-pressed="true">手写</button><button data-mode="text" aria-pressed="false">打字</button></div><div class="gb-papers" aria-label="纸张颜色"><button data-paper="ivory" aria-label="米白纸" aria-pressed="true"></button><button data-paper="sage" aria-label="灰绿纸" aria-pressed="false"></button><button data-paper="rose" aria-label="浅粉纸" aria-pressed="false"></button></div></div>
         <div class="gb-writing-paper" data-paper-surface="ivory">
           <canvas width="1200" height="720" data-drawing aria-label="手写区域，可用鼠标、手指或触控笔书写；也可切换打字"></canvas>
           <div class="gb-canvas-hint" data-draw-hint>从这里落笔<span>鼠标 · 手指 · 触控笔</span></div>
           <textarea data-message maxlength="180" placeholder="写一句问候，或留一点此刻的想法。" aria-label="留言内容，最多180字" hidden></textarea>
         </div>
-        <div class="gb-pen-row" data-pen-tools><div class="gb-inks" aria-label="墨色"><button data-ink="#343832" aria-label="石墨" aria-pressed="true"></button><button data-ink="#3f5870" aria-label="靛蓝" aria-pressed="false"></button><button data-ink="#a45743" aria-label="赭红" aria-pressed="false"></button></div><label class="gb-pen-size">笔触<select data-width aria-label="笔触粗细"><option value="2.4">细笔</option><option value="4.5">粗笔</option></select></label><button class="gb-text-button" data-gb="undo">撤回一笔</button><button class="gb-text-button" data-gb="clear">清空</button></div>
+        <div class="gb-pen-row" data-pen-tools><div class="gb-inks" aria-label="墨色"><button data-ink="#343832" aria-label="石墨" aria-pressed="true"></button><button data-ink="#3f5870" aria-label="靛蓝" aria-pressed="false"></button><button data-ink="#a45743" aria-label="赭红" aria-pressed="false"></button><button data-ink="#e9edcf" aria-label="粉白" aria-pressed="false"></button><button data-ink="#d7f557" aria-label="荧光黄绿" aria-pressed="false"></button><button data-ink="#6286ee" aria-label="钴蓝" aria-pressed="false"></button><button data-ink="#f47760" aria-label="珊瑚橘" aria-pressed="false"></button></div><label class="gb-pen-size">笔触<select data-width aria-label="笔触粗细"><option value="2.4">细笔</option><option value="4.5">粗笔</option><option value="12">宽喷头</option></select></label><button class="gb-text-button" data-gb="undo">撤回一笔</button><button class="gb-text-button" data-gb="clear">清空</button></div>
         <div class="gb-text-count" data-text-count hidden>0 / 180</div>
         <label class="gb-signature">落款 <input data-name maxlength="24" placeholder="留个名字，也可以匿名" autocomplete="nickname"></label>
       </div>
@@ -40,12 +44,12 @@
   </main>`
 
   function valid(note) {
-    return note && (note.medium == null || ['paper','engraving','ink'].includes(note.medium)) && (note.anchor == null || (['wide','narrow'].includes(note.anchor.mode) && Number.isFinite(note.anchor.x) && note.anchor.x >= 0 && note.anchor.x <= 1 && Number.isFinite(note.anchor.y) && note.anchor.y >= 0 && note.anchor.y <= 16000)) && typeof note.id === 'string' && ['text', 'draw'].indexOf(note.mode) >= 0 && papers.indexOf(note.paper) >= 0 && typeof note.text === 'string' && note.text.length <= 180 && typeof note.name === 'string' && note.name.length <= 24 && typeof note.date === 'string' && Array.isArray(note.strokes) && note.strokes.length <= 150 && note.strokes.reduce(function (n, s) { return n + (Array.isArray(s.points) ? s.points.length : 6001) }, 0) <= 6000 && note.strokes.every(function (s) {
-      return inks.indexOf(s.ink) >= 0 && [2.4, 4.5].indexOf(s.width) >= 0 && Array.isArray(s.points) && s.points.length > 0 && s.points.every(function (p) { return Array.isArray(p) && p.length === 3 && p.every(function (v) { return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 }) })
+    return note && (note.size == null || Object.prototype.hasOwnProperty.call(markWidths, note.size)) && (note.medium !== 'sticker' || Object.prototype.hasOwnProperty.call(stickerNames, note.sticker)) && (note.medium == null || ['paper','engraving','ink','sticker'].includes(note.medium)) && (note.anchor == null || (['wide','narrow'].includes(note.anchor.mode) && Number.isFinite(note.anchor.x) && note.anchor.x >= 0 && note.anchor.x <= 1 && Number.isFinite(note.anchor.y) && note.anchor.y >= 0 && note.anchor.y <= 1200000)) && typeof note.id === 'string' && ['text', 'draw'].indexOf(note.mode) >= 0 && papers.indexOf(note.paper) >= 0 && typeof note.text === 'string' && note.text.length <= 180 && typeof note.name === 'string' && note.name.length <= 24 && typeof note.date === 'string' && Array.isArray(note.strokes) && note.strokes.length <= 150 && note.strokes.reduce(function (n, s) { return n + (Array.isArray(s.points) ? s.points.length : 6001) }, 0) <= 6000 && note.strokes.every(function (s) {
+      return inks.indexOf(s.ink) >= 0 && [2.4, 4.5, 12].indexOf(s.width) >= 0 && Array.isArray(s.points) && s.points.length > 0 && s.points.every(function (p) { return Array.isArray(p) && p.length === 3 && p.every(function (v) { return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= 1 }) })
     })
   }
   function load() {
-    try { var data = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(data) ? data.filter(valid).slice(0, 30) : [] } catch (_) { return [] }
+    try { var data = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(data) ? data.filter(valid).slice(0, WALL_LIMIT) : [] } catch (_) { return [] }
   }
   function svg(strokes) {
     var ns = 'http://www.w3.org/2000/svg'
@@ -70,16 +74,71 @@
     })
     return el
   }
+  var carvingSerial = 0
+  function carvedArt(note) {
+    var ns = 'http://www.w3.org/2000/svg', art = note.mode === 'draw' ? svg(note.strokes) : document.createElementNS(ns, 'svg')
+    art.classList.add('gb-carved-art')
+    art.setAttribute('role', 'img'); art.setAttribute('aria-label', note.mode === 'draw' ? '刻入墙面的手写笔迹' : note.text)
+    var group = document.createElementNS(ns, 'g')
+    if (note.mode === 'draw') while (art.firstChild) group.appendChild(art.firstChild)
+    else {
+      var lines = [], line = '', units = 0
+      Array.from(note.text).forEach(function (char) {
+        var size = char.charCodeAt(0) > 255 ? 1 : .56
+        if (char === '\n' || units + size > 11) { lines.push(line); line = ''; units = 0 }
+        if (char !== '\n') { line += char; units += size }
+      })
+      if (line || !lines.length) lines.push(line)
+      var fontSize = Math.min(48, 300 / (lines.length * 1.35)), lineHeight = fontSize * 1.35
+      art.setAttribute('viewBox', '0 0 600 360')
+      lines.forEach(function (value, index) {
+        var text = document.createElementNS(ns, 'text')
+        text.setAttribute('x', '28'); text.setAttribute('y', String(30 + fontSize + index * lineHeight))
+        text.setAttribute('font-size', String(fontSize)); text.setAttribute('fill', '#8b887f'); text.setAttribute('class', 'gb-carved-glyph')
+        text.textContent = value; group.appendChild(text)
+      })
+    }
+    var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
+    var defs = document.createElementNS(ns, 'defs')
+    // Opposed inner edges, derived from the same alpha, form a recessed groove.
+    defs.innerHTML = '<filter id="' + id + '" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">' +
+      '<feTurbulence type="fractalNoise" baseFrequency=".12 .19" numOctaves="2" seed="' + seed + '" result="grain"/>' +
+      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
+      '<feOffset in="cut" dx="1.6" dy="2.1" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
+      '<feOffset in="cut" dx="-1.1" dy="-1.4" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
+      '<feFlood flood-color="#706f67" flood-opacity=".68"/><feComposite in2="cut" operator="in" result="floor"/>' +
+      '<feFlood flood-color="#282d2b" flood-opacity=".88"/><feComposite in2="innerShade" operator="in" result="shade"/>' +
+      '<feFlood flood-color="#e7e7d9" flood-opacity=".9"/><feComposite in2="innerLight" operator="in" result="light"/>' +
+      '<feMerge><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter>'
+    group.setAttribute('filter', 'url(#' + id + ')'); art.append(defs, group)
+    return art
+  }
+  var stickerNames = { spark:'闪光', bloom:'野花', orbit:'轨道' }
+  function stickerArt(kind) {
+    var ns = 'http://www.w3.org/2000/svg', art = document.createElementNS(ns, 'svg')
+    art.setAttribute('viewBox', '0 0 160 160'); art.setAttribute('role', 'img'); art.setAttribute('aria-label', stickerNames[kind] + '贴纸')
+    var drawings = {
+      spark:'<path d="M78 8 94 53 141 31 113 77 151 99 103 105 108 151 77 117 37 147 46 102 9 83 51 66 35 20 69 47Z" fill="#dfff51" stroke="#f5f4e9" stroke-width="9" stroke-linejoin="round"/><path d="m70 73 3 9m20-11 3 9m-28 17q17 13 31-3" fill="none" stroke="#30372d" stroke-width="5" stroke-linecap="round"/>',
+      bloom:'<path d="M62 54C24 12 7 65 44 79 1 94 38 138 65 108 63 154 121 142 105 107 146 137 163 82 121 76 159 46 111 15 91 53 95 8 41 14 62 54Z" fill="#fa744f" stroke="#f5f4e9" stroke-width="9" stroke-linejoin="round"/><circle cx="82" cy="81" r="24" fill="#e5ed58"/><path d="m72 75 1 6m17-6 1 6m-20 10q12 8 22-1" fill="none" stroke="#30372d" stroke-width="4" stroke-linecap="round"/>',
+      orbit:'<circle cx="80" cy="80" r="49" fill="#5d78e8" stroke="#f5f4e9" stroke-width="8"/><ellipse cx="80" cy="80" rx="72" ry="23" transform="rotate(-28 80 80)" fill="none" stroke="#e7f16e" stroke-width="9"/><path d="m73 63 2 7m22-10 2 7m-26 18q15 9 26-6" fill="none" stroke="#f5f4e9" stroke-width="4" stroke-linecap="round"/>'
+    }
+    art.innerHTML = drawings[kind] || drawings.spark
+    return art
+  }
   function card(note, interactive) {
     var el = document.createElement(interactive ? 'button' : 'div')
     el.className = 'gb-note'
     el.dataset.paperSurface = note.paper
     el.dataset.medium = note.medium || 'paper'
-    if (el.dataset.medium !== 'paper') el.classList.add('gb-wall-mark')
+    el.dataset.markSize = note.size || 'medium'
+    el.style.setProperty('--mark-size', (note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium']) + 'px')
+    if (!['paper','sticker'].includes(el.dataset.medium)) el.classList.add('gb-wall-mark')
     if (interactive) { el.type = 'button'; el.dataset.note = note.id; el.setAttribute('aria-label', '查看' + (note.name || '一位过客') + '留下的痕迹') }
     var content = document.createElement('div')
     content.className = 'gb-note-content'
-    if (note.mode === 'draw') content.appendChild(svg(note.strokes))
+    if (note.medium === 'sticker') content.appendChild(stickerArt(note.sticker))
+    else if (note.medium === 'engraving') content.appendChild(carvedArt(note))
+    else if (note.mode === 'draw') content.appendChild(svg(note.strokes))
     else { var paragraph = document.createElement('p'); paragraph.textContent = note.text; content.appendChild(paragraph) }
     el.appendChild(content)
     var foot = document.createElement('div'); foot.className = 'gb-note-foot'
@@ -105,13 +164,13 @@
       catch (_) { error('浏览器未能保存，请保留这张纸后重试，或收回一些旧纸笺腾出空间。'); status('保存未完成，原有纸笺没有改变。'); return false }
     }
     var layoutKey = KEY + '-positions-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
-    var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null
+    var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null, visibilityObserver = null
     try {
       var saved = JSON.parse(localStorage.getItem(layoutKey) || '{}')
       ;['wide', 'narrow'].forEach(function (mode) {
-        Object.entries(saved[mode] || {}).slice(0, 32).forEach(function (entry) {
+        Object.entries(saved[mode] || {}).slice(0, WALL_LIMIT + 2).forEach(function (entry) {
           var p = entry[1]
-          if (p && Number.isFinite(p.x) && p.x >= 0 && p.x <= 1 && Number.isFinite(p.y) && p.y >= 0 && p.y <= 16000 && Number.isFinite(p.z) && p.z >= 0 && p.z < 1e9) Object.defineProperty(layouts[mode], entry[0], { value:p, writable:true, enumerable:true, configurable:true })
+          if (p && Number.isFinite(p.x) && p.x >= 0 && p.x <= 1 && Number.isFinite(p.y) && p.y >= 0 && p.y <= 1200000 && Number.isFinite(p.z) && p.z >= 0 && p.z < 1e9) Object.defineProperty(layouts[mode], entry[0], { value:p, writable:true, enumerable:true, configurable:true })
         })
       })
     } catch (_) {}
@@ -123,21 +182,22 @@
     function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
     function wallLayout() {
       finishPaper(true)
-      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.floor(width / 300))
+      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.floor(width / 370))
       layoutMode = width < 600 ? 'narrow' : 'wide'
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
-      var cards = Array.from(wall.querySelectorAll('[data-note]')), maxX = Math.max(0, width - paperWidth - 32), bottom = 0
-      var occupied = cards.map(function (el) { return positionOf(el) }).filter(Boolean)
+      var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
+      cards.forEach(function (el) { el.style.width = Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32)) + 'px' })
+      var occupied = cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240 } : null }).filter(Boolean)
       cards.forEach(function (el) {
-        var p = positionOf(el), height = el.offsetHeight || 240
+        var p = positionOf(el), height = el.offsetHeight || 240, ownWidth = parseFloat(el.style.width), maxX = Math.max(0, width - ownWidth - 32)
         if (!p) {
           var slot = 0, x, y
           do {
             x = columns === 1 ? .5 : Math.max(0, Math.min(1, (slot % columns) / (columns - 1) + [.04,-.03,.015][slot % 3]))
             y = 110 + Math.floor(slot / columns) * (height + 40) + [10,48,0,26][slot % 4]; slot++
-          } while (occupied.some(function (other) { return Math.abs((other.x - x) * maxX) < paperWidth + 16 && Math.abs(other.y - y) < height + 24 }))
+          } while (occupied.some(function (other) { var left = 16 + x * maxX; return left < other.x + other.width + 16 && left + ownWidth + 16 > other.x && y < other.y + other.height + 24 && y + height + 24 > other.y }))
           p = { x:x, y:y, z:cards.indexOf(el) + 1 }
-          Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true }); occupied.push(p)
+          Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true }); occupied.push({x:16 + p.x * maxX,y:p.y,width:ownWidth,height:height})
         }
         paintPaper(el, 16 + p.x * maxX, p.y); el.style.zIndex = String(p.z)
         bottom = Math.max(bottom, p.y + height)
@@ -184,7 +244,7 @@
     wall.addEventListener('pointerdown', function (e) {
       var el = e.target.closest('[data-note]')
       if (!drag && e.isPrimary) suppressNoteClick = false
-      if (!el || el.dataset.medium !== 'paper' || drag || !e.isPrimary || e.button !== 0 || (e.pointerType === 'touch' && !touchArrange)) return
+      if (!el || !['paper','sticker'].includes(el.dataset.medium) || drag || !e.isPrimary || e.button !== 0 || (e.pointerType === 'touch' && !touchArrange)) return
       startPaper(el, e.pointerId, e.clientX, e.clientY)
       el.setPointerCapture(e.pointerId)
     }, {signal:signal})
@@ -203,7 +263,7 @@
     }, {signal:signal})
     wall.addEventListener('dragstart', function (e) { e.preventDefault() }, {signal:signal})
     wall.addEventListener('keydown', function (e) {
-      var el = e.target.closest('[data-note]'); if (!el || el.dataset.medium !== 'paper') return
+      var el = e.target.closest('[data-note]'); if (!el || !['paper','sticker'].includes(el.dataset.medium)) return
       if (e.key === 'Escape') { finishPaper(true); return }
       if (e.key === ' ' || (e.key === 'Enter' && drag)) {
         e.preventDefault()
@@ -227,7 +287,7 @@
     function renderWall(newId) {
       finishPaper(true); suppressNoteClick = false; wall.replaceChildren()
       var invitation = document.createElement('button'); invitation.className = 'gb-wall-invitation'; invitation.dataset.gb = 'write'
-      invitation.innerHTML = '<span>来过，就留下点什么。</span><small>点一处空白，刻字 · 涂画 · 贴纸</small>'
+      invitation.innerHTML = '<span>来过，就留下点什么。</span><small>点一处空白，涂鸦 · 刻画 · 贴纸</small>'
       wall.appendChild(invitation)
       $('[data-count]').textContent = String(notes.length).padStart(2, '0')
       ;(notes.length ? notes : [sample]).forEach(function (note, index) {
@@ -238,7 +298,9 @@
         wall.appendChild(el)
       })
       wallLayout()
+      if (visibilityObserver) { visibilityObserver.disconnect(); wall.querySelectorAll('[data-note]').forEach(function (el) { visibilityObserver.observe(el) }) }
     }
+    if (window.IntersectionObserver) visibilityObserver = new IntersectionObserver(function (entries) { entries.forEach(function (entry) { entry.target.classList.toggle('is-distant', !entry.isIntersecting) }) }, {rootMargin:'800px'})
     if (window.ResizeObserver) {
       var lastWidth = 0
       wallObserver = new ResizeObserver(function () { if (wall.clientWidth !== lastWidth) { lastWidth = wall.clientWidth; wallLayout() } })
@@ -247,7 +309,7 @@
     wall.addEventListener('click', function (e) {
       if (e.target !== wall || suppressNoteClick) return
       var rect = wall.getBoundingClientRect(), width = Math.min(280, Math.max(180, wall.clientWidth - 32)), span = Math.max(0, wall.clientWidth - width - 32)
-      writeAnchor = { mode:layoutMode, x:span ? Math.max(0, Math.min(1, (e.clientX - rect.left - width / 2 - 16) / span)) : .5, y:Math.max(16, Math.min(16000, e.clientY - rect.top - 80)) }
+      writeAnchor = { mode:layoutMode, x:span ? Math.max(0, Math.min(1, (e.clientX - rect.left - width / 2 - 16) / span)) : .5, y:Math.max(16, Math.min(1200000, e.clientY - rect.top - 80)) }
       openComposer(wall.querySelector('[data-gb="write"]'))
     }, {signal:signal})
     function redraw() {
@@ -268,13 +330,17 @@
       root.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.mode === draft.mode) })
       root.querySelectorAll('[data-paper]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.paper === draft.paper) })
       root.querySelectorAll('[data-ink]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.ink === draft.ink) })
+      var isSticker = draft.medium === 'sticker'
+      $('.gb-tools').hidden = isSticker; $('.gb-writing-paper').hidden = isSticker; $('[data-stickers]').hidden = !isSticker
+      $('[data-size]').value = draft.size || 'medium'
+      root.querySelectorAll('[data-sticker]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sticker === draft.sticker)) })
       $('.gb-writing-paper').dataset.paperSurface = draft.paper
       $('.gb-writing-paper').dataset.medium = draft.medium || 'paper'
       root.querySelectorAll('.gb-materials [data-medium]').forEach(function (b) { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', b.dataset.medium === draft.medium) })
       $('.gb-papers').hidden = draft.medium !== 'paper'
       $('[data-pen-tools]').classList.toggle('is-engraving', draft.medium === 'engraving')
       canvas.hidden = draft.mode !== 'draw'; $('[data-message]').hidden = draft.mode !== 'text'
-      $('[data-pen-tools]').hidden = draft.mode !== 'draw'; $('[data-text-count]').hidden = draft.mode !== 'text'
+      $('[data-pen-tools]').hidden = isSticker || draft.mode !== 'draw'; $('[data-text-count]').hidden = isSticker || draft.mode !== 'text'
       $('[data-message]').value = draft.text; $('[data-name]').value = draft.name; $('[data-width]').value = String(draft.width)
       $('[data-text-count]').textContent = draft.text.length + ' / 180'
       redraw()
@@ -286,12 +352,24 @@
       $('[data-foot-hint]').textContent = '仅保存在本机浏览器；手写会保留原笔迹。'; error(''); syncEditor()
     }
     function openComposer(trigger) {
-      if (notes.length >= 30) { status('这面墙已保存 30 张纸笺，收回一张后再来写吧。'); return }
+      if (notes.length >= WALL_LIMIT) { status('本机预览已保存300处痕迹；共享版会按墙段继续扩展。'); return }
       restoreFocus = trigger; showEditor(); composer.showModal(); document.body.classList.add('gb-dialog-open')
       ;(draft.mode === 'text' ? $('[data-message]') : $('[data-mode="draw"]')).focus()
     }
     function makeNote() {
-      return { id: crypto.randomUUID(), medium:draft.medium || 'paper', anchor:writeAnchor, mode: draft.mode, strokes: draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
+      return { id: crypto.randomUUID(), medium:draft.medium || 'paper', size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
+    }
+    function reserveLocalSpot(note) {
+      var width = Math.min(note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium'], Math.max(160,wall.clientWidth - 32))
+      var probe = card(note,false); probe.style.width = width + 'px'; probe.style.visibility = 'hidden'; wall.appendChild(probe)
+      var height = probe.offsetHeight || width * .6 + 64; probe.remove()
+      var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]'))
+      function available(x,y) { return occupied.every(function (el) { var left=parseFloat(el.style.left), top=parseFloat(el.style.top); return x + width + 18 <= left || x >= left + (el.offsetWidth || parseFloat(el.style.width)) + 18 || y + height + 18 <= top || y >= top + (el.offsetHeight || 240) + 18 }) }
+      if (note.anchor && available(16 + note.anchor.x * span,note.anchor.y)) return false
+      var relocated = !!note.anchor, columns = Math.max(1,Math.floor(wall.clientWidth / 370)), slot=0, x,y
+      do { x=columns === 1 ? .5 :(slot%columns)/(columns-1); y=120+Math.floor(slot/columns)*(height+48); slot++ } while (!available(16+x*span,y))
+      note.anchor={mode:layoutMode,x:x,y:y}
+      return relocated
     }
     function point(e) { var r = canvas.getBoundingClientRect(); return [Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)), e.pressure || 0.5].map(function (n) { return Math.round(n * 10000) / 10000 }) }
     function stop() { activeStroke = null; pointer = null }
@@ -311,16 +389,21 @@
     ;['pointerup','pointercancel','lostpointercapture'].forEach(function (event) {canvas.addEventListener(event,stop,{signal:signal})})
     $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';error('')},{signal:signal})
     $('[data-name]').addEventListener('input',function(e){draft.name=e.target.value},{signal:signal})
+    Object.keys(stickerNames).forEach(function (kind) {
+      var button = document.createElement('button'); button.type = 'button'; button.dataset.sticker = kind; button.setAttribute('aria-label', stickerNames[kind] + '贴纸'); button.appendChild(stickerArt(kind)); $('[data-stickers]').appendChild(button)
+    })
+    $('[data-size]').addEventListener('change',function(e){draft.size=e.target.value},{signal:signal})
     $('[data-width]').addEventListener('change',function(e){draft.width=Number(e.target.value)},{signal:signal})
     root.addEventListener('click', function (e) {
       var button=e.target.closest('button');if(!button)return
       if (button.closest('.gb-materials') && button.dataset.medium) { draft.medium=button.dataset.medium;syncEditor();return }
+      if (button.dataset.sticker) {draft.sticker=button.dataset.sticker;syncEditor();return}
       if (button.dataset.mode) {draft.mode=button.dataset.mode;syncEditor();return}
       if (button.dataset.paper) {draft.paper=button.dataset.paper;syncEditor();return}
       if (button.dataset.ink) {draft.ink=button.dataset.ink;syncEditor();return}
       if (button.dataset.note) {
         selected=button.dataset.note==='sample'?sample:notes.find(function(n){return n.id===button.dataset.note});if(!selected)return
-        restoreFocus=button;arrange.hidden=(selected.medium || 'paper')!=='paper';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
+        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
       }
       switch(button.dataset.gb) {
         case 'write': writeAnchor=null;openComposer(button);break
@@ -330,24 +413,26 @@
         case 'clear':draft.strokes=[];redraw();error('');break
         case 'back':showEditor();$('[data-mode="'+draft.mode+'"]').focus();break
         case 'preview':
-          if(draft.mode==='draw'?!draft.strokes.length:!draft.text.trim()){error('先在纸上留下一点内容。');return}
+          if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())){error('先在纸上留下一点内容。');return}
           previewNote=makeNote();$('[data-preview]').replaceChildren(card(previewNote,false));$('[data-preview]').hidden=false;$('[data-editor]').hidden=true
           $('[data-gb="preview"]').hidden=true;$('[data-gb="publish"]').hidden=false;$('[data-gb="back"]').hidden=false
-          $('[data-step]').textContent='02 / 留下之前，看一眼';$('#gb-dialog-title').textContent=previewNote.medium==='engraving'?'把这一笔，刻在这里。':previewNote.medium==='ink'?'让墨迹留在这里。':'把这张纸，贴在这里。';$('[data-gb="publish"]').textContent=previewNote.medium==='paper'?'贴到墙上 ↗':'留在墙上 ↗';$('[data-foot-hint]').textContent='会保存在当前浏览器，其他访客暂不可见。';error('');$('[data-gb="publish"]').focus();break
+          $('[data-step]').textContent='02 / 留下之前，看一眼';$('#gb-dialog-title').textContent=previewNote.medium==='engraving'?'把这一笔，刻在这里。':previewNote.medium==='ink'?'让墨迹留在这里。':'把这张纸，贴在这里。';$('[data-gb="publish"]').textContent=['paper','sticker'].includes(previewNote.medium)?'贴到墙上 ↗':'留在墙上 ↗';$('[data-foot-hint]').textContent='会保存在当前浏览器，其他访客暂不可见。';error('');$('[data-gb="publish"]').focus();break
         case 'publish':
-          if(!previewNote || !persist([previewNote].concat(notes)))return
-          var newId=previewNote.id;previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status('痕迹留下了，刷新后也在。')
+          if(!previewNote)return
+          var relocated = reserveLocalSpot(previewNote)
+          if(!persist([previewNote].concat(notes)))return
+          var newId=previewNote.id;previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium,size:draft.size,sticker:draft.sticker};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status(relocated?'原位置较满，已留在下方空白处。':'痕迹留下了，刷新后也在。')
           var pinned=wall.querySelector('[data-note]');if(pinned){pinned.focus({preventScroll:true});pinned.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}break
         case 'remove':
           if(!selected || selected.id==='sample')return
           var next=notes.filter(function(n){return n.id!==selected.id});if(!persist(next))return;removed=selected;restoreFocus=null;detail.close();renderWall();status('已擦去这处痕迹。');$('[data-gb="undo-delete"]').hidden=false;$('[data-gb="undo-delete"]').focus();break
         case 'undo-delete':
-          if(removed && notes.length<30 && persist([removed].concat(notes))){renderWall(removed.id);removed=null;button.hidden=true;status('痕迹已恢复。');$('[data-gb="write"]').focus()}break
+          if(removed && notes.length<WALL_LIMIT && persist([removed].concat(notes))){renderWall(removed.id);removed=null;button.hidden=true;status('痕迹已恢复。');$('[data-gb="write"]').focus()}break
       }
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     renderWall()
-    cleanup=function(){clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,destroy:function(){cleanup();cleanup=function(){}}}
 })()
