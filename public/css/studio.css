@@ -435,16 +435,44 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
 }
 
 /* Guestbook is a place, not a page inside the blog shell. */
-body:has([data-guestbook]) { --wall-material: linear-gradient(#d5d0c27a,#d5d0c27a), url('../assets/materials/street-wall-v1.jpg'); background: #b5b2a6; }
+body:has([data-guestbook]) { --wall-material: linear-gradient(115deg,#fffdf530,transparent 65%), url('../assets/materials/plaster-wall.svg'); background: #e3dfd6; }
 body:has([data-guestbook]) :is(.nav-wrap,.footer,.back-to-top,.nav-profile-live) { display: none !important; }
 body:has([data-guestbook]) #view { min-height: 100svh; }
-#view main.guestbook-page { max-width: none !important; width: 100%; padding: 0 !important; margin: 0; min-height: 100svh; background-color: #b5b2a6; background-image: var(--wall-material); background-position: center top; background-size: 1536px 1024px; color: #30352f; }
+#view main.guestbook-page { max-width: none !important; width: 100%; padding: 100px 0 0 !important; margin: 0; min-height: 100svh; animation: none; transform: none; background-color: #e3dfd6; background-image: var(--wall-material); background-position: center top; background-size: auto, 768px 768px; color: #30352f; }
 #view .guestbook-page .gb-wall-section { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
-#view .guestbook-page .gb-wall[data-wall] { min-height: 100svh; background: transparent; border: 0; }
-.gb-wall-invitation { position: absolute; top: 38px; left: clamp(25px,5vw,74px); padding: 0; border: 0; background: none; text-align: left; color: #797465; transform: rotate(-1deg); text-shadow: 0 1px 0 #f5efdd9c; }
-.guestbook-page .gb-wall-invitation > span { display: block; font: 20px/1.8 var(--font-kai); letter-spacing: .12em; }
-.guestbook-page .gb-wall-invitation > small { display: block; font: 10px/1.8 var(--font-ui); letter-spacing: .06em; opacity: .72; }
-.gb-wall-invitation:hover { color: #555044; }
+#view .guestbook-page .gb-wall[data-wall] { min-height: calc(100svh - 100px); margin-top: 0; background: transparent; border: 0; }
+.gb-wall-invitation { position: absolute; top: 40px; left: 50%; width: max-content; max-width: calc(100% - 40px); transform: translateX(-50%); color: #777366; text-align: center; pointer-events: none; }
+.guestbook-page .gb-wall-invitation > span { display: block; font: 24px/1.8 var(--font-kai); letter-spacing: .1em; }
+.guestbook-page .gb-wall-invitation > small { display: block; margin-top: 8px; font: 11px/1.8 var(--font-ui); color: #817c70; }
+.gb-wall-header { position: absolute; inset: 0 0 auto; display: flex; align-items: center; justify-content: space-between; height: 100px; padding: 0 32px; z-index: 2; }
+.gb-wall-header h1 { position: absolute; left: 50%; transform: translateX(-50%); margin: 0; color: #55564b; text-align: center; font: 24px/1.4 var(--font-serif); letter-spacing: .22em; }
+.gb-wall-header h1 span { display: block; margin-top: 6px; font: 8px/1.4 var(--font-mono); letter-spacing: .16em; color: #8a867b; }
+.gb-exit { position: fixed; top: 28px; left: 28px; z-index: 1000000001; display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 15px; border: 1px solid #918a7525; border-radius: 24px; color: #53564c !important; background: #f4f1e7ec; box-shadow: 0 2px 8px #433b2810; font: 12px var(--font-ui); text-decoration: none !important; transition: background .2s, transform .2s; }
+.gb-exit:hover { background: #fffdf4; transform: translateX(-2px); }
+.gb-local-label { margin-left: auto; color: #78776b; font: 10px var(--font-ui); letter-spacing: .04em; }
+.gb-wall-dock { position: fixed; bottom: max(24px,env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); z-index: 1000000001; display: flex; align-items: center; gap: 2px; padding: 6px; width: max-content; max-width: calc(100% - 24px); border: 1px solid #fffdf436; border-radius: 32px; background: #343d36f5; color: #f2f0e5; box-shadow: 0 8px 26px #292d252e, inset 0 1px 0 #ffffff16; }
+.guestbook-page .gb-wall-dock button { display: flex; justify-content: center; align-items: center; gap: 9px; min-width: 40px; min-height: 44px; border: 0; border-radius: 24px; background: transparent; color: inherit; font: 12px var(--font-ui); transition: background .2s, transform .2s; }
+.guestbook-page .gb-wall-dock button:disabled { opacity: .25; }
+.guestbook-page .gb-wall-dock button:hover:not(:disabled) { background: #ffffff15; }
+.guestbook-page .gb-wall-dock button:active:not(:disabled) { transform: scale(.94); }
+.gb-wall-picker { display: flex; align-items: center; gap: 8px; padding-left: 4px; font: 10px var(--font-ui); color: #bfc5b6; }
+.guestbook-page .gb-wall-picker select { max-width: 110px; height: 44px; padding: 0 4px; border: 0; background: transparent; color: #f2f0e5; font: 12px var(--font-mono); cursor: pointer; }
+.gb-wall-picker option { background: #343d36; color: #f2f0e5; }
+.gb-dock-divider { width: 1px; height: 22px; margin: 0 8px; background: #ffffff25; }
+.guestbook-page .gb-wall-dock .gb-leave-mark { padding: 0 18px; background: #e7eccf; color: #354036; }
+.guestbook-page .gb-wall-dock .gb-leave-mark:hover { background: #f1f5df; }
+.gb-leave-mark > span { font-size: 22px; line-height: 1; }
+.gb-wall-dock :focus-visible { outline: 2px solid #e7eccf; outline-offset: 1px; }
+@media (max-width:600px) {
+  .gb-wall-header { padding: 0 16px; height: 100px; }
+  .gb-wall-header h1 { left: auto; right: 18px; transform: none; text-align: right; font-size: 20px; }
+  .gb-exit { top: 22px; left: 16px; }
+  .gb-local-label { position: absolute; top: 82px; right: 18px; font-size: 9px; }
+  .gb-wall-picker > span { display: none; }
+  .gb-wall-dock { bottom: max(16px,env(safe-area-inset-bottom)); }
+  .gb-wall-invitation { top: 24px; }
+  .guestbook-page .gb-wall-invitation > span { font-size: 18px; }
+}
 #view .gb-wall > .gb-note { border-radius: 1px 2px 4px 1px; background-image: linear-gradient(135deg,#ffffff35,transparent 45%,#81714d0b); }
 #view .gb-wall > .gb-note[data-medium='paper']:nth-of-type(3n)::before { width: 9px; height: 9px; border-radius: 50%; top: 8px; left: 48%; background: #8c4e38; box-shadow: inset 1px 1px 2px #f4bd8270, 1px 2px 2px #201a1440; }
 #view .gb-wall > .gb-note[data-medium='paper']:not(.is-lifted) { box-shadow: .5px 1px 1px #26281c50, 1px 3px 5px #26281c28; }
@@ -461,19 +489,16 @@ body:has([data-guestbook]) #view { min-height: 100svh; }
 .guestbook-page .gb-materials button { padding: 14px 8px; border: 1px solid var(--rule); border-radius: 3px; background: transparent; color: var(--fg-light); font-size: 13px; text-align: left; }
 .gb-materials button small { display: block; font-size: 9px; margin-top: 7px; opacity: .65; }
 .guestbook-page .gb-materials button[aria-pressed='true'] { color: var(--fg-deeper); background: var(--surface-soft); border-color: var(--fg-light); }
-.gb-writing-paper[data-medium='engraving'], .gb-preview:has([data-medium='engraving']), .gb-detail:has([data-medium='engraving']) [data-detail-note] { background-color: #b5b2a6; background-image: var(--wall-material); background-position: center; background-size: 1536px 1024px; }
-.gb-writing-paper[data-medium='ink'], .gb-preview:has([data-medium='ink']), .gb-detail:has([data-medium='ink']) [data-detail-note] { background-color: #b5b2a6; background-image: var(--wall-material); background-position: center; background-size: 1536px 1024px; }
+.gb-writing-paper[data-medium='engraving'], .gb-preview, .gb-detail [data-detail-note] { background-color: #e3dfd6; background-image: var(--wall-material); background-position: center; background-size: auto, 768px 768px; }
+.gb-writing-paper[data-medium='ink'], .gb-preview:has([data-medium='ink']), .gb-detail:has([data-medium='ink']) [data-detail-note] { background-color: #e3dfd6; background-image: var(--wall-material); background-position: center; background-size: auto, 768px 768px; }
 .gb-writing-paper[data-medium='engraving'] textarea { color: #4f524c; text-shadow: 0 1px 0 #d9dbca; }
 .gb-pen-row.is-engraving .gb-inks { display: none; }
-.guestbook-page .gb-status { position: fixed; bottom: 28px; left: 50%; transform: translate(-50%,8px); z-index: 30; max-width: calc(100% - 40px); width: max-content; padding: 10px 16px; margin: 0; border-radius: 4px; background: #33372ee6; color: #f5f0e4; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.guestbook-page .gb-status { position: fixed; bottom: 100px; left: 50%; transform: translate(-50%,8px); z-index: 1000000002; max-width: calc(100% - 40px); width: max-content; padding: 10px 16px; margin: 0; border-radius: 4px; background: #33372ee6; color: #f5f0e4; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
 .guestbook-page .gb-status.is-visible { opacity: 1; transform: translate(-50%,0); }
-.guestbook-page .gb-undo-wall { position: fixed; bottom: 18px; right: 24px; z-index: 31; color: #48483c; background: #e7e0ce; padding: 8px 12px; }
+.guestbook-page .gb-undo-wall { position: fixed; bottom: 110px; right: 24px; z-index: 1000000002; color: #48483c; background: #e7e0ce; padding: 8px 12px; }
 @media (max-width: 600px) { .gb-materials { gap: 5px; } .gb-materials button small { line-height: 1.5; } .gb-wall-mark .gb-note-content p { font-size: 23px; } }
 
 /* Original sticker art and recessed, grain-broken engraving. */
-body:has([data-guestbook]) { background: #96968d; }
-.gb-wall-invitation { color: #e1edb6; text-shadow: 0 1px 2px #22282a; }
-.gb-wall-invitation:hover { color: #f2f6d9; }
 .gb-carved-art { overflow: visible; }
 .gb-carved-glyph { font-family: 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); font-weight: 600; letter-spacing: 1.1px; }
 #view .gb-wall-mark[data-medium='engraving'] .gb-note-content { text-shadow: none; color: #686c62; min-height: 0; }
@@ -498,3 +523,6 @@ body:has([data-guestbook]) { background: #96968d; }
 .gb-preview .gb-note { width: min(100%,var(--mark-size,280px)); margin-inline: auto; }
 [data-ink='#e9edcf'] { background: #e9edcf; } [data-ink='#d7f557'] { background: #d7f557; } [data-ink='#6286ee'] { background: #6286ee; } [data-ink='#f47760'] { background: #f47760; }
 @media (max-width:600px) { .gb-materials { grid-template-columns: repeat(2,minmax(0,1fr)); } .gb-mark-size { flex-wrap: wrap; } .gb-mark-size span { flex-basis:100%; margin: 0; } .gb-inks { gap: 7px; } .gb-sticker-picker { gap: 8px; } }
+
+/* Pale inks remain visible on mineral plaster without changing stored strokes. */
+#view .gb-wall-mark[data-medium='ink'] .gb-note-content svg { filter: drop-shadow(0 .45px .3px #5d66534d); mix-blend-mode: multiply; }
