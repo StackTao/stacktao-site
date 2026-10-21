@@ -802,20 +802,20 @@
       var season = seasonAt(time)
       var seconds = time / 1000
       var dark = document.documentElement.classList.contains('dark')
-      var entry = reduced ? 1 : Math.min(1, time / 4000)
+      var entry = reduced ? 1 : 0.55 + 0.45 * Math.min(1, time / 2400)
       var mobile = width <= 760
       var edge = width >= 1024 ? 164 : 0
-      var drift = Math.sin(seconds / 31) * 0.055
+      var drift = Math.sin(seconds / 12) * 0.14
       context.setTransform(ratio, 0, 0, ratio, 0, 0)
       context.clearRect(0, 0, width, height)
       context.globalAlpha = entry
-      // 光源放在画面外，只有宽而淡的光沿页边进入，不形成彩色光球。
-      wash(mobile ? width * 0.18 : edge - width * 0.07,
-        mobile ? -height * 0.05 : height * (0.32 + drift),
-        width * (mobile ? 0.85 : 0.38), height * 0.85, season.light, dark ? 0.055 : 0.13)
-      wash(mobile ? width * 0.8 : width * 1.06,
-        mobile ? height * 1.04 : height * (0.76 - drift),
-        width * (mobile ? 0.8 : 0.35), height * 0.76, season.air, dark ? 0.04 : 0.1)
+      // 光源靠近可见页边，保留宽幅柔边；中央仍由阅读遮罩完全隔开。
+      wash(mobile ? width * 0.18 : edge + (width - edge) * 0.035,
+        mobile ? height * 0.025 : height * (0.32 + drift),
+        width * (mobile ? 0.85 : 0.28), height * 0.64, season.light, dark ? 0.11 : 0.32)
+      wash(mobile ? width * 0.8 : width * 0.99,
+        mobile ? height * 0.98 : height * (0.76 - drift),
+        width * (mobile ? 0.8 : 0.24), height * 0.62, season.air, dark ? 0.085 : 0.24)
       // 整片纸纹缓慢呼吸，颗粒本身固定；不改变页面底色和文字颜色。
       context.globalAlpha = entry * season.paper * (0.82 + Math.sin(seconds / 23) * 0.08)
       context.fillStyle = paperPattern
