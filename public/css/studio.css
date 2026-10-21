@@ -220,10 +220,6 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
 .journal-inline-link { font-size: 12px; line-height: 1.8; }
 .journal-section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
 #view .journal-section-head h2, #view .journal-work h2 { margin: 0; font: 500 14px/1.6 var(--font-ui); letter-spacing: .02em; }
-.journal-shuffle { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 4px 0 4px 12px; color: var(--fg-light); font: 11px var(--font-ui); }
-.journal-shuffle:hover { color: var(--fg-deeper); }
-.journal-shuffle span { display: inline-block; font-size: 22px; transition: transform .3s var(--studio-ease); }
-.journal-shuffle:active span { transform: translateX(4px) rotate(-25deg); }
 .journal-entry { border-bottom: 1px solid var(--rule); }
 .journal-entry-row { display: grid; grid-template-columns: 22px minmax(0,1fr) auto 44px; align-items: center; gap: 14px; min-height: 74px; }
 .journal-number { font: 9px var(--font-mono); color: var(--fg-light); opacity: .65; }

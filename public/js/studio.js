@@ -26,6 +26,113 @@
     el.setAttribute('href', href)
     return el
   }
+  // The three objects share pointer cancellation, but keep their own mechanics.
+  function grab(handle, start, move, end) {
+    var controller = new AbortController(), signal = controller.signal
+    var pointer = null, moved = false, suppressClick = false
+    function finish(cancelled) {
+      if (!pointer) return
+      var id = pointer.id
+      pointer = null
+      suppressClick = moved || cancelled
+      handle.classList.remove('is-grabbed')
+      if (handle.hasPointerCapture(id)) handle.releasePointerCapture(id)
+      end(cancelled, moved)
+    }
+    handle.addEventListener('pointerdown', function (event) {
+      if (pointer || event.button !== 0 || event.isPrimary === false) return
+      pointer = { id: event.pointerId, x: event.clientX, y: event.clientY }
+      moved = false; suppressClick = false
+      start(event)
+      handle.setPointerCapture(event.pointerId)
+      handle.classList.add('is-grabbed')
+    }, { signal: signal })
+    handle.addEventListener('pointermove', function (event) {
+      if (!pointer || event.pointerId !== pointer.id) return
+      if (Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 4) moved = true
+      if (moved) { event.preventDefault(); move(event, pointer) }
+    }, { signal: signal })
+    handle.addEventListener('pointerup', function (event) { if (pointer && event.pointerId === pointer.id) finish(false) }, { signal: signal })
+    ;['pointercancel', 'lostpointercapture'].forEach(function (name) {
+      handle.addEventListener(name, function (event) { if (pointer && event.pointerId === pointer.id) finish(true) }, { signal: signal })
+    })
+    handle.addEventListener('click', function (event) {
+      if (suppressClick && event.detail !== 0) { event.preventDefault(); event.stopImmediatePropagation() }
+      suppressClick = false
+    }, { capture: true, signal: signal })
+    handle.addEventListener('keydown', function (event) { if (event.key === 'Escape') finish(true) }, { signal: signal })
+    window.addEventListener('blur', function () { finish(true) }, { signal: signal })
+    document.addEventListener('visibilitychange', function () { if (document.hidden) finish(true) }, { signal: signal })
+    disposers.push(function () { finish(true); controller.abort() })
+  }
+
+  function readingDial(posts) {
+    var device = node('aside', 'reading-radio')
+    device.setAttribute('aria-label', '文字调频，转动旋钮选一篇文章')
+    var control = node('div', 'radio-control')
+    var dial = node('button', 'radio-dial')
+    dial.type = 'button'; dial.setAttribute('role', 'slider'); dial.setAttribute('aria-label', '选文旋钮')
+    dial.setAttribute('aria-valuemin', '1'); dial.setAttribute('aria-valuemax', String(posts.length))
+    var wheel = node('span', 'radio-wheel'); wheel.setAttribute('aria-hidden', 'true')
+    wheel.append(node('i', 'radio-needle'), node('span', 'radio-hub', 'ST'))
+    dial.appendChild(wheel)
+    control.append(node('span', 'radio-station', '文字调频'), dial, node('small', '', '转一转，遇见一篇'))
+    var screen = node('div', 'radio-screen')
+    var scale = node('div', 'radio-scale'); scale.setAttribute('aria-hidden', 'true')
+    for (var n = 0; n < posts.length; n++) scale.appendChild(node('i', '', String(n + 1).padStart(2, '0')))
+    var heading = node('h3'), excerpt = node('p', 'radio-excerpt')
+    var actions = node('div', 'radio-actions'), destination = link('', '读这一篇 ↗')
+    var random = node('button', 'radio-random', '随缘调频 ↻'); random.type = 'button'
+    actions.append(destination, random); screen.append(scale, heading, excerpt, actions)
+    device.append(control, screen)
+    var angle = 0, chosen = -1, step = 360 / posts.length, last = 0, initial = 0, velocity = 0, time = 0
+    function tune(value, settle) {
+      angle = value
+      var index = ((Math.round(angle / step) % posts.length) + posts.length) % posts.length
+      if (settle) angle = Math.round(angle / step) * step
+      wheel.style.transform = 'rotate(' + angle + 'deg)'
+      if (chosen === index) return
+      chosen = index
+      var post = posts[index], title = post.querySelector('span').textContent.trim()
+      var paragraph = source(post.getAttribute('href').replace(/^#/, '')).querySelector('article > p:not(.post-meta):not(.share-line)')
+      heading.textContent = title
+      excerpt.textContent = paragraph ? paragraph.textContent.trim().slice(0, 100) : '留一点时间，读一篇文字。'
+      destination.href = post.getAttribute('href')
+      dial.setAttribute('aria-valuenow', String(index + 1)); dial.setAttribute('aria-valuetext', '第 ' + (index + 1) + ' 篇：' + title)
+      Array.from(scale.children).forEach(function (tick, i) { tick.classList.toggle('is-tuned', i === index) })
+    }
+    function bearing(event) {
+      var box = dial.getBoundingClientRect()
+      return Math.atan2(event.clientY - box.top - box.height / 2, event.clientX - box.left - box.width / 2) * 180 / Math.PI
+    }
+    grab(dial, function (event) {
+      initial = angle
+      var transform = getComputedStyle(wheel).transform
+      if (transform !== 'none') {
+        var matrix = new DOMMatrixReadOnly(transform), visible = Math.atan2(matrix.b, matrix.a) * 180 / Math.PI
+        tune(angle + ((visible - angle + 540) % 360 + 360) % 360 - 180, false)
+      }
+      last = bearing(event); velocity = 0; time = event.timeStamp
+    }, function (event) {
+      var next = bearing(event), delta = ((next - last + 540) % 360) - 180
+      velocity = delta / Math.max(16, event.timeStamp - time)
+      last = next; time = event.timeStamp
+      tune(angle + delta, false)
+    }, function (cancelled, moved) {
+      if (cancelled) tune(initial, true)
+      else if (moved) tune(angle + (performance.now() - time < 100 ? Math.max(-step, Math.min(step, velocity * 95)) : 0), true)
+    })
+    dial.addEventListener('click', function () { tune(angle + step, true) })
+    dial.addEventListener('keydown', function (event) {
+      var delta = ['ArrowRight', 'ArrowUp'].includes(event.key) ? step : ['ArrowLeft', 'ArrowDown'].includes(event.key) ? -step : null
+      if (delta !== null) { event.preventDefault(); tune(angle + delta, true) }
+      if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); tune(event.key === 'Home' ? 0 : (posts.length - 1) * step, true) }
+    })
+    random.addEventListener('click', function () { tune(angle + step * (1 + Math.floor(Math.random() * Math.max(1, posts.length - 1))), true) })
+    tune(0, true)
+    return device
+  }
+
   function home(main) {
     var original = node('div', 'journal-original')
     while (main.firstChild) original.appendChild(main.firstChild)
@@ -86,12 +193,8 @@
     var head = node('div', 'journal-section-head')
     var heading = node('h2', '', '最近写下的')
     heading.id = 'journal-writing-title'
-    var shuffle = node('button', 'journal-shuffle', '随手翻翻 ')
-    shuffle.type = 'button'
-    var shuffleMark = node('span', '', '⚄')
-    shuffleMark.setAttribute('aria-hidden', 'true')
-    shuffle.appendChild(shuffleMark)
-    head.append(heading, shuffle)
+    head.appendChild(heading)
+    if (posts.length) writing.appendChild(readingDial(posts))
     writing.appendChild(head)
     var entries = []
     var selected = -1
@@ -148,20 +251,7 @@
       button.addEventListener('click', function () { unfold(selected === index ? -1 : index) })
       writing.appendChild(entry)
     })
-    var status = node('span', 'journal-sr-only')
-    status.setAttribute('role', 'status')
-    shuffle.disabled = !entries.length
-    shuffle.addEventListener('click', function () {
-      var choices = entries.map(function (_, index) { return index }).filter(function (index) { return index !== selected })
-      if (!choices.length) return
-      var index = choices[Math.floor(Math.random() * choices.length)]
-      unfold(index)
-      motion(shuffleMark, [{ transform: 'rotate(-110deg) scale(.7)' }, { transform: 'rotate(0) scale(1)' }], 420)
-      entries[index].button.focus({ preventScroll: true })
-      entries[index].root.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-      status.textContent = '翻到了：' + posts[index].querySelector('span').textContent.trim()
-    })
-    writing.append(status, link('#/posts', '更早的文字 ↗', 'journal-archive'))
+    writing.appendChild(link('#/posts', '更早的文字 ↗', 'journal-archive'))
     main.appendChild(writing)
 
     if (projects.length) {
@@ -276,6 +366,55 @@
     select(0)
   }
 
+  function photoLoupe(stage, image, tools) {
+    var toggle = node('button', 'contact-loupe-toggle', '拿起放大镜')
+    toggle.type = 'button'; toggle.setAttribute('aria-pressed', 'false')
+    var lens = node('button', 'contact-loupe')
+    lens.type = 'button'; lens.hidden = true
+    lens.setAttribute('aria-label', '照片放大镜，拖动或用方向键移动，Escape 收起')
+    var glass = node('span', 'loupe-glass'); glass.setAttribute('aria-hidden', 'true')
+    lens.append(glass, node('span', 'loupe-mark', '2×'))
+    stage.appendChild(lens); tools.appendChild(toggle)
+    var x = .55, y = .5, initialX, initialY, width = 1, height = 1
+    function paint() {
+      if (lens.hidden) return
+      width = stage.clientWidth; height = stage.clientHeight
+      var radius = lens.offsetWidth / 2, px = Math.max(radius, Math.min(width - radius, x * width)), py = Math.max(radius, Math.min(height - radius, y * height))
+      x = px / width; y = py / height
+      lens.style.left = px + 'px'; lens.style.top = py + 'px'
+      var iw = image.naturalWidth || width, ih = image.naturalHeight || height
+      var fit = image.style.objectFit === 'contain' ? Math.min(width / iw, height / ih) : Math.max(width / iw, height / ih)
+      var dw = iw * fit, dh = ih * fit
+      glass.style.backgroundImage = image.complete && image.naturalWidth ? 'url(' + JSON.stringify(image.src) + ')' : 'none'
+      glass.style.backgroundSize = (dw * 2) + 'px ' + (dh * 2) + 'px'
+      glass.style.backgroundPosition = (glass.clientWidth / 2 - (px - (width - dw) / 2) * 2) + 'px ' + (glass.clientHeight / 2 - (py - (height - dh) / 2) * 2) + 'px'
+    }
+    function show(open) {
+      lens.hidden = !open; toggle.setAttribute('aria-pressed', String(open))
+      toggle.textContent = open ? '收起放大镜' : '拿起放大镜'
+      stage.classList.toggle('has-loupe', open)
+      if (open) { paint(); lens.focus({ preventScroll: true }) }
+    }
+    toggle.addEventListener('click', function () { show(lens.hidden) })
+    grab(lens, function () { initialX = x; initialY = y }, function (event, origin) {
+      x = initialX + (event.clientX - origin.x) / width; y = initialY + (event.clientY - origin.y) / height; paint()
+    }, function (cancelled) { if (cancelled) { x = initialX; y = initialY; paint() } })
+    lens.addEventListener('keydown', function (event) {
+      var distance = event.shiftKey ? 30 : 10
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault(); event.stopPropagation()
+        x += event.key === 'ArrowLeft' ? -distance / width : event.key === 'ArrowRight' ? distance / width : 0
+        y += event.key === 'ArrowUp' ? -distance / height : event.key === 'ArrowDown' ? distance / height : 0
+        paint()
+      }
+      if (event.key === 'Escape') { show(false); toggle.focus({ preventScroll: true }) }
+    })
+    image.addEventListener('load', paint)
+    var observer = new ResizeObserver(paint); observer.observe(stage)
+    disposers.push(function () { observer.disconnect() })
+    return paint
+  }
+
   function contactSheet(main) {
     var grid = main.querySelector('.photo-grid')
     if (!grid) return
@@ -309,6 +448,7 @@
     zoom.type = 'button'
     zoom.setAttribute('aria-label', '放大当前照片')
     stage.append(image, loading, zoom)
+    var paintLoupe = photoLoupe(stage, image, roomTools)
     var caption = node('div', 'contact-caption')
     var info = node('div')
     var description = node('p')
@@ -348,6 +488,7 @@
       loading.hidden = false
       loading.textContent = '正在取出照片…'
       image.src = photo.src
+      paintLoupe()
       image.alt = photo.alt
       description.textContent = photo.alt || '未命名照片'
       place.textContent = photo.getAttribute('data-place') || ''
@@ -374,7 +515,7 @@
     if (toolbar) {
       toolbar.querySelectorAll('[data-gallery]').forEach(function (button) {
         button.textContent = button.dataset.gallery === 'cover' ? '铺满画框' : '完整照片'
-        button.addEventListener('click', function () { image.style.objectFit = button.dataset.gallery })
+        button.addEventListener('click', function () { image.style.objectFit = button.dataset.gallery; paintLoupe() })
       })
       room.appendChild(toolbar)
     }
@@ -538,6 +679,49 @@
     list.setAttribute('role', 'group')
     list.setAttribute('aria-label', '选择一个项目')
     var page = node('div', 'project-notebook'), selectedProject = -1
+    var cabinet = node('div', 'project-cabinet')
+    var cover = node('div', 'drawer-cover')
+    var face = node('div', 'drawer-face')
+    var faceName = node('span', 'drawer-name')
+    face.append(node('span', 'drawer-stamp', 'IN THE MAKING'), faceName, node('span', 'drawer-invitation', '每一个工具，都有自己的来处。'))
+    var handle = node('button', 'drawer-handle')
+    handle.type = 'button'; handle.setAttribute('aria-expanded', 'false'); handle.setAttribute('aria-controls', 'project-file')
+    handle.append(node('span', 'drawer-grip'), node('span', 'drawer-hint', '向下拉开 · 或点击'))
+    cover.append(handle, face); cabinet.append(page, cover)
+    page.id = 'project-file'
+    var progress = 0, startProgress = 0, restingProgress = 0, travel = 1
+    function pull(value, settled) {
+      progress = Math.max(0, Math.min(1, value))
+      cover.style.transform = 'translateY(' + (progress * travel) + 'px)'
+      if (settled) {
+        restingProgress = progress
+        var open = progress === 1
+        handle.setAttribute('aria-expanded', String(open)); page.inert = !open
+        handle.setAttribute('aria-label', open ? '收起项目档案' : '拉开项目档案')
+        handle.querySelector('.drawer-hint').textContent = open ? '推回去 · 或点击收起' : '向下拉开 · 或点击'
+        cabinet.classList.toggle('is-open', open)
+      }
+    }
+    function measure() { travel = Math.max(1, cabinet.clientHeight - handle.offsetHeight); pull(progress, true) }
+    grab(handle, function () {
+      var transform = getComputedStyle(cover).transform
+      startProgress = transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42 / travel
+      cover.classList.add('is-pulling'); pull(startProgress, false)
+    }, function (event, origin) {
+      pull(startProgress + (event.clientY - origin.y) / travel, false)
+    }, function (cancelled, moved) {
+      cover.classList.remove('is-pulling')
+      if (cancelled || moved) pull(cancelled ? restingProgress : (progress > .45 ? 1 : 0), true)
+      else pull(restingProgress, true)
+    })
+    handle.addEventListener('click', function () { pull(progress === 1 ? 0 : 1, true) })
+    handle.addEventListener('keydown', function (event) {
+      if (['ArrowDown', 'ArrowUp', 'Escape'].includes(event.key)) {
+        event.preventDefault(); pull(event.key === 'ArrowDown' ? 1 : 0, true)
+      }
+    })
+    var observer = new ResizeObserver(measure); observer.observe(cabinet)
+    disposers.push(function () { observer.disconnect() })
     var count = node('span', 'project-page-number')
     var monogram = node('span', 'project-monogram'); monogram.setAttribute('aria-hidden', 'true'); page.appendChild(monogram)
     var title = node('h2')
@@ -555,13 +739,13 @@
       return button
     })
     function select(index) {
-      if (index === selectedProject) return
-      var direction = index > selectedProject ? 1 : -1
-      if (selectedProject >= 0) motion(page, [{ opacity: .35, transform: 'perspective(900px) rotateY(' + (direction * 9) + 'deg) translateX(' + (direction * 10) + 'px)' }, { opacity: 1, transform: 'perspective(900px) rotateY(0deg) translateX(0)' }], 460)
+      if (index === selectedProject) { pull(1, true); return }
+      if (selectedProject >= 0) { pull(1, true); motion(page, [{ opacity: .4 }, { opacity: 1 }], 220) }
       selectedProject = index
       var project = projects[index]
       var name = project.querySelector('.project-name').textContent
       title.textContent = name
+      faceName.textContent = name
       monogram.textContent = String(index + 1).padStart(2, '0')
       count.textContent = 'PROJECT NOTES / ' + String(index + 1).padStart(2, '0')
       var desc = project.querySelector('.project-desc')
@@ -578,7 +762,7 @@
       }
       buttons.forEach(function (button, i) { button.setAttribute('aria-pressed', String(i === index)) })
     }
-    desk.append(list, page)
+    desk.append(list, cabinet)
     grid.replaceWith(desk)
     var categories = main.querySelector('.toc-nav')
     if (categories) {
@@ -587,6 +771,7 @@
       categories.before(drawer); drawer.appendChild(categories)
     }
     select(0)
+    measure()
   }
 
   function articleTrail(article, route) {
