@@ -379,6 +379,7 @@
     function paint() {
       if (lens.hidden) return
       width = stage.clientWidth; height = stage.clientHeight
+      if (!width || !height) return
       var radius = lens.offsetWidth / 2, px = Math.max(radius, Math.min(width - radius, x * width)), py = Math.max(radius, Math.min(height - radius, y * height))
       x = px / width; y = py / height
       lens.style.left = px + 'px'; lens.style.top = py + 'px'
@@ -416,14 +417,45 @@
   }
 
   function contactSheet(main) {
-    var grid = main.querySelector('.photo-grid')
-    if (!grid) return
+    var grids = Array.from(main.querySelectorAll('.photo-grid'))
+    if (!grids.length) return
+    var layouts = [['reader', '阅片'], ['grid', '网格'], ['masonry', '瀑布流']]
+    var current = 'reader'
+    try { current = localStorage.getItem('stacktao-photo-layout') || current } catch (_) {}
+    if (!layouts.some(function (item) { return item[0] === current })) current = 'reader'
+    var toolbar = main.querySelector('.photo-toolbar')
+    var controls = node('div', 'photo-layout-controls')
+    var group = node('div', 'photo-layout-switch')
+    group.setAttribute('role', 'group'); group.setAttribute('aria-label', '相册排版')
+    group.appendChild(node('span', '', '排版'))
+    var buttons = layouts.map(function (item) {
+      var button = node('button', '', item[1]); button.type = 'button'; button.dataset.photoLayout = item[0]
+      button.addEventListener('click', function () {
+        apply(item[0])
+        try { localStorage.setItem('stacktao-photo-layout', item[0]) } catch (_) {}
+      })
+      group.appendChild(button); return button
+    })
+    controls.appendChild(group)
+    var first = main.querySelector('.photo-album') || grids[0]
+    first.before(controls)
+    if (toolbar) controls.appendChild(toolbar)
+    var albums = grids.map(function (grid) { return contactAlbum(grid, toolbar) }).filter(Boolean)
+    function apply(layout) {
+      current = layout
+      buttons.forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.photoLayout === layout)) })
+      albums.forEach(function (album) { album(layout) })
+      if (toolbar) toolbar.hidden = layout === 'masonry'
+    }
+    apply(current)
+  }
+
+  function contactAlbum(grid, toolbar) {
     var active = true
     disposers.push(function () { active = false })
     var photos = Array.from(grid.querySelectorAll('img'))
     if (!photos.length) return
     grid.classList.add('contact-source')
-    var toolbar = main.querySelector('.photo-toolbar')
     var room = node('section', 'contact-room')
     var roomTools = node('div', 'contact-room-tools')
     var lightSwitch = node('button', 'contact-light-switch', '熄灯看图')
@@ -433,7 +465,8 @@
       lightSwitch.setAttribute('aria-pressed', String(dark))
       lightSwitch.textContent = dark ? '开灯，回到纸面' : '熄灯看图'
     })
-    roomTools.append(node('span', '', 'LIGHT TABLE / 手动翻片'), lightSwitch)
+    var roomLabel = node('span', '', 'LIGHT TABLE / 手动翻片')
+    roomTools.append(roomLabel, lightSwitch)
     room.appendChild(roomTools)
     room.setAttribute('aria-label', '照片阅览台')
     var stage = node('div', 'contact-stage')
@@ -511,17 +544,45 @@
       if (index !== null) { event.preventDefault(); select(index, true); buttons[current].focus({ preventScroll: true }) }
     })
     zoom.addEventListener('click', function () { photos[current].click() })
-    room.append(stage, caption, strip)
+    var collection = node('div', 'contact-collection')
+    var tiles = photos.map(function (photo, index) {
+      var tile = node('button', 'contact-tile'); tile.type = 'button'
+      tile.setAttribute('aria-label', '放大第' + (index + 1) + '张：' + (photo.alt || '未命名照片'))
+      var thumb = photo.cloneNode(false)
+      thumb.alt = ''; thumb.loading = 'lazy'; thumb.removeAttribute('data-photo-index')
+      thumb.style.objectFit = image.style.objectFit
+      var title = node('span', 'contact-tile-caption')
+      title.append(node('span', 'contact-tile-number', String(index + 1).padStart(2, '0')), node('span', '', photo.alt || '未命名照片'))
+      tile.append(thumb, title)
+      tile.addEventListener('click', function () { select(index, false); photo.click() })
+      collection.appendChild(tile)
+      return thumb
+    })
+    room.append(stage, caption, strip, collection)
     if (toolbar) {
       toolbar.querySelectorAll('[data-gallery]').forEach(function (button) {
         button.textContent = button.dataset.gallery === 'cover' ? '铺满画框' : '完整照片'
-        button.addEventListener('click', function () { image.style.objectFit = button.dataset.gallery; paintLoupe() })
+        button.setAttribute('aria-pressed', String(button.dataset.gallery === image.style.objectFit))
+        button.addEventListener('click', function () {
+          image.style.objectFit = button.dataset.gallery
+          toolbar.querySelectorAll('[data-gallery]').forEach(function (item) { item.setAttribute('aria-pressed', String(item === button)) })
+          tiles.forEach(function (thumb) { thumb.style.objectFit = button.dataset.gallery })
+          paintLoupe()
+        })
       })
-      room.appendChild(toolbar)
     }
     if (photos.some(function (photo) { return photo.src.includes('images.unsplash.com') })) room.appendChild(node('p', 'contact-credit', '相册含 Unsplash 示例影像'))
     grid.before(room)
     select(0, false)
+    return function (layout) {
+      var reading = layout === 'reader', loupe = roomTools.querySelector('.contact-loupe-toggle')
+      if (!reading && loupe.getAttribute('aria-pressed') === 'true') loupe.click()
+      room.dataset.layout = layout
+      stage.hidden = caption.hidden = strip.hidden = !reading
+      collection.hidden = reading
+      loupe.hidden = !reading
+      roomLabel.textContent = reading ? 'LIGHT TABLE / 手动翻片' : layout === 'grid' ? 'CONTACT SHEET / 照片索引' : 'IN SEQUENCE / 沿途片段'
+    }
   }
 
   function pullBookmark(activate) {
@@ -753,6 +814,11 @@
   }
 
   function talkIndex(main) {
+    main.querySelectorAll('table').forEach(function (table) {
+      var scroller = node('div', 'talk-table-scroll')
+      scroller.tabIndex = 0; scroller.setAttribute('role', 'region'); scroller.setAttribute('aria-label', '完整演讲记录，可左右滚动')
+      table.before(scroller); scroller.appendChild(table)
+    })
     var controller = new AbortController()
     disposers.push(function () { controller.abort() })
     main.querySelectorAll('.talk-block').forEach(function (block, index) {

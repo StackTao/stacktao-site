@@ -269,6 +269,8 @@
   var light = document.querySelector('.lightbox')
   var lightImg = light && light.querySelector('img')
   var lightCap = light && light.querySelector('.lightbox-cap')
+  var lightClose = light && light.querySelector('.lightbox-close')
+  var lightReturnFocus = null
   var photoNodes = []
   var photoIndex = -1
 
@@ -278,12 +280,16 @@
 
   function showPhoto(i) {
     if (!light || !photoNodes[i]) return
+    if (photoIndex < 0) lightReturnFocus = document.activeElement
     photoIndex = i
     var img = photoNodes[i]
     lightImg.src = img.src
+    lightImg.alt = img.alt || ''
     lightCap.textContent = (img.alt || '') + (img.getAttribute('data-place') ? ' · ' + img.getAttribute('data-place') : '')
     light.classList.add('is-open')
     light.setAttribute('aria-hidden', 'false')
+    document.querySelector('.app-shell').inert = true
+    if (lightClose) lightClose.focus({ preventScroll: true })
     syncOverlayLock()
   }
 
@@ -292,6 +298,9 @@
       light.classList.remove('is-open')
       light.setAttribute('aria-hidden', 'true')
     }
+    document.querySelector('.app-shell').inert = false
+    if (photoIndex >= 0 && lightReturnFocus && lightReturnFocus.isConnected) lightReturnFocus.focus({ preventScroll: true })
+    lightReturnFocus = null
     photoIndex = -1
     syncOverlayLock()
   }
@@ -362,6 +371,7 @@
   var routeRenderToken = 0
 
   function commitRender(route) {
+    if (photoIndex >= 0) closeLightbox()
     var pages = window.PAGES || {}
     var titles = window.PAGE_TITLES || {}
     var html = pages[route] || pages['/404'] || '<main class="page prose"><h1>404</h1></main>'
@@ -484,6 +494,14 @@
     })
   }
   document.addEventListener('keydown', function (e) {
+    if (photoIndex >= 0) {
+      if (['Escape', 'Tab', 'ArrowRight', 'ArrowLeft'].includes(e.key)) e.preventDefault()
+      if (e.key === 'Escape') closeLightbox()
+      else if (e.key === 'ArrowRight') showPhoto(Math.min(photoNodes.length - 1, photoIndex + 1))
+      else if (e.key === 'ArrowLeft') showPhoto(Math.max(0, photoIndex - 1))
+      else if (e.key === 'Tab' && lightClose) lightClose.focus({ preventScroll: true })
+      return
+    }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault()
       openSearch()
@@ -492,8 +510,6 @@
       closeSearch()
       closeLightbox()
     }
-    if (photoIndex >= 0 && e.key === 'ArrowRight') showPhoto(Math.min(photoNodes.length - 1, photoIndex + 1))
-    if (photoIndex >= 0 && e.key === 'ArrowLeft') showPhoto(Math.max(0, photoIndex - 1))
   })
   if (searchInput) {
     searchInput.addEventListener('input', function () {

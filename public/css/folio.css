@@ -313,3 +313,50 @@ body:not(:has([data-guestbook])) .footer-links a { font-size: 12px; }
   .project-note-mobile > a { font: 11px var(--font-ui); color: var(--c-seal); }
 }
 @media (prefers-reduced-motion:reduce) { .project-story-destination > span,.project-note-link { transition: none; } }
+
+/* Reset the old sidebar offsets: links and both icons share one centre line. */
+.app-shell .nav-wrap .nav-right > a[data-nav] { display: flex; align-items: center; height: 40px; transform: none; }
+.app-shell .nav-wrap .nav-right > button.icon-btn { align-self: center; flex: 0 0 36px; width: 36px; height: 40px; margin: 0; padding: 10px 8px; }
+.app-shell .nav-wrap .nav-right > button.icon-btn svg { display: block; width: 20px; height: 20px; flex-shrink: 0; }
+.app-shell .nav-wrap .nav-right > button.icon-btn .icon-moon { display: none; }
+html.dark .app-shell .nav-wrap .nav-right > button.icon-btn .icon-sun { display: none; }
+html.dark .app-shell .nav-wrap .nav-right > button.icon-btn .icon-moon { display: block; }
+@media (max-width:380px) {
+  .app-shell .nav-wrap .nav-right { gap: 0; }
+  body .app-shell .nav-wrap .nav-right > a[data-nav] { padding-inline: 4px; }
+  .app-shell .nav-wrap .nav-right > button.icon-btn { flex-basis: 32px; width: 32px; padding-inline: 6px; }
+}
+
+.photo-layout-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; margin: 26px 0; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+.photo-layout-switch { display: flex; align-items: center; gap: 4px; font: 11px var(--font-ui); }
+.photo-layout-switch > span { margin-right: 12px; color: var(--fg-light); }
+.photo-layout-switch > button { min-height: 36px; padding: 8px 14px; border: 1px solid transparent; border-radius: 3px; color: var(--fg-light); }
+.photo-layout-switch > button[aria-pressed='true'] { color: var(--fg-deeper); border-color: var(--rule-strong); background: var(--surface); }
+.photo-layout-switch > button:focus-visible, .contact-tile:focus-visible { outline: 2px solid var(--c-seal); outline-offset: 4px; }
+.photo-layout-controls .photo-toolbar { margin: 0; gap: 14px; font: 11px var(--font-ui); }
+.photo-layout-controls [hidden], .contact-room [hidden] { display: none !important; }
+.contact-collection { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 26px 24px; }
+.contact-tile { display: block; width: 100%; min-width: 0; padding: 0; text-align: left; color: var(--fg); break-inside: avoid; cursor: zoom-in; }
+.contact-tile img { display: block; width: 100%; height: auto; aspect-ratio: 4/3; background: var(--surface-soft); border-radius: 1px; transition: filter .2s; }
+.contact-tile:hover img { filter: brightness(1.06); }
+.contact-tile-caption { display: flex; align-items: baseline; gap: 10px; padding-top: 10px; font: 11px/1.7 var(--font-ui); }
+.contact-tile-number { flex-shrink: 0; font: 9px var(--font-mono); color: var(--fg-light); }
+.contact-room[data-layout='masonry'] .contact-collection { display: block; columns: 3; column-gap: 24px; }
+.contact-room[data-layout='masonry'] .contact-tile { margin-bottom: 26px; }
+.contact-room[data-layout='masonry'] .contact-tile img { aspect-ratio: auto; height: auto; }
+@media (max-width:750px) {
+  .contact-collection { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 14px; }
+  .contact-room[data-layout='masonry'] .contact-collection { columns: 2; column-gap: 14px; }
+  .photo-layout-controls { gap: 8px; }
+  .photo-layout-controls .photo-toolbar { width: 100%; justify-content: flex-start; }
+}
+@media (prefers-reduced-motion:reduce) { .contact-tile img { transition: none; } }
+.photo-layout-controls .photo-toolbar button { opacity: 1 !important; padding: 6px 0; font: 11px var(--font-ui); color: var(--fg-light); }
+.photo-layout-controls .photo-toolbar button[aria-pressed='true'] { color: var(--fg-deeper); text-decoration: underline; text-underline-offset: 5px; }
+.lightbox-close { position: absolute; top: 20px; right: 24px; z-index: 1; padding: 10px 16px; border: 1px solid #ffffff70; border-radius: 3px; background: #171c17; color: white; font: 13px var(--font-ui); cursor: pointer; }
+.lightbox-close:focus-visible { outline: 2px solid white; outline-offset: 4px; }
+.lightbox img { max-height: calc(100dvh - 150px); }
+.lightbox-cap { padding-inline: 20px; max-height: 60px; overflow-y: auto; }
+.talk-table-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: thin; margin-block: 24px; }
+.talk-table-scroll:focus-visible { outline: 2px solid var(--c-seal); outline-offset: 4px; }
+#view .talk-table-scroll table { min-width: 560px; width: 100%; margin: 0; }
