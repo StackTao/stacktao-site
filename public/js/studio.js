@@ -177,20 +177,93 @@
   function photoWindow(main) {
     var photos = Array.from(source('/photos').querySelectorAll('.photo-grid img')).slice(0, 3)
     if (!photos.length) return
-    var section = node('section', 'journal-photo-window')
-    var destination = link('#/photos', '', 'journal-photo-link')
-    destination.setAttribute('aria-label', '翻看相册')
-    photos.forEach(function (photo) {
+    var controller = new AbortController(), signal = controller.signal
+    var section = node('section', 'journal-photo-window photo-desk')
+    section.setAttribute('aria-label', '桌上的相片，可左右拨动')
+    var stage = node('div', 'photo-desk-stage')
+    var current = 0, pointer = null, held = null, startX = 0, startY = 0, dx = 0, dy = 0, moved = false, suppressClick = false
+    var prints = photos.map(function (photo, index) {
+      var print = node('button', 'photo-print')
+      print.type = 'button'
+      print.dataset.photo = String(index)
+      print.setAttribute('aria-label', photo.alt + '；点击翻到下一张，也可左右拖动')
       var image = photo.cloneNode(false)
-      image.loading = 'lazy'
-      image.alt = ''
-      destination.appendChild(image)
+      image.loading = 'lazy'; image.draggable = false; image.alt = ''
+      print.append(image, node('span', '', photo.getAttribute('data-place') || photo.alt))
+      stage.appendChild(print)
+      return print
     })
-    var caption = node('span', 'journal-photo-caption')
-    caption.append(node('span', '', '文字之外，还有光。'), node('small', '', '翻看相册 ↗'))
-    destination.appendChild(caption)
-    section.appendChild(destination)
+    var caption = node('div', 'photo-desk-caption')
+    var controls = node('div', 'photo-desk-controls')
+    var previous = node('button', '', '←'), next = node('button', '', '→')
+    previous.type = next.type = 'button'
+    previous.setAttribute('aria-label', '翻到上一张相片'); next.setAttribute('aria-label', '翻到下一张相片')
+    var count = node('output')
+    count.setAttribute('aria-live', 'polite')
+    controls.append(previous, count, next)
+    caption.append(controls, link('#/photos', '去相册细看 ↗', 'journal-photo-link'))
+    var hint = node('p', 'photo-desk-hint', '左右拨一拨，看看下一张。')
+    function select(index) {
+      var focusPrint = prints.indexOf(document.activeElement) >= 0
+      current = (index + photos.length) % photos.length
+      prints.forEach(function (print, i) {
+        var order = (i - current + photos.length) % photos.length
+        print.style.zIndex = String(photos.length - order)
+        print.style.transform = order === 0 ? 'translate(0px, 0px) rotate(-3deg)' : order === 1 ? 'translate(15px, -10px) rotate(6deg)' : 'translate(-14px, -19px) rotate(-8deg)'
+        print.classList.toggle('is-front', order === 0)
+        print.inert = order !== 0; print.tabIndex = order === 0 ? 0 : -1
+        print.setAttribute('aria-hidden', String(order !== 0))
+      })
+      count.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(photos.length).padStart(2, '0')
+      if (focusPrint) prints[current].focus({ preventScroll: true })
+    }
+    function finish(cancelled) {
+      if (pointer === null) return
+      var id = pointer, print = held
+      pointer = null; held = null
+      stage.classList.remove('is-dragging')
+      if (print.hasPointerCapture && print.hasPointerCapture(id)) print.releasePointerCapture(id)
+      suppressClick = moved || cancelled
+      select(!cancelled && Math.abs(dx) >= 48 ? current + (dx < 0 ? 1 : -1) : current)
+    }
+    stage.addEventListener('pointerdown', function (event) {
+      var print = event.target.closest('.photo-print')
+      if (print !== prints[current] || pointer !== null || !event.isPrimary || event.button !== 0) return
+      pointer = event.pointerId; held = print; startX = event.clientX; startY = event.clientY; dx = dy = 0; moved = false; suppressClick = false
+      print.setPointerCapture(pointer)
+    }, { signal: signal })
+    stage.addEventListener('pointermove', function (event) {
+      if (event.pointerId !== pointer) return
+      dx = event.clientX - startX; dy = event.clientY - startY
+      if (!moved && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { finish(true); return }
+      if (Math.abs(dx) > 5) moved = true
+      if (!moved) return
+      stage.classList.add('is-dragging')
+      var travel = Math.max(-95, Math.min(95, dx * .75))
+      held.style.transform = 'translate(' + travel + 'px,' + Math.max(-12, Math.min(12, dy * .2)) + 'px) rotate(' + (-3 + travel * .09) + 'deg)'
+    }, { signal: signal })
+    ;['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
+      stage.addEventListener(type, function (event) { if (event.pointerId === pointer) finish(type !== 'pointerup') }, { signal: signal })
+    })
+    stage.addEventListener('click', function (event) {
+      if (!event.target.closest('.photo-print')) return
+      if (suppressClick && event.detail !== 0) { suppressClick = false; return }
+      select(current + 1)
+    }, { signal: signal })
+    stage.addEventListener('dragstart', function (event) { event.preventDefault() }, { signal: signal })
+    section.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') { finish(true); return }
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      event.preventDefault(); finish(true); select(current + (event.key === 'ArrowLeft' ? -1 : 1))
+    }, { signal: signal })
+    previous.addEventListener('click', function () { finish(true); select(current - 1) }, { signal: signal })
+    next.addEventListener('click', function () { finish(true); select(current + 1) }, { signal: signal })
+    window.addEventListener('blur', function () { finish(true) }, { signal: signal })
+    document.addEventListener('visibilitychange', function () { if (document.hidden) finish(true) }, { signal: signal })
+    disposers.push(function () { finish(true); controller.abort() })
+    section.append(stage, caption, hint)
     main.appendChild(section)
+    select(0)
   }
 
   function contactSheet(main) {

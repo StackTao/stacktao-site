@@ -16,7 +16,7 @@
       <div class="gb-heading-bottom"><button class="gb-button gb-primary" data-gb="write"><span aria-hidden="true">＋</span> 留一张纸笺</button><span class="gb-local">本机预览 · 留言仅保存在当前浏览器</span></div>
     </header>
     <section class="gb-wall-section" aria-label="留言墙">
-      <div class="gb-wall-label"><span>纸笺墙 <span data-count>00</span></span><span>每一张，都值得停留。</span></div>
+      <div class="gb-wall-label"><span>纸笺墙 <span data-count>00</span></span><span>捏住纸角，轻轻挪一挪。</span></div>
       <div class="gb-wall" data-wall></div>
       <p class="gb-status" role="status" aria-live="polite" data-status></p>
       <button class="gb-text-button" data-gb="undo-delete" hidden>恢复刚才的纸笺</button>
@@ -104,16 +104,75 @@
       try { localStorage.setItem(KEY, JSON.stringify(next)); notes = next; return true }
       catch (_) { error('浏览器未能保存，请保留这张纸后重试，或收回一些旧纸笺腾出空间。'); status('保存未完成，原有纸笺没有改变。'); return false }
     }
+    var liftedSlot = null, paperGrip = null, paperPointer = null, paperX = 0, paperY = 0, paperTurn = 0, paperClick = null
+    function putDown() {
+      if (!liftedSlot) return
+      var grip = paperGrip, id = paperPointer
+      paperPointer = null
+      liftedSlot.classList.remove('is-lifted', 'is-handling')
+      liftedSlot.style.removeProperty('--paper-x'); liftedSlot.style.removeProperty('--paper-y'); liftedSlot.style.removeProperty('--paper-turn')
+      grip.setAttribute('aria-pressed', 'false')
+      liftedSlot = paperGrip = null; paperTurn = 0
+      if (id !== null && grip.hasPointerCapture(id)) grip.releasePointerCapture(id)
+    }
+    function pickUp(grip) {
+      putDown()
+      paperGrip = grip; liftedSlot = grip.parentElement
+      liftedSlot.classList.add('is-lifted')
+      liftedSlot.style.setProperty('--paper-y', '-6px')
+      grip.setAttribute('aria-pressed', 'true')
+    }
+    function hangPaper(note) {
+      var slot = document.createElement('div'); slot.className = 'gb-paper-slot'
+      var grip = document.createElement('button'); grip.type = 'button'; grip.className = 'gb-paper-grip'
+      grip.textContent = '捏住'; grip.setAttribute('aria-label', note.getAttribute('aria-label').replace('查看', '拿起') + '，左右方向键转动，Escape 放下')
+      grip.setAttribute('aria-pressed', 'false')
+      slot.append(note, grip); wall.appendChild(slot)
+    }
+    wall.addEventListener('pointerdown', function (e) {
+      var grip = e.target.closest('.gb-paper-grip')
+      if (!grip || !e.isPrimary || e.button !== 0 || paperPointer !== null) return
+      paperClick = grip; pickUp(grip); paperPointer = e.pointerId; paperX = e.clientX; paperY = e.clientY
+      liftedSlot.classList.add('is-handling'); grip.setPointerCapture(paperPointer)
+    }, {signal:signal})
+    wall.addEventListener('pointermove', function (e) {
+      if (e.pointerId !== paperPointer) return
+      var x = e.clientX - paperX, y = e.clientY - paperY
+      paperTurn = Math.max(-5, Math.min(5, x * .09))
+      liftedSlot.style.setProperty('--paper-x', Math.max(-12, Math.min(12, x * .15)) + 'px')
+      liftedSlot.style.setProperty('--paper-y', Math.max(-12, Math.min(4, -6 + y * .12)) + 'px')
+      liftedSlot.style.setProperty('--paper-turn', paperTurn + 'deg')
+    }, {signal:signal})
+    ;['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
+      wall.addEventListener(type, function (e) { if (e.pointerId === paperPointer) putDown() }, {signal:signal})
+    })
+    wall.addEventListener('click', function (e) {
+      var grip = e.target.closest('.gb-paper-grip'); if (!grip) return
+      if (paperClick === grip && e.detail !== 0) { paperClick = null; return }
+      paperClick = null
+      if (paperGrip === grip) putDown(); else pickUp(grip)
+    }, {signal:signal})
+    wall.addEventListener('keydown', function (e) {
+      if (!e.target.closest('.gb-paper-grip')) return
+      if (e.key === 'Escape') { putDown(); return }
+      if (paperGrip !== e.target || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
+      e.preventDefault(); paperTurn = Math.max(-5, Math.min(5, paperTurn + (e.key === 'ArrowLeft' ? -1.5 : 1.5)))
+      liftedSlot.style.setProperty('--paper-turn', paperTurn + 'deg')
+    }, {signal:signal})
+    wall.addEventListener('focusout', function (e) { if (e.target === paperGrip) putDown() }, {signal:signal})
+    window.addEventListener('blur', putDown, {signal:signal})
+    document.addEventListener('visibilitychange', function () { if (document.hidden) putDown() }, {signal:signal})
     function renderWall(newId) {
+      putDown(); paperClick = null
       wall.replaceChildren()
       $('[data-count]').textContent = String(notes.length).padStart(2, '0')
       notes.forEach(function (note, index) {
         var el = card(note, true)
         el.style.setProperty('--note-angle', [-1.6, 1.1, -0.6, 1.8][index % 4] + 'deg')
         if (note.id === newId) el.classList.add('gb-just-pinned')
-        wall.appendChild(el)
+        hangPaper(el)
       })
-      if (!notes.length) { var example = card(sample, true); example.classList.add('gb-example'); wall.appendChild(example) }
+      if (!notes.length) { var example = card(sample, true); example.classList.add('gb-example'); hangPaper(example) }
       var add = document.createElement('button'); add.className = 'gb-add-paper'; add.dataset.gb = 'write'
       add.innerHTML = '<span class="gb-add-mark" aria-hidden="true">＋</span><span>这里，留给你。</span><small>拿一张纸，写点什么</small>'
       wall.appendChild(add)
@@ -210,7 +269,7 @@
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     renderWall()
-    cleanup=function(){controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){putDown();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,destroy:function(){cleanup();cleanup=function(){}}}
 })()

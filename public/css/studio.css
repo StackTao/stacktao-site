@@ -274,15 +274,23 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
 
 /* Different kinds of content deserve different ways of lingering. */
 .journal-photo-window { margin: -24px 0 64px; }
-.journal-photo-link { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; height: 230px; padding: 14px 35px 40px; text-decoration: none; }
-.journal-photo-link img { width: 31%; height: 155px; object-fit: cover; border: 5px solid var(--surface); box-shadow: 0 2px 4px #0000000c, 0 10px 22px -14px #00000040; transform: rotate(-7deg) translateY(3px); transition: transform .5s var(--studio-ease); }
-.journal-photo-link img:nth-child(2) { transform: rotate(4deg) translateY(-9px); z-index: 1; }
-.journal-photo-link img:nth-child(3) { transform: rotate(-3deg) translateY(6px); }
-.journal-photo-link:hover img:first-child, .journal-photo-link:focus-visible img:first-child { transform: rotate(-10deg) translate(-9px,-5px); }
-.journal-photo-link:hover img:nth-child(2), .journal-photo-link:focus-visible img:nth-child(2) { transform: rotate(0) translateY(-15px); }
-.journal-photo-link:hover img:nth-child(3), .journal-photo-link:focus-visible img:nth-child(3) { transform: rotate(7deg) translate(9px,-3px); }
-.journal-photo-caption { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; color: var(--fg-light); font: 14px var(--font-kai); }
-.journal-photo-caption small { font: 10px var(--font-ui); }
+/* A small stack on the desk; only the photos move. */
+.photo-desk-stage { position: relative; height: 285px; overflow: hidden; isolation: isolate; }
+.photo-print { position: absolute; top: 44px; left: 50%; width: 260px; margin-left: -130px; padding: 8px 8px 0; border: 1px solid #a39c851c; border-radius: 2px; background: #faf8f1; color: #716d62; box-shadow: 0 2px 3px #30281e12, 0 10px 22px -12px #30281e55; transform-origin: 50% 75%; transition: transform .42s cubic-bezier(.2,.8,.25,1), box-shadow .25s; user-select: none; touch-action: pan-y; }
+.photo-print img { display: block; width: 100%; height: 155px; object-fit: cover; pointer-events: none; }
+.photo-print > span { display: block; padding: 10px 3px 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: left; font: 11px var(--font-serif); }
+.photo-print.is-front { cursor: grab; }
+.photo-print.is-front:hover, .photo-print.is-front:focus-visible { box-shadow: 0 2px 3px #30281e12, 0 16px 25px -12px #30281e66; }
+.photo-desk-stage.is-dragging .photo-print.is-front { transition: none; cursor: grabbing; box-shadow: 0 18px 28px -12px #30281e77; }
+.photo-desk-caption { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.photo-desk-controls { display: flex; align-items: center; gap: 9px; }
+.photo-desk-controls button { width: 36px; height: 36px; border: 0; background: transparent; color: var(--fg-light); cursor: pointer; transition: color .2s, transform .2s; }
+.photo-desk-controls button:hover { color: var(--fg-deeper); }
+.photo-desk-controls button:active { transform: scale(.88); }
+.photo-desk-controls output { font: 10px var(--font-mono); color: var(--fg-light); }
+.journal-photo-link { color: var(--fg-light); font: 11px var(--font-ui); text-decoration: none; }
+.journal-photo-link:hover { color: var(--fg-deeper); }
+.photo-desk-hint { margin: 2px 0 0 10px; font: 11px/1.8 var(--font-serif); color: var(--fg-light); }
 #view .contact-source { display: none !important; }
 #view .studio-photos { padding-top: 38px; }
 #view .studio-photos > h1 { margin-bottom: 18px; }
@@ -350,9 +358,9 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
 .gb-add-paper:hover { transform: rotate(-2deg) translateY(-4px); }
 @media (max-width: 760px) {
   .journal-photo-window { margin: -8px 0 42px; }
-  .journal-photo-link { height: 190px; padding: 10px 8px 36px; }
-  .journal-photo-link img { height: 125px; border-width: 4px; }
-  .journal-photo-caption { font-size: 12px; }
+  .photo-desk-stage { height: 260px; }
+  .photo-print { width: 230px; margin-left: -115px; }
+  .photo-print img { height: 137px; }
   #view .studio-photos { padding-top: 30px; }
   .contact-stage { aspect-ratio: 4 / 5; max-height: 65vh; border-width: 8px; }
   .contact-caption { align-items: start; gap: 14px; padding-block: 16px 22px; }
