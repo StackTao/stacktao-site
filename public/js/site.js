@@ -747,242 +747,82 @@
     var width = 1
     var height = 1
     var ratio = 1
-    var strokes = []
     var elapsed = 0
     var previousTime = 0
     var lastPaint = 0
     var frame = 0
     var resizeTimer = 0
-
-    function randomBetween(min, max) {
-      return min + Math.random() * (max - min)
+    var grain = document.createElement('canvas')
+    grain.width = grain.height = 160
+    var grainContext = grain.getContext('2d')
+    // 固定纸面颗粒，不逐帧随机，避免噪点闪动和漂浮粒子感。
+    for (var i = 0; i < 720; i++) {
+      grainContext.fillStyle = 'rgba(133,123,105,' + (0.025 + Math.random() * 0.045) + ')'
+      grainContext.fillRect(Math.random() * 160, Math.random() * 160, 0.5 + Math.random() * 0.6, 0.5 + Math.random() * 0.6)
     }
+    var paperPattern = context.createPattern(grain, 'repeat')
+    var seasons = [
+      { name: 'spring', light: [196, 177, 139], air: [166, 185, 166], paper: 0.25 },
+      { name: 'summer', light: [143, 181, 176], air: [167, 185, 194], paper: 0.16 },
+      { name: 'autumn', light: [196, 155, 105], air: [192, 172, 142], paper: 0.46 },
+      { name: 'winter', light: [166, 181, 199], air: [186, 191, 197], paper: 0.2 },
+    ]
 
-    function branchPath(from, to, bend, levels, tangent) {
-      var dx = to.x - from.x
-      var dy = to.y - from.y
-      var length = Math.hypot(dx, dy)
-      var angle = tangent === undefined ? Math.atan2(dy, dx) : tangent
-      var normalX = -dy / length
-      var normalY = dx / length
-      var first = {
-        x: from.x + Math.cos(angle) * length * 0.28 + dx * 0.08,
-        y: from.y + Math.sin(angle) * length * 0.28 + dy * 0.08,
-      }
-      var last = {
-        x: to.x - dx * 0.24 + normalX * bend,
-        y: to.y - dy * 0.24 + normalY * bend,
-      }
-      var points = []
-      var steps = Math.pow(2, levels)
-      // 连续曲率代替随机折线；子枝先顺着母枝，再逐渐向外舒展。
-      for (var i = 0; i <= steps; i++) {
-        var t = i / steps
-        var u = 1 - t
-        points.push({
-          x: u * u * u * from.x + 3 * u * u * t * first.x + 3 * u * t * t * last.x + t * t * t * to.x,
-          y: u * u * u * from.y + 3 * u * u * t * first.y + 3 * u * t * t * last.y + t * t * t * to.y,
+    function seasonAt(time) {
+      // 每季一分钟，最后二十秒交接；四分钟一轮，不突然换色。
+      var phase = (time / 60000) % 4
+      var index = Math.floor(phase)
+      var progress = Math.max(0, (phase - index - 2 / 3) * 3)
+      var blend = progress * progress * (3 - 2 * progress)
+      var current = seasons[index]
+      var next = seasons[(index + 1) % 4]
+      function mix(key) {
+        return current[key].map(function (value, channel) {
+          return Math.round(value + (next[key][channel] - value) * blend)
         })
       }
-      return points
+      return { name: current.name, light: mix('light'), air: mix('air'), paper: current.paper + (next.paper - current.paper) * blend }
     }
 
-    function makeStroke(side, start, depth) {
-      var mobile = width < 760
-      var left = width >= 1024 ? 164 : 0
-      var margin = mobile ? width * 0.42 : Math.max(72, (width - left) * (width >= 1024 ? 0.19 : 0.11))
-      var minX = side === 0 ? left + 14 : width - margin
-      var maxX = side === 0 ? left + margin : width - 14
-      var span = maxX - minX
-      var inward = side === 0 ? 1 : -1
-      function edgeX(x) { return Math.max(minX, Math.min(maxX, x)) }
-      var rootX = side === 0 ? minX + span * (0.12 + depth * 0.55) : maxX - span * (0.12 + depth * 0.55)
-      var treeHeight = height * (mobile ? randomBetween(0.14, 0.2) : randomBetween(0.52, 0.72) - depth * 0.14)
-      var from = { x: rootX, y: height + 12 }
-      var to = {
-        x: edgeX(rootX + inward * span * randomBetween(0.4, 0.7)),
-        y: height - treeHeight,
-      }
-      var points = branchPath(from, to, -inward * span * randomBetween(0.18, 0.32), 5,
-        -Math.PI / 2 + inward * randomBetween(0.08, 0.22))
-      var branches = []
-      for (var b = 0; b < 3; b++) {
-        var index = Math.floor((0.38 + b * 0.2 + randomBetween(-0.04, 0.04)) * (points.length - 1))
-        var anchor = points[index]
-        var tip = {
-          x: b % 2 ? randomBetween(minX + span * 0.55, maxX) : randomBetween(minX, minX + span * 0.35),
-          y: anchor.y - treeHeight * randomBetween(0.18, 0.3),
-        }
-        var limb = {
-          points: branchPath(anchor, tip, randomBetween(-span * 0.12, span * 0.12), 4,
-            Math.atan2(points[index + 1].y - anchor.y, points[index + 1].x - anchor.x)),
-          at: index / (points.length - 1),
-          delay: randomBetween(100, 300),
-          duration: randomBetween(1800, 2600),
-          opacity: 0.85,
-          weight: 0.48,
-          flowers: [],
-        }
-        branches.push(limb)
-        for (var t = 0; t < 2; t++) {
-          var forkIndex = Math.floor((0.4 + t * 0.35) * (limb.points.length - 1))
-          var fork = limb.points[forkIndex]
-          var twigTip = {
-            x: edgeX(fork.x + randomBetween(-span * 0.3, span * 0.3)),
-            y: fork.y - randomBetween(mobile ? 8 : 20, mobile ? 22 : 52),
-          }
-          var twig = {
-            points: branchPath(fork, twigTip, randomBetween(-4, 4), 3,
-              Math.atan2(limb.points[forkIndex + 1].y - fork.y, limb.points[forkIndex + 1].x - fork.x)),
-            at: limb.at,
-            delay: limb.delay + limb.duration * forkIndex / (limb.points.length - 1),
-            duration: randomBetween(1600, 2600),
-            opacity: 0.8,
-            weight: 0.15,
-            flowers: [],
-          }
-          // 花生在短枝的节点，疏密不齐，不排成一串。
-          var flowerIndex = Math.floor(randomBetween(3, 7))
-          twig.flowers.push({ index: flowerIndex, size: randomBetween(mobile ? 4 : 6, mobile ? 6 : 8) * (1 - depth * 0.2), delay: randomBetween(0, 1600), phase: randomBetween(0, Math.PI * 2) })
-          if (Math.random() < 0.35) twig.flowers.push({ index: Math.max(1, flowerIndex - 3), size: randomBetween(2, 3), delay: randomBetween(1000, 3000), phase: randomBetween(0, Math.PI * 2), bud: true })
-          branches.push(twig)
-        }
-      }
-      return {
-        side: side,
-        points: points,
-        branches: branches,
-        start: start,
-        grow: 2400,
-        weight: (mobile ? 3 : 5.5) * (1 - depth * 0.4),
-        opacity: 0.58 - depth * 0.38,
-      }
-    }
-
-    function tracePen(points, progress) {
-      var end = Math.max(0, Math.min(1, progress)) * (points.length - 1)
-      if (!end) return
-      var whole = Math.floor(end)
-      var visible = points.slice(0, whole + 1)
-      if (whole < points.length - 1) {
-        var from = points[whole]
-        var to = points[whole + 1]
-        visible.push({ x: from.x + (to.x - from.x) * (end - whole), y: from.y + (to.y - from.y) * (end - whole) })
-      }
-      // 一次填充连续收细的轮廓，消除分段线宽带来的接头和深色叠痕。
-      var edges = visible.map(function (point, index) {
-        var before = visible[Math.max(0, index - 1)]
-        var after = visible[Math.min(visible.length - 1, index + 1)]
-        var angle = Math.atan2(after.y - before.y, after.x - before.x) + Math.PI / 2
-        var radius = context.lineWidth * (1 - Math.min(index, end) / (points.length - 1) * 0.94) / 2
-        return { x: point.x, y: point.y, nx: Math.cos(angle) * radius, ny: Math.sin(angle) * radius }
-      })
+    function wash(x, y, radiusX, radiusY, color, opacity) {
       context.save()
-      context.fillStyle = context.strokeStyle
-      context.beginPath()
-      edges.forEach(function (point, index) {
-        if (!index) context.moveTo(point.x + point.nx, point.y + point.ny)
-        else context.lineTo(point.x + point.nx, point.y + point.ny)
-      })
-      for (var i = edges.length - 1; i >= 0; i--) {
-        context.lineTo(edges[i].x - edges[i].nx, edges[i].y - edges[i].ny)
-      }
-      context.closePath()
-      context.fill()
+      context.translate(x, y)
+      context.scale(radiusX, radiusY)
+      var gradient = context.createRadialGradient(0, 0, 0, 0, 0, 1)
+      gradient.addColorStop(0, 'rgba(' + color.join(',') + ',' + opacity + ')')
+      gradient.addColorStop(0.45, 'rgba(' + color.join(',') + ',' + opacity * 0.42 + ')')
+      gradient.addColorStop(1, 'rgba(' + color.join(',') + ',0)')
+      context.fillStyle = gradient
+      context.fillRect(-1, -1, 2, 2)
       context.restore()
     }
 
-    function drawBlossoms(branch, age, ink, reduced) {
-      var dark = document.documentElement.classList.contains('dark')
-      branch.flowers.forEach(function (flower) {
-        var flowerAge = age - flower.delay
-        var season = 42000 + flower.phase * 2000
-        var cycleAge = flowerAge < 0 ? flowerAge : flowerAge % season
-        var progress = reduced ? 1 : Math.max(0, Math.min(1, cycleAge / (7000 + flower.phase * 400)))
-        var fading = reduced ? 1 : Math.min(1, Math.max(0, (season - cycleAge) / 6000))
-        if (!progress) return
-        var opening = progress * progress * (3 - 2 * progress)
-        var tip = branch.points[flower.index]
-        var sway = reduced ? 0 : Math.sin(elapsed * 0.0006 + flower.phase) * 0.025
-        var size = flower.size
-        context.save()
-        context.translate(tip.x, tip.y)
-        context.rotate(flower.phase + sway)
-        context.globalAlpha = ink * Math.min(1, progress * 4) * fading
-        // 先有深色花苞，再缓缓展开五瓣；花心与细蕊保持可辨识。
-        context.fillStyle = dark ? '#b97885' : '#b36c78'
-        context.beginPath()
-        context.arc(0, 0, size * (0.27 - opening * 0.1), 0, Math.PI * 2)
-        context.fill()
-        if (flower.bud) { context.restore(); return }
-        context.fillStyle = dark ? 'rgba(219,161,171,0.88)' : 'rgba(197,127,141,0.8)'
-        context.strokeStyle = dark ? 'rgba(233,188,192,0.5)' : 'rgba(152,79,96,0.45)'
-        context.lineWidth = 0.55
-        for (var petal = 0; petal < 5; petal++) {
-          var angle = petal * Math.PI * 2 / 5
-          var petalProgress = reduced ? 1 : Math.max(0, Math.min(1, (progress - petal * 0.035) / (1 - petal * 0.035)))
-          var unfold = petalProgress * petalProgress * (3 - 2 * petalProgress)
-          var reach = size * 0.48 * unfold
-          context.beginPath()
-          context.ellipse(Math.cos(angle) * reach, Math.sin(angle) * reach,
-            size * 0.52 * unfold, size * (0.18 + 0.32 * unfold) * unfold, angle, 0, Math.PI * 2)
-          context.fill()
-          context.stroke()
-        }
-        if (opening > 0.5) {
-          context.globalAlpha *= Math.min(1, (opening - 0.5) / 0.3)
-          context.strokeStyle = dark ? '#ead2bb' : '#997849'
-          context.fillStyle = context.strokeStyle
-          context.lineWidth = 0.45
-          for (var stamen = 0; stamen < 7; stamen++) {
-            var a = stamen * Math.PI * 2 / 7 + 0.3
-            var x = Math.cos(a) * size * 0.46 * opening
-            var y = Math.sin(a) * size * 0.46 * opening
-            context.beginPath()
-            context.moveTo(0, 0)
-            context.lineTo(x, y)
-            context.stroke()
-            context.beginPath()
-            context.arc(x, y, 0.6, 0, Math.PI * 2)
-            context.fill()
-          }
-        }
-        context.restore()
-      })
-    }
-
     function drawArt(reduced) {
+      var time = reduced ? 0 : elapsed
+      var season = seasonAt(time)
+      var seconds = time / 1000
+      var dark = document.documentElement.classList.contains('dark')
+      var entry = reduced ? 1 : Math.min(1, time / 4000)
+      var mobile = width <= 760
+      var edge = width >= 1024 ? 164 : 0
+      var drift = Math.sin(seconds / 31) * 0.055
       context.setTransform(ratio, 0, 0, ratio, 0, 0)
       context.clearRect(0, 0, width, height)
-      context.lineCap = 'round'
-      context.lineJoin = 'round'
-      context.strokeStyle = document.documentElement.classList.contains('dark')
-        ? 'rgba(173,162,151,0.55)'
-        : 'rgba(106,89,78,0.5)'
-      var entry = reduced ? 1 : Math.min(1, elapsed / 1800)
-      for (var s = 0; s < strokes.length; s++) {
-        var stroke = strokes[s]
-        var age = elapsed - stroke.start
-        if (!reduced && age < 0) continue
-        // 树架只显现一次并保留；后续仅短枝展伸、花苞开放。
-        var ink = entry * stroke.opacity * (reduced ? 1 : Math.max(0, Math.min(1, age / 2400)))
-        context.globalAlpha = ink
-        context.lineWidth = stroke.weight
-        tracePen(stroke.points, 1)
-        stroke.branches.forEach(function (branch) {
-          var reveal = reduced ? 1 : Math.max(0, Math.min(1, (age - stroke.grow * branch.at - branch.delay) / branch.duration))
-          if (!reveal) return
-          context.globalAlpha = ink * branch.opacity * Math.min(1, reveal * 4)
-          context.lineWidth = stroke.weight * branch.weight
-          tracePen(branch.points, reveal)
-          var bloomAge = age - stroke.grow * branch.at - branch.delay - branch.duration
-          drawBlossoms(branch, bloomAge, ink, reduced)
-        })
-
-      }
+      context.globalAlpha = entry
+      // 光源放在画面外，只有宽而淡的光沿页边进入，不形成彩色光球。
+      wash(mobile ? width * 0.18 : edge - width * 0.07,
+        mobile ? -height * 0.05 : height * (0.32 + drift),
+        width * (mobile ? 0.85 : 0.38), height * 0.85, season.light, dark ? 0.055 : 0.13)
+      wash(mobile ? width * 0.8 : width * 1.06,
+        mobile ? height * 1.04 : height * (0.76 - drift),
+        width * (mobile ? 0.8 : 0.35), height * 0.76, season.air, dark ? 0.04 : 0.1)
+      // 整片纸纹缓慢呼吸，颗粒本身固定；不改变页面底色和文字颜色。
+      context.globalAlpha = entry * season.paper * (0.82 + Math.sin(seconds / 23) * 0.08)
+      context.fillStyle = paperPattern
+      context.fillRect(0, 0, width, height)
       context.globalAlpha = 1
       canvas.dataset.ambientState = reduced ? 'still' : 'flowing'
-      canvas.dataset.ambientGeneration = String(Math.floor(elapsed / 55000))
+      canvas.dataset.ambientSeason = season.name
     }
 
     function animateArt(now) {
@@ -990,7 +830,7 @@
       if (document.hidden || prefersReducedMotion()) return
       if (previousTime) elapsed += Math.min(80, now - previousTime)
       previousTime = now
-      if (now - lastPaint >= 1000 / 30) {
+      if (now - lastPaint >= 1000 / 24) {
         lastPaint = now
         drawArt(false)
       }
@@ -1016,14 +856,7 @@
       ratio = Math.min(devicePixelRatio || 1, 1.5)
       canvas.width = Math.round(width * ratio)
       canvas.height = Math.round(height * ratio)
-      strokes = []
-      elapsed = 0
       lastPaint = 0
-      var count = width < 760 ? 2 : 4
-      for (var i = 0; i < count; i++) {
-        // 远近树架错时显现；花枝持续开放，树干不反复消失。
-        strokes.push(makeStroke(i % 2, i * 2000, Math.floor(i / 2) * 0.8))
-      }
       syncArt()
     }
 
@@ -1032,7 +865,8 @@
       clearTimeout(resizeTimer)
       resizeTimer = setTimeout(resetArt, 180)
     }, { passive: true })
-    window.addEventListener('hashchange', resetArt)
+    // 阅读中切页沿用同一季节，不重播、不重新随机纸纹。
+    window.addEventListener('hashchange', syncArt)
     document.addEventListener('visibilitychange', syncArt)
     if (motionQuery) {
       if (motionQuery.addEventListener) motionQuery.addEventListener('change', syncArt)

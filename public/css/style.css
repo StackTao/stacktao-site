@@ -1358,7 +1358,7 @@ body.overlay-open {
 
 .share-line a { border: 0 !important; }
 
-/* 随机细线从边缘生长，阅读区域保持透明。 */
+/* 天光与纸纹只留在页边，阅读区域保持透明。 */
 .art-canvas {
   position: fixed;
   inset: 0;
@@ -1392,7 +1392,7 @@ body.overlay-open {
   }
 }
 
-/* 窄屏长文占满宽度，花枝只留在顶部和最下缘。 */
+/* 窄屏长文占满宽度，天光只留在顶部和最下缘。 */
 @media (max-width: 1023px) {
   body[data-route-kind='article'] .art-canvas {
     opacity: 0.65;
