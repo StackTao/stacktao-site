@@ -1,4 +1,6 @@
 (function () {
+  var disposers = []
+  function destroy() { disposers.forEach(function (dispose) { dispose() }); disposers = [] }
   function node(tag, className, text) {
     var el = document.createElement(tag)
     if (className) el.className = className
@@ -286,6 +288,106 @@
     select(0, false)
   }
 
+  function pullBookmark(activate) {
+    var controller = new AbortController()
+    var signal = controller.signal
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
+    var toy = node('div', 'pull-bookmark')
+    var ns = 'http://www.w3.org/2000/svg'
+    var cord = document.createElementNS(ns, 'svg')
+    cord.setAttribute('viewBox', '0 0 120 250')
+    cord.setAttribute('aria-hidden', 'true')
+    var path = document.createElementNS(ns, 'path')
+    cord.appendChild(path)
+    var anchor = node('span', 'pull-anchor')
+    anchor.setAttribute('aria-hidden', 'true')
+    var handle = node('button', 'pull-handle')
+    handle.type = 'button'
+    handle.setAttribute('aria-label', '抽一页：向下拖动书签后松手，也可点击或按回车')
+    handle.setAttribute('aria-describedby', 'pull-instruction')
+    var hole = node('span', 'pull-hole')
+    hole.setAttribute('aria-hidden', 'true')
+    handle.append(hole, node('span', 'pull-word', '抽一页'), node('span', 'pull-arrow', '↓'))
+    var hint = node('span', 'pull-hint', '往下拉，试试看')
+    hint.id = 'pull-instruction'
+    toy.append(cord, anchor, handle, hint)
+    var x = 0, y = 0, vx = 0, vy = 0, frame = 0, previousTime = 0
+    var pointer = null, startX = 0, startY = 0, originX = 0, originY = 0
+    var moved = false, suppressClick = false
+    function draw() {
+      handle.style.transform = 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px) rotate(' + (x * .22).toFixed(2) + 'deg)'
+      path.setAttribute('d', 'M60 8 C60 25 ' + (60 + x * .4).toFixed(2) + ' ' + (25 + y * .5).toFixed(2) + ' ' + (60 + x).toFixed(2) + ' ' + (44 + y).toFixed(2))
+      toy.classList.toggle('is-ready', pointer !== null && y >= 54)
+      hint.textContent = pointer !== null && y >= 54 ? '松手，翻一页' : '往下拉，试试看'
+    }
+    function stop() { cancelAnimationFrame(frame); frame = 0 }
+    function reset() { stop(); x = y = vx = vy = 0; draw() }
+    function spring(time) {
+      var dt = Math.min((time - previousTime) / 1000 || 1 / 60, .032)
+      previousTime = time
+      vx += (-220 * x - 18 * vx) * dt
+      vy += (-220 * y - 18 * vy) * dt
+      x += vx * dt
+      y += vy * dt
+      draw()
+      if (Math.abs(x) + Math.abs(y) + Math.abs(vx) + Math.abs(vy) < .12) reset()
+      else frame = requestAnimationFrame(spring)
+    }
+    function release(cancelled) {
+      if (pointer === null) return
+      var id = pointer
+      var shouldTurn = !cancelled && moved && y >= 54
+      pointer = null
+      toy.classList.remove('is-held')
+      suppressClick = moved
+      if (handle.hasPointerCapture && handle.hasPointerCapture(id)) handle.releasePointerCapture(id)
+      if (shouldTurn) activate()
+      if (reduced.matches) reset()
+      else { previousTime = performance.now(); frame = requestAnimationFrame(spring) }
+      draw()
+    }
+    handle.addEventListener('pointerdown', function (event) {
+      if (pointer !== null || !event.isPrimary || event.button !== 0) return
+      stop()
+      pointer = event.pointerId
+      startX = event.clientX; startY = event.clientY
+      originX = x; originY = y
+      vx = vy = 0; moved = false; suppressClick = false
+      toy.classList.add('is-held')
+      handle.focus({ preventScroll: true })
+      handle.setPointerCapture(pointer)
+    }, { signal: signal })
+    handle.addEventListener('pointermove', function (event) {
+      if (event.pointerId !== pointer) return
+      var dx = event.clientX - startX, dy = event.clientY - startY
+      moved = moved || Math.hypot(dx, dy) > 5
+      x = Math.max(-30, Math.min(30, originX + dx * .35))
+      var originDistance = -112 * Math.log(1 - originY / 112)
+      var distance = Math.max(-18, originDistance + dy)
+      y = 112 * (1 - Math.exp(-distance / 112))
+      draw()
+    }, { signal: signal })
+    handle.addEventListener('pointerup', function (event) { if (event.pointerId === pointer) release(false) }, { signal: signal })
+    handle.addEventListener('pointercancel', function (event) { if (event.pointerId === pointer) release(true) }, { signal: signal })
+    handle.addEventListener('lostpointercapture', function (event) { if (event.pointerId === pointer) release(true) }, { signal: signal })
+    handle.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && pointer !== null) { event.preventDefault(); release(true) }
+    }, { signal: signal })
+    handle.addEventListener('click', function (event) {
+      if (suppressClick && event.detail !== 0) { suppressClick = false; return }
+      activate()
+      stop()
+      if (!reduced.matches) { y = 28; vx = vy = 0; draw(); previousTime = performance.now(); frame = requestAnimationFrame(spring) }
+    }, { signal: signal })
+    function suspend() { release(true); reset() }
+    window.addEventListener('blur', suspend, { signal: signal })
+    document.addEventListener('visibilitychange', function () { if (document.hidden) suspend() }, { signal: signal })
+    reduced.addEventListener('change', suspend, { signal: signal })
+    disposers.push(function () { suspend(); controller.abort() })
+    draw()
+    return toy
+  }
+
   function readingOpening(main) {
     var rows = Array.from(main.querySelectorAll('.post-row'))
     var readings = rows.map(function (row) {
@@ -299,9 +401,7 @@
     opening.setAttribute('aria-label', '从一句话开始阅读')
     var label = node('div', 'reading-opening-label')
     label.appendChild(node('span', '', '不妨，从这一句开始。'))
-    var change = node('button', '', '换一段 ↝')
-    change.type = 'button'
-    label.appendChild(change)
+    label.appendChild(node('em', '', 'A page, by chance.'))
     var quote = node('blockquote')
     var destination = link('', '', 'reading-source')
     var page = node('span', 'reading-page')
@@ -314,10 +414,19 @@
       destination.textContent = item.title + ' ↗'
       page.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(readings.length).padStart(2, '0')
     }
-    change.disabled = readings.length < 2
-    change.addEventListener('click', function () { select(current + 1) })
+    var reveal = null
+    var bookmark = pullBookmark(function () {
+      if (readings.length < 2) return
+      select((current + 1 + Math.floor(Math.random() * (readings.length - 1))) % readings.length)
+      if (reveal) reveal.cancel()
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && quote.animate) {
+        reveal = quote.animate([{ opacity: .25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' })
+      }
+    })
+    bookmark.querySelector('button').disabled = readings.length < 2
+    disposers.push(function () { if (reveal) reveal.cancel() })
     quote.setAttribute('aria-live', 'polite')
-    opening.append(label, quote, destination, page)
+    opening.append(label, quote, destination, page, bookmark)
     var first = main.querySelector('[data-year-group]')
     first.before(opening)
     select(0)
@@ -417,5 +526,5 @@
       main.prepend(node('p', 'studio-eyebrow', labels[route][1]), title)
     }
   }
-  window.Studio = { home: home, decorate: decorate }
+  window.Studio = { home: home, decorate: decorate, destroy: destroy }
 })()

@@ -367,6 +367,7 @@
     var html = pages[route] || pages['/404'] || '<main class="page prose"><h1>404</h1></main>'
     closeSearch()
     if (window.Guestbook) window.Guestbook.destroy()
+    if (window.Studio) window.Studio.destroy()
     view.innerHTML = html
     decoratePage(route)
     document.title = titles[route] || 'StackTao'
