@@ -50,4 +50,4 @@ public/js/
 
 ## Personal Journal 设计
 
-作者介绍、可展开文章开头的折页、随机翻阅、页边纸条与纸笺留言墙。设计原则、参考来源、动效和验收范围见 [docs/studio.md](docs/studio.md)。
+作者介绍、文章折页、随机翻阅、照片接触印样、项目工作笔记与纸笺留言墙。设计原则、参考来源、动效和验收范围见 [docs/studio.md](docs/studio.md)。
