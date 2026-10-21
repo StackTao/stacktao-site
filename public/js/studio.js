@@ -15,128 +15,160 @@
     el.setAttribute('href', href)
     return el
   }
-  function sectionTitle(label, href, action) {
-    var head = node('div', 'studio-section-head')
-    head.append(node('h2', '', label), link(href, action + ' ↗', 'studio-text-link'))
-    return head
-  }
   function home(main) {
-    var original = node('div', 'studio-original')
+    var original = node('div', 'journal-original')
     while (main.firstChild) original.appendChild(main.firstChild)
     var oldTitle = original.querySelector('h1')
-    if (oldTitle) { var aboutTitle = node('h2', '', oldTitle.textContent); oldTitle.replaceWith(aboutTitle) }
-    main.className = 'page studio-home'
+    if (oldTitle) oldTitle.replaceWith(node('h2', '', oldTitle.textContent))
+    main.className = 'page journal-home'
     var config = (window.CONTENT_CONFIG || {}).site || {}
     var name = config.name || 'StackTao'
-    var posts = Array.from(source('/posts').querySelectorAll('.post-row')).slice(0, 4)
+    var posts = Array.from(source('/posts').querySelectorAll('.post-row')).slice(0, 6)
     var projects = Array.from(source('/projects').querySelectorAll('.project-grid .item')).slice(0, 3)
-    var hero = node('section', 'studio-hero')
-    var intro = node('div', 'studio-intro')
-    intro.append(node('p', 'studio-eyebrow', name + ' / PERSONAL STUDIO'))
-    var title = node('h1')
-    title.append(document.createTextNode('把想法，'), node('br'), node('span', '', '做成日常。'))
-    intro.append(title, node('p', 'studio-description', config.description || '关于代码、设计，以及生活里值得留下的细节。在这里，记录想法，也把它们慢慢做出来。'))
-    var actions = node('div', 'studio-actions')
-    actions.append(link('#/projects', '探索作品 ↗', 'studio-button'), link('#/posts', '读一篇文章', 'studio-text-link'))
-    intro.append(actions)
+    var intro = node('header', 'journal-intro')
+    intro.append(node('p', 'journal-overline', 'PERSONAL JOURNAL'))
+    var title = node('h1', '', '你好，我是 ')
+    title.appendChild(node('span', 'journal-name', name + '。'))
+    intro.append(title, node('p', 'journal-bio', config.description || '写代码，也写一些关于工具、设计和日常的观察。这个博客用来存放做过的东西，以及还在慢慢想的问题。'))
+    var wandering = node('p', 'journal-wandering')
+    wandering.append(document.createTextNode('大多时候在'), link('#/posts', '写字'), document.createTextNode('，偶尔'), link('#/photos', '看看别处'), document.createTextNode('。你可以随意逛逛。'))
+    intro.appendChild(wandering)
+    main.appendChild(intro)
 
-    var desk = node('div', 'studio-desk')
-    desk.setAttribute('aria-label', '探索工作室')
-    var stack = node('div', 'studio-stack')
-    var labels = ['做东西', '写下来', '留句话']
-    var routes = ['#/projects', posts[0] ? posts[0].getAttribute('href') : '#/posts', '#/guestbook']
-    var panels = []
-    for (var i = 0; i < 3; i++) {
-      var panel = node('section', 'studio-sheet studio-sheet-' + i)
-      panel.id = 'studio-panel-' + i
-      panel.setAttribute('role', 'tabpanel')
-      panel.setAttribute('aria-labelledby', 'studio-tab-' + i)
-      panel.append(node('div', 'studio-sheet-label', ['01 / BUILD', '02 / WRITE', '03 / CONNECT'][i]))
-      if (i === 0) {
-        var object = node('div', 'studio-object', '{ }')
-        object.setAttribute('aria-hidden', 'true')
-        panel.append(object, node('h2', '', '从一个问题开始。'), node('p', '', projects[0] ? projects[0].querySelector('.project-name').textContent : '工具、实验，以及持续的打磨。'))
-      } else if (i === 1) {
-        panel.append(node('div', 'studio-print-mark', 'Aa'), node('h2', '', posts[0] ? posts[0].querySelector('span').textContent : '让想法有迹可循。'), node('p', '', '一些观察，一些尚在生长的答案。'))
-      } else {
-        var ink = node('div', 'studio-handwriting', '你好，\n很高兴遇见你。')
-        panel.append(ink, node('h2', '', '留一点你的笔迹。'), node('p', '', '一张纸笺，存下此刻。'))
-      }
-      panel.append(link(routes[i], ['查看作品', '打开文章', '去留言墙'][i] + ' ↗', 'studio-sheet-link'))
-      stack.appendChild(panel)
-      panels.push(panel)
+    var letter = node('aside', 'journal-letter')
+    var letterButton = node('button', 'journal-letter-toggle')
+    letterButton.type = 'button'
+    letterButton.setAttribute('aria-expanded', 'false')
+    letterButton.setAttribute('aria-controls', 'journal-letter-body')
+    var envelope = node('span', 'journal-envelope')
+    envelope.setAttribute('aria-hidden', 'true')
+    envelope.appendChild(node('i'))
+    var letterLabel = node('span', '', '给路过的人')
+    letterButton.append(envelope, letterLabel)
+    var letterBody = node('div', 'journal-reveal')
+    letterBody.id = 'journal-letter-body'
+    letterBody.setAttribute('aria-hidden', 'true')
+    letterBody.inert = true
+    var letterInner = node('div')
+    var letterText = node('div', 'journal-letter-text')
+    letterText.append(node('p', '', '互联网很大，能在这里遇见，已经是一件有意思的事。'), node('p', '', '不必有什么特别的见解。一句问候，一幅涂鸦，或者只是写下今天的心情。'))
+    var invitation = link('#/guestbook', '留一张你的手写纸笺 ↗', 'journal-inline-link')
+    invitation.tabIndex = -1
+    letterText.append(invitation, node('small', '', '纸笺目前只保存在你的浏览器里。'))
+    letterInner.appendChild(letterText)
+    letterBody.appendChild(letterInner)
+    letterButton.addEventListener('click', function () {
+      var open = letterButton.getAttribute('aria-expanded') !== 'true'
+      letterButton.setAttribute('aria-expanded', String(open))
+      letter.classList.toggle('is-open', open)
+      letterBody.setAttribute('aria-hidden', String(!open))
+      letterBody.inert = !open
+      invitation.tabIndex = open ? 0 : -1
+      letterLabel.textContent = open ? '读完，折好' : '给路过的人'
+    })
+    letter.append(letterButton, letterBody)
+    main.appendChild(letter)
+
+    var writing = node('section', 'journal-writing')
+    writing.setAttribute('aria-labelledby', 'journal-writing-title')
+    var head = node('div', 'journal-section-head')
+    var heading = node('h2', '', '最近写下的')
+    heading.id = 'journal-writing-title'
+    var shuffle = node('button', 'journal-shuffle', '随手翻翻 ')
+    shuffle.type = 'button'
+    var shuffleMark = node('span', '', '↝')
+    shuffleMark.setAttribute('aria-hidden', 'true')
+    shuffle.appendChild(shuffleMark)
+    head.append(heading, shuffle)
+    writing.appendChild(head)
+    var entries = []
+    var selected = -1
+    function unfold(index) {
+      selected = index
+      entries.forEach(function (entry, i) {
+        var open = index === i
+        entry.root.classList.toggle('is-open', open)
+        entry.button.setAttribute('aria-expanded', String(open))
+        entry.preview.setAttribute('aria-hidden', String(!open))
+        entry.preview.inert = !open
+        entry.continueLink.tabIndex = open ? 0 : -1
+      })
     }
-    var tabs = node('div', 'studio-switch')
-    tabs.setAttribute('role', 'tablist')
-    tabs.setAttribute('aria-label', '切换工作室卡片')
-    var buttons = labels.map(function (label, index) {
-      var button = node('button', '', label)
+    posts.forEach(function (post, index) {
+      var title = post.querySelector('span').textContent.trim()
+      var href = post.getAttribute('href')
+      var article = source(href.replace(/^#/, ''))
+      var firstParagraph = article.querySelector('article > p:not(.post-meta):not(.share-line)')
+      var excerpt = firstParagraph ? firstParagraph.textContent.trim() : ''
+      if (excerpt.length > 180) excerpt = excerpt.slice(0, 180) + '…'
+      var entry = node('article', 'journal-entry')
+      var row = node('div', 'journal-entry-row')
+      var number = node('span', 'journal-number', String(index + 1).padStart(2, '0'))
+      number.setAttribute('aria-hidden', 'true')
+      var name = node('h3')
+      name.appendChild(link(href, title))
+      var meta = post.querySelector('.meta')
+      row.append(number, name, node('span', 'journal-date', meta ? meta.textContent.trim() : ''))
+      var button = node('button', 'journal-fold')
       button.type = 'button'
-      button.id = 'studio-tab-' + index
-      button.setAttribute('role', 'tab')
-      button.setAttribute('aria-controls', 'studio-panel-' + index)
-      tabs.appendChild(button)
-      return button
+      button.setAttribute('aria-label', '翻看「' + title + '」的开头')
+      button.setAttribute('aria-expanded', 'false')
+      button.setAttribute('aria-controls', 'journal-excerpt-' + index)
+      var page = node('span', 'journal-fold-paper')
+      page.setAttribute('aria-hidden', 'true')
+      page.appendChild(node('i'))
+      button.appendChild(page)
+      row.appendChild(button)
+      var preview = node('div', 'journal-reveal')
+      preview.id = 'journal-excerpt-' + index
+      preview.setAttribute('aria-hidden', 'true')
+      preview.inert = true
+      var inner = node('div')
+      var text = node('div', 'journal-excerpt-text')
+      text.append(node('span', 'journal-excerpt-label', '从这一句开始'), node('p', '', excerpt || '这篇文章的内容，留到正文里慢慢看。'))
+      var continueLink = link(href, '继续读 ↗', 'journal-inline-link')
+      continueLink.tabIndex = -1
+      text.appendChild(continueLink)
+      inner.appendChild(text)
+      preview.appendChild(inner)
+      entry.append(row, preview)
+      entries.push({ root: entry, button: button, preview: preview, continueLink: continueLink })
+      button.addEventListener('click', function () { unfold(selected === index ? -1 : index) })
+      writing.appendChild(entry)
     })
-    function select(index, focus) {
-      buttons.forEach(function (button, i) {
-        button.setAttribute('aria-selected', String(i === index))
-        button.tabIndex = i === index ? 0 : -1
-        panels[i].classList.toggle('is-selected', i === index)
-        panels[i].setAttribute('aria-hidden', String(i !== index))
-        panels[i].inert = i !== index
-        panels[i].style.setProperty('--sheet-order', (i - index + 3) % 3)
-      })
-      if (focus) buttons[index].focus()
-    }
-    buttons.forEach(function (button, index) {
-      button.addEventListener('click', function () { select(index, false) })
-      button.addEventListener('keydown', function (event) {
-        var next = event.key === 'ArrowRight' ? (index + 1) % 3 : event.key === 'ArrowLeft' ? (index + 2) % 3 : event.key === 'Home' ? 0 : event.key === 'End' ? 2 : null
-        if (next !== null) { event.preventDefault(); select(next, true) }
-      })
+    var status = node('span', 'journal-sr-only')
+    status.setAttribute('role', 'status')
+    shuffle.disabled = !entries.length
+    shuffle.addEventListener('click', function () {
+      var choices = entries.map(function (_, index) { return index }).filter(function (index) { return index !== selected })
+      if (!choices.length) return
+      var index = choices[Math.floor(Math.random() * choices.length)]
+      unfold(index)
+      entries[index].button.focus({ preventScroll: true })
+      entries[index].root.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+      status.textContent = '翻到了：' + posts[index].querySelector('span').textContent.trim()
     })
-    select(0, false)
-    desk.append(stack, tabs, node('p', 'studio-desk-caption', '三个入口，同一个好奇心。'))
-    hero.append(intro, desk)
-    main.appendChild(hero)
+    writing.append(status, link('#/posts', '更早的文字 ↗', 'journal-archive'))
+    main.appendChild(writing)
 
     if (projects.length) {
-      var work = node('section', 'studio-work')
-      work.appendChild(sectionTitle('正在打磨', '#/projects', '全部项目'))
-      var grid = node('div', 'studio-work-grid')
-      projects.forEach(function (project, index) {
-        var card = project.cloneNode(true)
-        card.className = 'studio-work-card'
-        var art = node('div', 'studio-work-art studio-work-art-' + index)
-        art.setAttribute('aria-hidden', 'true')
-        var mark = node('div', 'studio-work-symbol', ['⌘', '↗', '✳'][index])
-        art.append(mark, node('span', 'studio-work-number', '0' + (index + 1)))
-        card.prepend(art)
-        var icon = card.querySelector('.project-icon')
-        if (icon) icon.remove()
-        card.appendChild(node('span', 'studio-card-arrow', '↗'))
-        grid.appendChild(card)
+      var work = node('section', 'journal-work')
+      work.append(node('h2', '', '写字之外'), node('p', '', '也做一些工具。把想法放进真实的问题里，再慢慢打磨。'))
+      var list = node('ul')
+      projects.forEach(function (project) {
+        var item = node('li')
+        var projectLink = project.cloneNode(false)
+        projectLink.className = 'journal-project-link'
+        projectLink.textContent = project.querySelector('.project-name').textContent
+        var description = project.querySelector('.project-desc')
+        item.append(projectLink, node('span', '', description ? description.textContent : ''))
+        list.appendChild(item)
       })
-      work.appendChild(grid)
+      work.append(list, link('#/projects', '还有这些 ↗', 'journal-inline-link'))
       main.appendChild(work)
     }
-    var journal = node('section', 'studio-journal')
-    var journalIntro = node('div', 'studio-journal-intro')
-    journalIntro.append(node('p', 'studio-eyebrow', 'FIELD NOTES'), node('h2', '', '边做，边想。'), node('p', '', '把过程写下来，\n让下一次走得更远。'), link('#/posts', '所有文章 ↗', 'studio-text-link'))
-    var rows = node('div', 'studio-recent')
-    posts.forEach(function (post) { rows.appendChild(post.cloneNode(true)) })
-    journal.append(journalIntro, rows)
-    main.appendChild(journal)
-    var invite = link('#/guestbook', '', 'studio-invitation')
-    var mini = node('span', 'studio-mini-note', '见字\n如面。')
-    mini.setAttribute('aria-hidden', 'true')
-    var inviteText = node('span')
-    inviteText.append(node('small', '', 'A LITTLE HUMAN TOUCH'), node('strong', '', '来过，就留下一笔。'), node('span', '', '去留言墙，写一张自己的纸笺。'))
-    invite.append(mini, inviteText, node('span', 'studio-invite-arrow', '↗'))
-    main.appendChild(invite)
-    var about = node('details', 'studio-about')
-    about.append(node('summary', '', '更多关于 ' + name), original)
+    var about = node('details', 'journal-about')
+    about.append(node('summary', '', '再多认识我一点'), original)
     main.appendChild(about)
   }
   function decorate(view, route) {

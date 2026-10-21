@@ -48,6 +48,6 @@ public/js/
 
 导航「留言」或 `#/guestbook` 可进入。支持手写、打字、预览张贴、查看与收回。留言保存在当前浏览器的 localStorage，没有公开发布或多人同步。关闭书写台会保留当前会话草稿；刷新仅保留已张贴留言。设计和存储边界见 [docs/guestbook.md](docs/guestbook.md)。
 
-## Personal Studio 设计
+## Personal Journal 设计
 
-顶部导航、可切换的首页卡片、统一的阅读版式与纸笺留言墙。设计原则、参考来源、动效和验收范围见 [docs/studio.md](docs/studio.md)。
+作者介绍、可展开文章开头的折页、随机翻阅、页边纸条与纸笺留言墙。设计原则、参考来源、动效和验收范围见 [docs/studio.md](docs/studio.md)。
