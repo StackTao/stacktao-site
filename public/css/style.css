@@ -1358,49 +1358,6 @@ body.overlay-open {
 
 .share-line a { border: 0 !important; }
 
-/* 天光与纸纹只留在页边，阅读区域保持透明。 */
-.art-canvas {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-  pointer-events: none;
-  -webkit-mask-image: linear-gradient(90deg, black 0 14%, transparent 38% 82%, black 98%);
-  mask-image: linear-gradient(90deg, black 0 14%, transparent 38% 82%, black 98%);
-}
-
-@media (min-width: 761px) and (max-width: 1279px) {
-  .art-canvas {
-    -webkit-mask-image: linear-gradient(90deg, black 0 13%, transparent 30% 92%, black);
-    mask-image: linear-gradient(90deg, black 0 13%, transparent 30% 92%, black);
-  }
-}
-
-@media (min-width: 1024px) and (max-width: 1279px) {
-  .art-canvas {
-    -webkit-mask-image: linear-gradient(90deg, black 0 20%, transparent 32% 82%, black 98%);
-    mask-image: linear-gradient(90deg, black 0 20%, transparent 32% 82%, black 98%);
-  }
-}
-
-@media (max-width: 760px) {
-  .art-canvas {
-    opacity: 0.65;
-    -webkit-mask-image: linear-gradient(180deg, black, transparent 20% 80%, black);
-    mask-image: linear-gradient(180deg, black, transparent 20% 80%, black);
-  }
-}
-
-/* 窄屏长文占满宽度，天光只留在顶部和最下缘。 */
-@media (max-width: 1023px) {
-  body[data-route-kind='article'] .art-canvas {
-    opacity: 0.65;
-    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 15% 94%, rgba(0, 0, 0, 0.3));
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent 15% 94%, rgba(0, 0, 0, 0.3));
-  }
-}
-
 .app-shell {
   position: relative;
   z-index: 2;
@@ -2477,7 +2434,7 @@ body[data-route-kind='article'] .app-shell::after {
   stroke-linejoin: round;
   stroke-dashoffset: 1px;
   stroke-dasharray: 350px 0;
-  animation: grow 10s ease forwards infinite;
+  animation: none;
   opacity: 0.9;
 }
 

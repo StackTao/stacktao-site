@@ -15,7 +15,8 @@
     { "label": "项目", "route": "/projects", "key": "projects", "enabled": true },
     { "label": "相册", "route": "/photos", "key": "photos", "enabled": true },
     { "label": "演讲", "route": "/talks", "key": "talks", "enabled": false },
-    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": false }
+    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": false },
+    { "label": "留言", "route": "/guestbook", "key": "guestbook", "enabled": true }
   ],
   "footerNavigation": [
     { "label": "首页", "route": "/" },
