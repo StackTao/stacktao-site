@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="768" height="768" viewBox="0 0 768 768">
   <filter id="plaster"><feTurbulence type="fractalNoise" baseFrequency=".012 .035" numOctaves="3" seed="27" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
   <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".72" numOctaves="3" seed="8" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
-  <path fill="#dedbd2" d="M0 0h768v768H0z"/>
-  <path filter="url(#plaster)" opacity=".17" d="M0 0h768v768H0z"/>
-  <path filter="url(#grain)" opacity=".18" d="M0 0h768v768H0z"/>
+  <path fill="#c5c2b3" d="M0 0h768v768H0z"/>
+  <path filter="url(#plaster)" opacity=".24" d="M0 0h768v768H0z"/>
+  <path filter="url(#grain)" opacity=".25" d="M0 0h768v768H0z"/>
+  <path d="M0 255.5H768M0 511.5H768" stroke="#615e50" stroke-opacity=".17"/>
+  <path d="M0 257H768M0 513H768" stroke="#fffbed" stroke-opacity=".5"/>
+  <path d="M274 0v255M602 257v255M194 513v255" stroke="#706d5b" stroke-opacity=".12"/>
 </svg>

@@ -1,7 +1,7 @@
 (function () {
   var KEY = 'stacktao-paper-wall-v1'
   var WALL_SIZE = 24
-  var markWidths = { small:210, medium:280, large:350 }
+  var markWidths = { small:190, medium:260, large:320 }
   var inks = ['#343832', '#3f5870', '#a45743', '#e9edcf', '#d7f557', '#6286ee', '#f47760']
   var papers = ['ivory', 'sage', 'rose']
   var cleanup = function () {}
@@ -13,10 +13,10 @@
   window.PAGE_TITLES['/guestbook'] = '留言墙 · StackTao'
   window.PAGES['/guestbook'] = `<main class="page guestbook-page" data-guestbook>
     <div class="gb-wall-header"><a class="gb-exit" href="#/" aria-label="返回博客">← <span>返回博客</span></a><h1>过客<span>THE VISITOR WALL</span></h1><span class="gb-local-label">本机留言 · <span data-count>0</span> 处</span></div>
-    <nav class="gb-wall-dock" aria-label="留言墙工具"><button data-gb="previous-wall" aria-label="上一面墙">←</button><label class="gb-wall-picker" title="每面容纳24处留言，写满自动延伸到下一面"><span>墙面</span><select data-wall-select aria-label="选择墙面"></select></label><button data-gb="next-wall" aria-label="下一面墙">→</button><span class="gb-dock-divider" aria-hidden="true"></span><button class="gb-leave-mark" data-gb="write"><span aria-hidden="true">＋</span> 留下一笔</button></nav>
+    <nav class="gb-wall-dock" aria-label="留言墙工具"><button data-gb="previous-wall" aria-label="上一面墙">←</button><label class="gb-wall-picker" title="每面容纳24处留言，写满自动延伸到下一面"><span>墙面</span><select data-wall-select aria-label="选择墙面"></select></label><button data-gb="next-wall" aria-label="下一面墙">→</button><span class="gb-dock-divider" aria-hidden="true"></span><button data-wall-tool="ink" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="m10 27 3-8L25 7l5 5-12 12Z" fill="#e3c492" stroke="#24382e"/><path d="m13 19 5 5m5-15 5 5" stroke="#385f7a" stroke-width="3"/><path d="m10 27 5-2-3-3Z" fill="#303a32"/></svg></span>涂鸦</button><button data-wall-tool="engraving" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="m8 29 4-9 7 7Z" fill="#bdc9c6" stroke="#f1f1dc"/><path d="m13 20 9-13q2-3 5 0l3 3q2 2-1 4L20 26Z" fill="#b58a5f" stroke="#24382e"/><path d="m17 18 6 5" stroke="#f0d2a3"/></svg></span>刻画</button><button data-wall-tool="paper" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="M9 7h18v23H9Z" fill="#f6f0df" stroke="#dad7bf"/><path d="M22 7v6h5" fill="#ddd5bf"/><path d="M13 18h9m-9 5h6" stroke="#858b73"/><path d="M13 5h9v5h-9Z" fill="#adb596" opacity=".8"/></svg></span>纸条</button><button data-wall-tool="sticker" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="M18 5c7-7 13 2 7 7 10-1 11 10 2 11 5 8-4 13-9 6-4 8-14 2-10-5-10 0-10-11-1-12-6-5 3-13 8-6Z" fill="#e3ad76" stroke="#f6f0df" stroke-width="2"/><circle cx="18" cy="18" r="5" fill="#e7eccf"/></svg></span>贴纸</button></nav>
     <section class="gb-wall-section" aria-label="一面可以留下痕迹的墙">
       <span class="journal-sr-only" id="gb-move-help">点空白墙面写留言。纸条可拖动；键盘空格拿起、方向键移动、Enter放下、Escape取消；刻痕固定在墙上。</span>
-      <div class="gb-wall" data-wall></div>
+      <div class="gb-wall" data-wall></div><div class="gb-live-stage" data-live-stage hidden></div><div class="gb-placement-hint" data-placement-hint hidden><span>点一处空白，开始落笔</span><button data-gb="place-here">就在可用空白处写</button><button data-gb="cancel-place" aria-label="取消选择位置">×</button></div>
       <p class="gb-status" role="status" aria-live="polite" data-status></p>
       <button class="gb-text-button gb-undo-wall" data-gb="undo-delete" hidden>恢复刚才的痕迹</button>
     </section>
@@ -36,9 +36,8 @@
         <div class="gb-text-count" data-text-count hidden>0 / 180</div>
         <label class="gb-signature">落款 <input data-name maxlength="24" placeholder="留个名字，也可以匿名" autocomplete="nickname"></label>
       </div>
-      <div class="gb-preview" data-preview hidden></div>
       <p class="gb-error" data-error role="alert"></p>
-      <div class="gb-dialog-foot"><span data-foot-hint>这张纸会替你保留原本的笔迹。</span><button class="gb-text-button" data-gb="back" hidden>继续修改</button><button class="gb-button gb-primary" data-gb="preview">写好了，看看</button><button class="gb-button gb-primary" data-gb="publish" hidden>贴到墙上 ↗</button></div>
+      <div class="gb-dialog-foot"><span data-foot-hint>这张纸会替你保留原本的笔迹。</span><button class="gb-text-button" data-gb="reposition">换个位置</button><button class="gb-button gb-primary" data-gb="publish" hidden>贴到墙上 ↗</button></div>
     </dialog>
     <dialog class="gb-dialog gb-detail" data-detail aria-label="纸笺详情"><button class="gb-close" data-gb="detail-close" aria-label="关闭纸笺">×</button><div data-detail-note></div><p class="gb-error" data-detail-error role="alert"></p><div class="gb-detail-foot"><button class="gb-text-button" data-arrange aria-pressed="false">移动这张纸</button><span>痕迹只保存在本机。</span><button class="gb-text-button" data-gb="remove">擦去这处痕迹</button></div></dialog>
   </main>`
@@ -80,7 +79,10 @@
     art.classList.add('gb-carved-art')
     art.setAttribute('role', 'img'); art.setAttribute('aria-label', note.mode === 'draw' ? '刻入墙面的手写笔迹' : note.text)
     var group = document.createElementNS(ns, 'g')
-    if (note.mode === 'draw') while (art.firstChild) group.appendChild(art.firstChild)
+    if (note.mode === 'draw') {
+      while (art.firstChild) group.appendChild(art.firstChild)
+      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(Math.max(5.5,Number(path.getAttribute('stroke-width'))))); path.setAttribute('stroke-linejoin','bevel') })
+    }
     else {
       var lines = [], line = '', units = 0
       Array.from(note.text).forEach(function (char) {
@@ -89,7 +91,8 @@
         if (char !== '\n') { line += char; units += size }
       })
       if (line || !lines.length) lines.push(line)
-      var fontSize = Math.min(48, 300 / (lines.length * 1.35)), lineHeight = fontSize * 1.35
+      var longest = Math.max.apply(null,lines.map(function (line) { return Array.from(line).reduce(function (n,char) { return n + (char.charCodeAt(0)>255 ? 1 : .56) },0) }).concat([1]))
+      var fontSize = Math.min(62, 532 / longest, 300 / (lines.length * 1.35)), lineHeight = fontSize * 1.35
       art.setAttribute('viewBox', '0 0 600 360')
       lines.forEach(function (value, index) {
         var text = document.createElementNS(ns, 'text')
@@ -101,16 +104,16 @@
     var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
     var defs = document.createElementNS(ns, 'defs')
     // A dark cut stays legible at wall scale; light catches only its lower inner edge.
-    defs.innerHTML = '<filter id="' + id + '" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">' +
+    defs.innerHTML = '<filter id="' + id + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="620" height="380" color-interpolation-filters="sRGB">' +
       '<feTurbulence type="fractalNoise" baseFrequency=".12 .19" numOctaves="2" seed="' + seed + '" result="grain"/>' +
-      '<feDisplacementMap in="SourceAlpha" in2="grain" scale=".65" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
-      '<feOffset in="cut" dx="1.1" dy="1.6" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
-      '<feOffset in="cut" dx="-.6" dy="-.9" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
+      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="1.15" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
+      '<feOffset in="cut" dx="2.2" dy="3" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
+      '<feOffset in="cut" dx="-1" dy="-1.6" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
       '<feComposite in="down" in2="cut" operator="out" result="rimMask"/>' +
-      '<feFlood flood-color="#fff9e7" flood-opacity=".48"/><feComposite in2="rimMask" operator="in" result="rim"/>' +
-      '<feFlood flood-color="#77756b" flood-opacity=".9"/><feComposite in2="cut" operator="in" result="floor"/>' +
+      '<feFlood flood-color="#fff9e7" flood-opacity=".85"/><feComposite in2="rimMask" operator="in" result="rim"/>' +
+      '<feFlood flood-color="#696659" flood-opacity="1"/><feComposite in2="cut" operator="in" result="floor"/>' +
       '<feFlood flood-color="#232820" flood-opacity=".95"/><feComposite in2="innerShade" operator="in" result="shade"/>' +
-      '<feFlood flood-color="#f2eddb" flood-opacity=".6"/><feComposite in2="innerLight" operator="in" result="light"/>' +
+      '<feFlood flood-color="#f2eddb" flood-opacity=".9"/><feComposite in2="innerLight" operator="in" result="light"/>' +
       '<feMerge><feMergeNode in="rim"/><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter>'
     group.setAttribute('filter', 'url(#' + id + ')'); art.append(defs, group)
     return art
@@ -127,13 +130,20 @@
     art.innerHTML = drawings[kind] || drawings.spark
     return art
   }
+  function traceSeed(note) { return Array.from(note.id).reduce(function (n,c) { return (n*31+c.charCodeAt(0))%997 },7) }
   function card(note, interactive) {
     var el = document.createElement(interactive ? 'button' : 'div')
     el.className = 'gb-note'
+    var markSeed = traceSeed(note)
+    el.dataset.fastener = markSeed%3 === 0 ? 'pin' : 'tape'
+    el.style.setProperty('--note-angle',[-3.2,2.1,-1.4,3.8][markSeed%4]+'deg')
     el.dataset.paperSurface = note.paper
     el.dataset.medium = note.medium || 'paper'
     el.dataset.markSize = note.size || 'medium'
     el.style.setProperty('--mark-size', (note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium']) + 'px')
+    if (note.layout !== 2 && note.id !== 'sample') {
+      el.style.setProperty('--mark-size', (parseFloat(el.style.getPropertyValue('--mark-size')) * [.72,.82,.9,.86,.76][markSeed%5]) + 'px')
+    }
     if (!['paper','sticker'].includes(el.dataset.medium)) el.classList.add('gb-wall-mark')
     if (interactive) { el.type = 'button'; el.dataset.note = note.id; el.setAttribute('aria-label', '查看' + (note.name || '一位过客') + '留下的痕迹') }
     var content = document.createElement('div')
@@ -158,6 +168,24 @@
     var $ = function (selector) { return root.querySelector(selector) }
     var wall = $('[data-wall]'), composer = $('[data-composer]'), detail = $('[data-detail]')
     var canvas = $('[data-drawing]'), ctx = canvas.getContext('2d'), activeStroke = null, pointer = null
+    var writing = $('.gb-writing-paper'), writingHome = writing.parentElement, stage = $('[data-live-stage]'), choosing = false, closingForMove = false, browseScroll = 0
+    var liveCarving = document.createElement('div'); liveCarving.className = 'gb-live-carving'; writing.appendChild(liveCarving)
+    function choosePlace(medium) {
+      if (!composer.open && !choosing) browseScroll = window.scrollY
+      if (composer.open) { closingForMove = true; composer.close() }
+      draft.medium = medium; choosing = true; root.classList.add('is-choosing'); $('[data-placement-hint]').hidden = false
+      root.querySelectorAll('[data-wall-tool]').forEach(function (b) { b.setAttribute('aria-pressed',String(b.dataset.wallTool === medium)) })
+      $('[data-placement-hint] > span').textContent = medium === 'sticker' ? '点一处空白，把贴纸放在这里' : '点一处空白，' + (medium === 'engraving' ? '刻下这一刻' : '开始落笔')
+      $('[data-gb="place-here"]').focus({preventScroll:true})
+    }
+    function cancelPlace() { choosing = false; root.classList.remove('is-choosing'); $('[data-placement-hint]').hidden = true; root.querySelectorAll('[data-wall-tool]').forEach(function (b) { b.setAttribute('aria-pressed','false') }) }
+    function positionStage() {
+      var width = Math.min(draft.medium === 'sticker' ? {small:100,medium:148,large:200}[draft.size] : markWidths[draft.size], Math.max(160,wall.clientWidth-32))
+      stage.style.width = width + 'px'; stage.style.left = (wall.offsetLeft + 16 + (writeAnchor ? writeAnchor.x : .5) * Math.max(0,wall.clientWidth-width-32)) + 'px'; stage.style.top = (wall.offsetTop + (writeAnchor ? writeAnchor.y : 32)) + 'px'
+      if (draft.medium === 'sticker') { stage.replaceChildren(card({id:'draft-sticker',medium:'sticker',sticker:draft.sticker,size:draft.size,paper:draft.paper,name:'',date:'',text:'',strokes:[]},false)) }
+      else if (writing.parentElement !== stage) stage.replaceChildren(writing)
+      stage.dataset.medium = draft.medium
+    }
     var notes = load(), previewNote = null, selected = null, removed = null, restoreFocus = null, writeAnchor = null, statusTimer = 0
     // Stable wall membership: newer messages never push older ones to another wall.
     notes.slice().reverse().forEach(function (note, index) { if (note.section == null) note.section = Math.floor(index / WALL_SIZE) })
@@ -179,7 +207,7 @@
       try { localStorage.setItem(KEY, JSON.stringify(next)); notes = next; return true }
       catch (_) { error('浏览器空间不足或无法保存。草稿仍在，请不要关闭页面；原有留言没有改变。'); status('保存未完成，草稿和原有留言都还在。'); return false }
     }
-    var layoutKey = KEY + '-positions-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
+    var layoutKey = KEY + '-positions-studio-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
     var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null, visibilityObserver = null
     try {
       var saved = JSON.parse(localStorage.getItem(layoutKey) || '{}')
@@ -193,12 +221,12 @@
     function positionOf(el) {
       if (Object.prototype.hasOwnProperty.call(layouts[layoutMode], el.dataset.note)) return layouts[layoutMode][el.dataset.note]
       var note = notes.find(function (n) { return n.id === el.dataset.note })
-      return note && note.anchor && note.anchor.mode === layoutMode ? { x:note.anchor.x, y:note.anchor.y, z:notes.length + 1 } : null
+      return note && note.layout === 2 && note.anchor && note.anchor.mode === layoutMode ? { x:note.anchor.x, y:note.anchor.y, z:notes.length + 1 } : null
     }
     function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
     function wallLayout() {
       finishPaper(true)
-      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.floor(width / 370))
+      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.min(4,Math.floor(width / 235)))
       layoutMode = width < 600 ? 'narrow' : 'wide'
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
@@ -207,18 +235,27 @@
       cards.forEach(function (el) {
         var p = positionOf(el), height = el.offsetHeight || 240, ownWidth = parseFloat(el.style.width), maxX = Math.max(0, width - ownWidth - 32)
         if (!p) {
-          var slot = 0, x, y
-          do {
-            x = columns === 1 ? .5 : Math.max(0, Math.min(1, (slot % columns) / (columns - 1) + [.04,-.03,.015][slot % 3]))
-            y = (el.dataset.note === 'sample' ? 180 : 32) + Math.floor(slot / columns) * (height + 40) + [10,48,0,26][slot % 4]; slot++
-          } while (occupied.some(function (other) { var left = 16 + x * maxX; return left < other.x + other.width + 16 && left + ownWidth + 16 > other.x && y < other.y + other.height + 24 && y + height + 24 > other.y }))
+          var cell = width / columns, candidates = []
+          for (var column = 0; column < columns; column++) {
+            var left = Math.max(16, Math.min(width-ownWidth-16, column*cell+(cell-ownWidth)/2 + [-8,8,0][column%3]))
+            var y = el.dataset.note === 'sample' ? 180 : 30 + [18,0,35][column%3]
+            var collisions
+            do {
+              collisions = occupied.filter(function (other) { return left < other.x+other.width+12 && left+ownWidth+12 > other.x && y < other.y+other.height+16 && y+height+16 > other.y })
+              if (collisions.length) y = Math.max.apply(null,collisions.map(function (other) { return other.y+other.height+20 }))
+            } while (collisions.length)
+            candidates.push({x:maxX ? (left-16)/maxX : .5,y:y})
+          }
+          candidates.sort(function (a,b) { return a.y-b.y }); var x=candidates[0].x,y=candidates[0].y
           p = { x:x, y:y, z:cards.indexOf(el) + 1 }
           Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true }); occupied.push({x:16 + p.x * maxX,y:p.y,width:ownWidth,height:height})
         }
         paintPaper(el, 16 + p.x * maxX, p.y); el.style.zIndex = String(p.z)
         bottom = Math.max(bottom, p.y + height)
       })
-      wall.style.height = Math.max((window.innerHeight || 720) - 100, bottom + 180) + 'px'
+      wall.style.height = Math.max((window.innerHeight || 720) - 100, bottom + 160) + 'px'
+      try { localStorage.setItem(layoutKey,JSON.stringify(layouts)) } catch (_) {}
+      if (composer.open) positionStage()
     }
     function startPaper(el, pointerId, x, y) {
       if (drag) return
@@ -260,7 +297,7 @@
     wall.addEventListener('pointerdown', function (e) {
       var el = e.target.closest('[data-note]')
       if (!drag && e.isPrimary) suppressNoteClick = false
-      if (!el || !['paper','sticker'].includes(el.dataset.medium) || drag || !e.isPrimary || e.button !== 0 || (e.pointerType === 'touch' && !touchArrange)) return
+      if (choosing || composer.open || !el || !['paper','sticker'].includes(el.dataset.medium) || drag || !e.isPrimary || e.button !== 0 || (e.pointerType === 'touch' && !touchArrange)) return
       startPaper(el, e.pointerId, e.clientX, e.clientY)
       el.setPointerCapture(e.pointerId)
     }, {signal:signal})
@@ -314,9 +351,8 @@
         invitation.innerHTML = '<span>一面墙，等一个路过的人。</span><small>写一句话，画一个念头。这里不必工整。</small>'
         wall.appendChild(invitation)
       }
-      ;(notes.length ? wallNotes() : [sample]).forEach(function (note, index) {
+      ;(notes.length ? wallNotes().sort(function (a,b) { return traceSeed(a)-traceSeed(b) }) : [sample]).forEach(function (note) {
         var el = card(note, true)
-        el.style.setProperty('--note-angle', [-3.2, 2.1, -1.4, 3.8][index % 4] + 'deg')
         el.setAttribute('aria-describedby', 'gb-move-help'); if (el.dataset.medium === 'paper') el.setAttribute('aria-pressed', 'false')
         if (note.id === newId) el.classList.add('gb-just-pinned')
         wall.appendChild(el)
@@ -331,10 +367,11 @@
       wallObserver.observe(wall)
     } else window.addEventListener('resize', wallLayout, {signal:signal})
     wall.addEventListener('click', function (e) {
-      if (e.target !== wall || suppressNoteClick) return
-      var rect = wall.getBoundingClientRect(), width = Math.min(280, Math.max(180, wall.clientWidth - 32)), span = Math.max(0, wall.clientWidth - width - 32)
+      if (e.target !== wall || suppressNoteClick || composer.open) return
+      if (!choosing) choosePlace(draft.medium)
+      var rect = wall.getBoundingClientRect(), width = Math.min(markWidths[draft.size], Math.max(160, wall.clientWidth - 32)), span = Math.max(0, wall.clientWidth - width - 32)
       writeAnchor = { mode:layoutMode, x:span ? Math.max(0, Math.min(1, (e.clientX - rect.left - width / 2 - 16) / span)) : .5, y:Math.max(16, Math.min(1200000, e.clientY - rect.top - 80)) }
-      openComposer($('[data-gb="write"]'))
+      openComposer($('[data-wall-tool="'+draft.medium+'"]'))
     }, {signal:signal})
     function redraw() {
       ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.clearRect(0, 0, 600, 360)
@@ -346,6 +383,10 @@
         if (points.length > 1) ctx.lineTo(points[points.length - 1][0] * 600, points[points.length - 1][1] * 360)
         ctx.stroke()
       })
+      liveCarving.replaceChildren(); liveCarving.hidden = draft.medium !== 'engraving'
+      canvas.style.opacity = draft.medium === 'engraving' ? '0' : '1'
+      if (draft.medium === 'engraving' && (draft.mode === 'draw' ? draft.strokes.length : draft.text.trim())) liveCarving.appendChild(carvedArt({id:'live-carving',mode:draft.mode,strokes:draft.strokes,text:draft.text}))
+      writing.classList.toggle('is-carving-text',draft.medium === 'engraving' && draft.mode === 'text' && !!draft.text.trim())
       $('[data-draw-hint]').hidden = draft.mode !== 'draw' || draft.strokes.length > 0
       $('[data-gb="undo"]').disabled = !draft.strokes.length
       $('[data-gb="clear"]').disabled = !draft.strokes.length
@@ -367,20 +408,28 @@
       $('[data-pen-tools]').hidden = isSticker || draft.mode !== 'draw'; $('[data-text-count]').hidden = isSticker || draft.mode !== 'text'
       $('[data-message]').value = draft.text; $('[data-name]').value = draft.name; $('[data-width]').value = String(draft.width)
       $('[data-text-count]').textContent = draft.text.length + ' / 180'
-      redraw()
+      redraw(); if (composer.open) positionStage()
     }
     function showEditor() {
-      $('[data-editor]').hidden = false; $('[data-preview]').hidden = true
-      $('[data-gb="preview"]').hidden = false; $('[data-gb="publish"]').hidden = true; $('[data-gb="back"]').hidden = true
-      $('[data-step]').textContent = '01 / 写下此刻'; $('#gb-dialog-title').textContent = '你想留下什么？'
+      $('[data-gb="publish"]').hidden = false
+      $('[data-step]').textContent = '直接留在墙上'; $('#gb-dialog-title').textContent = {ink:'拿起笔，随意画。',engraving:'一笔一划，刻下来。',paper:'写好，就贴在这里。',sticker:'挑一枚，贴在这里。'}[draft.medium]
+      $('[data-gb="publish"]').textContent = ['paper','sticker'].includes(draft.medium) ? '贴在这里' : '留下这一笔'
       $('[data-foot-hint]').textContent = '本机保存 · 每面24处，写满自动延伸。'; error(''); syncEditor()
     }
     function openComposer(trigger) {
-      restoreFocus = trigger; showEditor(); composer.showModal(); document.body.classList.add('gb-dialog-open')
-      ;(draft.mode === 'text' ? $('[data-message]') : $('[data-mode="draw"]')).focus()
+      cancelPlace(); restoreFocus = trigger; previewNote = null
+      var probe = makeNote(), relocated = reserveLocalSpot(probe); writeAnchor = probe.anchor
+      if (relocated) status('这里放不下完整笔迹，已选好附近的空白处。')
+      showEditor(); composer.show(); root.classList.add('is-writing'); stage.hidden = false; positionStage()
+      wall.style.height = Math.max(parseFloat(wall.style.height),writeAnchor.y+stage.offsetHeight+window.innerHeight*.65)+'px'
+      var bounds = stage.getBoundingClientRect()
+      composer.style.left = window.innerWidth>900 && bounds.left>window.innerWidth/2 ? '24px' : ''
+      composer.style.right = composer.style.left ? 'auto' : ''
+      window.scrollTo({top:Math.max(0,window.scrollY+bounds.top-Math.min(180,window.innerHeight*.2)),behavior:'auto'})
+      ;(draft.mode === 'text' ? $('[data-message]') : $('[data-mode="draw"]')).focus({preventScroll:true})
     }
     function makeNote() {
-      return { id: crypto.randomUUID(), medium:draft.medium || 'paper', size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
+      return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
     }
     function reserveLocalSpot(note) {
       var width = Math.min(note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium'], Math.max(160,wall.clientWidth - 32))
@@ -389,8 +438,8 @@
       var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]'))
       function available(x,y) { return occupied.every(function (el) { var left=parseFloat(el.style.left), top=parseFloat(el.style.top); return x + width + 18 <= left || x >= left + (el.offsetWidth || parseFloat(el.style.width)) + 18 || y + height + 18 <= top || y >= top + (el.offsetHeight || 240) + 18 }) }
       if (note.anchor && available(16 + note.anchor.x * span,note.anchor.y)) return false
-      var relocated = !!note.anchor, columns = Math.max(1,Math.floor(wall.clientWidth / 370)), slot=0, x,y
-      do { x=columns === 1 ? .5 :(slot%columns)/(columns-1); y=32+Math.floor(slot/columns)*(height+48); slot++ } while (!available(16+x*span,y))
+      var relocated = !!note.anchor, columns = Math.max(1,Math.min(4,Math.floor(wall.clientWidth / 235))), slot=0, x,y
+      do { x=columns === 1 ? .5 : ((slot%columns+.5)*wall.clientWidth/columns-width/2-16)/Math.max(1,span); x=Math.max(0,Math.min(1,x)); y=32+Math.floor(slot/columns)*(height+20); slot++ } while (!available(16+x*span,y))
       note.anchor={mode:layoutMode,x:x,y:y}
       return relocated
     }
@@ -410,21 +459,23 @@
       activeStroke.points.push(p);redraw()
     }, {signal:signal})
     ;['pointerup','pointercancel','lostpointercapture'].forEach(function (event) {canvas.addEventListener(event,stop,{signal:signal})})
-    $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';error('')},{signal:signal})
+    $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';redraw();error('')},{signal:signal})
     $('[data-name]').addEventListener('input',function(e){draft.name=e.target.value},{signal:signal})
     Object.keys(stickerNames).forEach(function (kind) {
       var button = document.createElement('button'); button.type = 'button'; button.dataset.sticker = kind; button.setAttribute('aria-label', stickerNames[kind] + '贴纸'); button.appendChild(stickerArt(kind)); $('[data-stickers]').appendChild(button)
     })
-    $('[data-size]').addEventListener('change',function(e){draft.size=e.target.value},{signal:signal})
+    $('[data-size]').addEventListener('change',function(e){draft.size=e.target.value;positionStage()},{signal:signal})
     $('[data-width]').addEventListener('change',function(e){draft.width=Number(e.target.value)},{signal:signal})
     root.addEventListener('click', function (e) {
       var button=e.target.closest('button');if(!button)return
+      if (button.dataset.wallTool) { choosePlace(button.dataset.wallTool); return }
       if (button.closest('.gb-materials') && button.dataset.medium) { draft.medium=button.dataset.medium;syncEditor();return }
       if (button.dataset.sticker) {draft.sticker=button.dataset.sticker;syncEditor();return}
       if (button.dataset.mode) {draft.mode=button.dataset.mode;syncEditor();return}
       if (button.dataset.paper) {draft.paper=button.dataset.paper;syncEditor();return}
       if (button.dataset.ink) {draft.ink=button.dataset.ink;syncEditor();return}
       if (button.dataset.note) {
+        if (choosing || composer.open) return
         selected=button.dataset.note==='sample'?sample:notes.find(function(n){return n.id===button.dataset.note});if(!selected)return
         restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
       }
@@ -433,19 +484,17 @@
           var ids = wallIds(), index = ids.indexOf(currentWall) + (button.dataset.gb === 'previous-wall' ? -1 : 1)
           if (ids[index] !== undefined) changeWall(ids[index])
           break
-        case 'write': writeAnchor=null;openComposer(button);break
+        case 'write': choosePlace(draft.medium);break
+        case 'place-here': writeAnchor=null;openComposer($('[data-wall-tool="'+draft.medium+'"]'));break
+        case 'cancel-place': cancelPlace();break
+        case 'reposition': choosePlace(draft.medium);break
         case 'close': composer.close();break
         case 'detail-close':detail.close();break
         case 'undo':draft.strokes.pop();redraw();error('');break
         case 'clear':draft.strokes=[];redraw();error('');break
-        case 'back':showEditor();$('[data-mode="'+draft.mode+'"]').focus();break
-        case 'preview':
-          if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())){error('先在纸上留下一点内容。');return}
-          previewNote=makeNote();$('[data-preview]').replaceChildren(card(previewNote,false));$('[data-preview]').hidden=false;$('[data-editor]').hidden=true
-          $('[data-gb="preview"]').hidden=true;$('[data-gb="publish"]').hidden=false;$('[data-gb="back"]').hidden=false
-          $('[data-step]').textContent='02 / 留下之前，看一眼';$('#gb-dialog-title').textContent=previewNote.medium==='engraving'?'把这一笔，刻在这里。':previewNote.medium==='ink'?'让墨迹留在这里。':previewNote.medium==='sticker'?'把这枚贴纸，留在这里。':'把这张纸，贴在这里。';$('[data-gb="publish"]').textContent=['paper','sticker'].includes(previewNote.medium)?'贴到墙上 ↗':'留在墙上 ↗';$('[data-foot-hint]').textContent='会保存在当前浏览器，其他访客暂不可见。';error('');$('[data-gb="publish"]').focus();break
         case 'publish':
-          if(!previewNote)return
+          if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())) { error('先在墙面选中的位置留下一笔。'); return }
+          previewNote=makeNote()
           var destination = currentWall
           if (wallNotes().length + (removed && removed.section === currentWall ? 1 : 0) >= WALL_SIZE) {
             var last = Math.max.apply(null, notes.map(function (note) { return note.section }).concat([0]))
@@ -459,15 +508,21 @@
           currentWall = destination
           try { localStorage.setItem(wallPreference, String(currentWall)) } catch (_) {}
           var newId=previewNote.id;previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium,size:draft.size,sticker:draft.sticker};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status(extended?'这面墙写满了，已为你延伸到第 '+(currentWall+1)+' 面。':relocated?'原位置较满，已留在附近空白处。':'痕迹留下了，刷新后也在。')
-          var pinned=wall.querySelector('[data-note]');if(pinned){pinned.focus({preventScroll:true});pinned.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}break
+          var pinned=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===newId});if(pinned){pinned.focus({preventScroll:true});pinned.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}break
         case 'remove':
           if(!selected || selected.id==='sample')return
           var next=notes.filter(function(n){return n.id!==selected.id});if(!persist(next))return;removed=selected;restoreFocus=null;detail.close();renderWall();status('已擦去这处痕迹。');$('[data-gb="undo-delete"]').hidden=false;$('[data-gb="undo-delete"]').focus();break
         case 'undo-delete':
-          if(removed && persist([removed].concat(notes))){currentWall=removed.section;renderWall(removed.id);removed=null;button.hidden=true;status('痕迹已恢复。');$('[data-gb="write"]').focus()}break
+          if(removed && persist([removed].concat(notes))){currentWall=removed.section;renderWall(removed.id);removed=null;button.hidden=true;status('痕迹已恢复。');$('[data-wall-tool="ink"]').focus()}break
       }
     }, {signal:signal})
-    ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
+    ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(dialog===detail&&restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
+    composer.addEventListener('close',function () {
+      stage.hidden=true; root.classList.remove('is-writing'); writingHome.insertBefore(writing,$('[data-pen-tools]')); stage.replaceChildren(); wallLayout()
+      if (!closingForMove) { cancelPlace(); if (restoreFocus && restoreFocus.isConnected) { window.scrollTo({top:browseScroll,behavior:'auto'}); restoreFocus.focus({preventScroll:true}) } }
+      closingForMove = false
+    },{signal:signal})
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ if(composer.open) composer.close(); else if(choosing) cancelPlace() } },{signal:signal})
     renderWall()
     cleanup=function(){clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
