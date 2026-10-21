@@ -84,3 +84,14 @@
 最终生成提示词：
 
 > Use case: photorealistic-natural. Create an original street-art wall MATERIAL for an interactive website, inspired by the layered physical textures of a contemporary legal urban graffiti tunnel, NOT any specific existing artist or mural. Landscape 3:2, orthographic straight-on view, edge to edge wall, no ground or perspective. Weathered medium-gray concrete with dark charcoal old paint, abraded cobalt blue and acid yellow-green spray-paint arcs and patches primarily across edges and corners, sparse peeling blank wheatpaste paper remnants, scrape marks and small paint drips. Bold contemporary underground visual identity with tactile realistic surface. Keep at least 60 percent of the wall relatively quiet, exposed medium-gray concrete throughout the center and in irregular islands for visitors to write on. Color covers no more than 30 percent. No readable words, letters, logos, recognizable figures, faces or existing artworks. No frame, UI, signs, text, graffiti signatures. Soft diffuse raking daylight from upper left, visibly real roughness, no dramatic vignette. Create a wall people can continue adding to, not a finished mural. Texture should continue naturally at the edges for repeating use.
+
+
+## 2026-10-21 实际浏览器视觉验收
+
+在现有 localhost 留言墙、默认桌面视口中实际打开并截图对比，保留用户原有的七条留言。旧墙纹与喷漆对比过高，细刻痕难辨；本轮用统一的暖灰薄层降低背景对比，同时保持凹凸纹理，编辑及预览沿用相同材质。刻痕缩小扰动及内缘偏移，保留暗槽、较窄内侧亮边和低透明度下沿反光。纸条增加短距离接触阴影，贴纸收紧阴影，区分墙内、墙上和贴附三种层次。
+
+实际点击发现刻画详情的 SVG 遮住了关闭按钮；提高按钮层级后，以真实点击验证关闭成功。小贴纸预览落款原先被挤成竖排，现与贴纸图形分开限制宽度；详情贴纸保持选择的尺寸。
+
+通过界面添加临时刻字和贴纸，检查同墙搭配、刻字近景、贴纸详情。用真实鼠标事件将贴纸从 left=16/top=120 拖至 left=568/top=360；刷新后坐标一致，松手未误开编辑器。验收后通过界面删除两条临时内容，刷新确认恢复七条原留言。未声称移动端或多人在线同步验收。
+
+验证：构建通过；street-wall.cjs 与 paper-wall.cjs 在原型和 dist 上均通过；浏览器未返回 warning/error。截图存放在任务目录 artifacts/guestbook-review，未加入公开站点资源。

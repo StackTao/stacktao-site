@@ -100,16 +100,18 @@
     }
     var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
     var defs = document.createElementNS(ns, 'defs')
-    // Opposed inner edges, derived from the same alpha, form a recessed groove.
+    // A dark cut stays legible at wall scale; light catches only its lower inner edge.
     defs.innerHTML = '<filter id="' + id + '" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">' +
       '<feTurbulence type="fractalNoise" baseFrequency=".12 .19" numOctaves="2" seed="' + seed + '" result="grain"/>' +
-      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="1.5" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
-      '<feOffset in="cut" dx="1.6" dy="2.1" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
-      '<feOffset in="cut" dx="-1.1" dy="-1.4" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
-      '<feFlood flood-color="#706f67" flood-opacity=".68"/><feComposite in2="cut" operator="in" result="floor"/>' +
-      '<feFlood flood-color="#282d2b" flood-opacity=".88"/><feComposite in2="innerShade" operator="in" result="shade"/>' +
-      '<feFlood flood-color="#e7e7d9" flood-opacity=".9"/><feComposite in2="innerLight" operator="in" result="light"/>' +
-      '<feMerge><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter>'
+      '<feDisplacementMap in="SourceAlpha" in2="grain" scale=".65" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
+      '<feOffset in="cut" dx="1.1" dy="1.6" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
+      '<feOffset in="cut" dx="-.6" dy="-.9" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
+      '<feComposite in="down" in2="cut" operator="out" result="rimMask"/>' +
+      '<feFlood flood-color="#fff9e7" flood-opacity=".48"/><feComposite in2="rimMask" operator="in" result="rim"/>' +
+      '<feFlood flood-color="#77756b" flood-opacity=".9"/><feComposite in2="cut" operator="in" result="floor"/>' +
+      '<feFlood flood-color="#232820" flood-opacity=".95"/><feComposite in2="innerShade" operator="in" result="shade"/>' +
+      '<feFlood flood-color="#f2eddb" flood-opacity=".6"/><feComposite in2="innerLight" operator="in" result="light"/>' +
+      '<feMerge><feMergeNode in="rim"/><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter>'
     group.setAttribute('filter', 'url(#' + id + ')'); art.append(defs, group)
     return art
   }
@@ -403,7 +405,7 @@
       if (button.dataset.ink) {draft.ink=button.dataset.ink;syncEditor();return}
       if (button.dataset.note) {
         selected=button.dataset.note==='sample'?sample:notes.find(function(n){return n.id===button.dataset.note});if(!selected)return
-        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
+        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
       }
       switch(button.dataset.gb) {
         case 'write': writeAnchor=null;openComposer(button);break
@@ -416,7 +418,7 @@
           if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())){error('先在纸上留下一点内容。');return}
           previewNote=makeNote();$('[data-preview]').replaceChildren(card(previewNote,false));$('[data-preview]').hidden=false;$('[data-editor]').hidden=true
           $('[data-gb="preview"]').hidden=true;$('[data-gb="publish"]').hidden=false;$('[data-gb="back"]').hidden=false
-          $('[data-step]').textContent='02 / 留下之前，看一眼';$('#gb-dialog-title').textContent=previewNote.medium==='engraving'?'把这一笔，刻在这里。':previewNote.medium==='ink'?'让墨迹留在这里。':'把这张纸，贴在这里。';$('[data-gb="publish"]').textContent=['paper','sticker'].includes(previewNote.medium)?'贴到墙上 ↗':'留在墙上 ↗';$('[data-foot-hint]').textContent='会保存在当前浏览器，其他访客暂不可见。';error('');$('[data-gb="publish"]').focus();break
+          $('[data-step]').textContent='02 / 留下之前，看一眼';$('#gb-dialog-title').textContent=previewNote.medium==='engraving'?'把这一笔，刻在这里。':previewNote.medium==='ink'?'让墨迹留在这里。':previewNote.medium==='sticker'?'把这枚贴纸，留在这里。':'把这张纸，贴在这里。';$('[data-gb="publish"]').textContent=['paper','sticker'].includes(previewNote.medium)?'贴到墙上 ↗':'留在墙上 ↗';$('[data-foot-hint]').textContent='会保存在当前浏览器，其他访客暂不可见。';error('');$('[data-gb="publish"]').focus();break
         case 'publish':
           if(!previewNote)return
           var relocated = reserveLocalSpot(previewNote)

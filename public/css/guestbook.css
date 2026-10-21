@@ -92,7 +92,7 @@ button.gb-note:hover, button.gb-note:focus-visible { transform: translateY(-5px)
 .gb-preview .gb-note { --note-angle: -1.3deg; }
 .gb-preview .gb-note-content p, .gb-detail .gb-note-content p { font-size: clamp(16px, 3vw, 23px); }
 .gb-detail { max-width: 620px; padding: 60px 36px 25px; }
-.gb-detail > .gb-close { position: absolute; right: 14px; top: 14px; }
+.gb-detail > .gb-close { z-index: 2; position: absolute; right: 14px; top: 14px; }
 .gb-detail-foot { display: flex; justify-content: space-between; gap: 1rem; align-items: center; margin-top: 24px; font-size: 10px; color: var(--fg-light); }
 .gb-just-pinned { animation: gb-pin .65s var(--ease-ink) both; }
 .nav-right > a[data-nav='guestbook']::before { content: '己'; }
