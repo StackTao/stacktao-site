@@ -321,20 +321,6 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
 #view .reading-source { font: 11px/1.8 var(--font-ui); color: var(--fg-light); text-decoration: none; }
 #view .reading-source:hover { color: var(--fg-deeper); }
 .reading-page { display: block; margin-top: 26px; color: var(--fg-light); font: 9px var(--font-mono); }
-.project-desk { display: grid; grid-template-columns: 1fr 1.7fr; gap: 44px; margin: 26px 0 65px; }
-.project-register { border-top: 1px solid var(--rule); }
-.project-register button { width: 100%; display: grid; grid-template-columns: 23px minmax(0,1fr) 14px; align-items: center; gap: 10px; min-height: 72px; padding: 16px 5px; border-bottom: 1px solid var(--rule); text-align: left; font: 13px/1.7 var(--font-ui); color: var(--fg-light); }
-.project-register-number { font: 9px var(--font-mono); opacity: .7; }
-.project-register-arrow { opacity: 0; transform: translate(-4px,4px); transition: opacity .2s, transform .3s var(--studio-ease); }
-.project-register button[aria-pressed='true'] { color: var(--fg-deeper); }
-.project-register button[aria-pressed='true'] .project-register-arrow { opacity: 1; transform: none; }
-.project-notebook { min-height: 330px; padding: 35px 38px 35px 48px; background: var(--surface); border: 1px solid var(--rule); box-shadow: -5px 0 0 var(--surface-soft), -6px 0 0 var(--rule), 0 12px 30px -22px #00000030; }
-.project-page-number { color: var(--fg-light); font: 9px var(--font-mono); letter-spacing: .07em; }
-#view .project-notebook h2 { font: 500 clamp(23px,3vw,34px)/1.35 var(--font-ui); letter-spacing: -.04em; margin: 30px 0 20px; }
-#view .project-note-description { font: 14px/1.95 var(--font-ui); margin: 0 0 25px; }
-.project-related { margin-top: 38px; }
-#view .project-related h3 { margin: 0 0 15px; font: 11px var(--font-ui); color: var(--fg-light); }
-#view .project-related a { display: block; width: fit-content; font: 12px/1.8 var(--font-ui); margin-top: 10px; }
 #view .article-next { max-width: 100%; margin: 70px 0 0; padding: 30px 0 0; border-top: 1px solid var(--rule); }
 .article-next > span { display: block; color: var(--fg-light); font: 13px var(--font-kai); }
 #view .article-next > a { display: block; width: fit-content; margin-top: 15px; font-size: 20px; text-decoration: none; }
@@ -367,13 +353,10 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
   .contact-frame img { height: 51px; }
   .contact-strip { padding: 10px; gap: 6px; }
   .reading-opening { padding-left: 20px; margin-bottom: 40px; }
-  .project-desk { grid-template-columns: 1fr; gap: 24px; }
-  .project-register button { min-height: 55px; }
-  .project-notebook { padding: 28px; min-height: 300px; margin-left: 6px; }
   .gb-wall { gap: 38px 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .journal-photo-link *, .contact-room *, .project-desk *, .gb-add-paper { transition: none !important; animation: none !important; }
+  .journal-photo-link *, .contact-room *, .gb-add-paper { transition: none !important; animation: none !important; }
 }
 
 /* A typographic voice: fine serif headlines, italic marginalia, quiet UI. */
@@ -390,7 +373,6 @@ body[data-route-kind='home'] .footer { max-width: 720px; width: calc(100% - 48px
 #view .journal-intro h1 { font-family: var(--font-heading); font-weight: 400; font-size: clamp(28px,3.4vw,38px); line-height: 1.6; }
 .journal-name { font-family: var(--font-display); font-weight: 400; font-size: 1.16em; }
 #view .post-row > span:first-of-type, #view .journal-entry h3 { font-family: var(--font-heading); font-weight: 500; font-size: 17px; line-height: 1.8; }
-#view .project-notebook h2 { font-family: var(--font-display); font-size: clamp(30px,3.8vw,44px); font-weight: 400; letter-spacing: -.02em; }
 #view .talk-title { font-family: var(--font-display); font-size: clamp(28px,3.6vw,42px); font-weight: 400; }
 .studio-eyebrow, .journal-overline { letter-spacing: .15em !important; }
 /* A real gesture, in its own space. No document text follows the pointer. */
@@ -432,10 +414,6 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
 }
 
 /* Content-specific motion: page hinge, photographic reveal, unfolding records. */
-.project-notebook { transform-origin: left center; }
-.project-register button { position: relative; }
-.project-register button::before { content: ''; position: absolute; left: -12px; top: 22px; bottom: 22px; width: 2px; background: var(--c-seal); transform: scaleY(0); transform-origin: top; transition: transform .4s var(--studio-ease); }
-.project-register button[aria-pressed='true']::before { transform: scaleY(1); }
 .contact-frame { transition: opacity .2s, border-color .2s, transform .35s var(--studio-ease); }
 .contact-frame:hover, .contact-frame:focus-visible { transform: translateY(-4px) rotate(-2deg); }
 .talk-recordings { overflow: hidden; }
@@ -453,7 +431,7 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
 .circles > a { transition: transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s; }
 .circles > a:hover, .circles > a:focus-visible { transform: translateY(-5px) rotate(-8deg); box-shadow: 0 10px 16px -8px #00000050; }
 @media (prefers-reduced-motion: reduce) {
-  #view .podcast-disc, #view .contact-frame, #view .circles > a, #view .post-row::after, #view .project-register button::before { transition: none; transform: none; }
+  #view .podcast-disc, #view .contact-frame, #view .circles > a, #view .post-row::after { transition: none; transform: none; }
 }
 
 /* Guestbook is a place, not a page inside the blog shell. */

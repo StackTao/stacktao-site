@@ -673,105 +673,73 @@
     if (!grid) return
     var projects = Array.from(grid.querySelectorAll('.item'))
     if (!projects.length) return
-    var desk = node('section', 'project-desk')
-    desk.setAttribute('aria-label', '项目工作笔记')
-    var list = node('div', 'project-register')
-    list.setAttribute('role', 'group')
-    list.setAttribute('aria-label', '选择一个项目')
-    var page = node('div', 'project-notebook'), selectedProject = -1
-    var cabinet = node('div', 'project-cabinet')
-    var cover = node('div', 'drawer-cover')
-    var face = node('div', 'drawer-face')
-    var faceName = node('span', 'drawer-name')
-    face.append(node('span', 'drawer-stamp', 'IN THE MAKING'), faceName, node('span', 'drawer-invitation', '每一个工具，都有自己的来处。'))
-    var handle = node('button', 'drawer-handle')
-    handle.type = 'button'; handle.setAttribute('aria-expanded', 'false'); handle.setAttribute('aria-controls', 'project-file')
-    handle.append(node('span', 'drawer-grip'), node('span', 'drawer-hint', '向下拉开 · 或点击'))
-    cover.append(handle, face); cabinet.append(page, cover)
-    page.id = 'project-file'
-    var progress = 0, startProgress = 0, restingProgress = 0, travel = 1
-    function pull(value, settled) {
-      progress = Math.max(0, Math.min(1, value))
-      cover.style.transform = 'translateY(' + (progress * travel) + 'px)'
-      if (settled) {
-        restingProgress = progress
-        var open = progress === 1
-        handle.setAttribute('aria-expanded', String(open)); page.inert = !open
-        handle.setAttribute('aria-label', open ? '收起项目档案' : '拉开项目档案')
-        handle.querySelector('.drawer-hint').textContent = open ? '推回去 · 或点击收起' : '向下拉开 · 或点击'
-        cabinet.classList.toggle('is-open', open)
-      }
+    var desk = node('section', 'project-context')
+    desk.setAttribute('aria-label', '项目与开发手记')
+    var list = node('div', 'project-stories')
+    // Only connect articles that link to the project, or are its own destination.
+    var articles = Array.from(source('/posts').querySelectorAll('.post-row')).map(function (row) {
+      var href = row.getAttribute('href'), article = source(href.replace(/^#/, '')).querySelector('article')
+      var paragraph = article && (article.querySelector('blockquote') || article.querySelector(':scope > p:not(.post-meta):not(.share-line)'))
+      return { href: href, title: row.querySelector('span').textContent.trim(),
+        excerpt: paragraph ? paragraph.textContent.trim() : '',
+        links: article ? Array.from(article.querySelectorAll('a[href]')).map(function (a) { return a.getAttribute('href') }) : [] }
+    })
+    var margin = node('aside', 'project-margin')
+    margin.setAttribute('aria-label', '开发手记旁读')
+    var label = node('span', 'project-margin-label', '项目之外 / FIELD NOTES')
+    var owner = node('p', 'project-margin-owner')
+    var quote = node('blockquote'), destination = link('', '', 'project-margin-source')
+    var hint = node('p', 'project-margin-hint', '停在手记标题上，读一小段。')
+    margin.append(label, owner, quote, destination, hint)
+    var selected = null, triggers = []
+    function preview(article, name, trigger) {
+      if (selected === trigger) return
+      var changed = selected !== null
+      selected = trigger
+      owner.textContent = '关于 ' + name
+      quote.textContent = article.excerpt
+      destination.textContent = article.title + ' ↗'; destination.href = article.href
+      triggers.forEach(function (el) { el.classList.toggle('is-reading', el === trigger) })
+      if (changed) motion(quote, [{ opacity: .3 }, { opacity: 1 }], 180)
     }
-    function measure() { travel = Math.max(1, cabinet.clientHeight - handle.offsetHeight); pull(progress, true) }
-    grab(handle, function () {
-      var transform = getComputedStyle(cover).transform
-      startProgress = transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42 / travel
-      cover.classList.add('is-pulling'); pull(startProgress, false)
-    }, function (event, origin) {
-      pull(startProgress + (event.clientY - origin.y) / travel, false)
-    }, function (cancelled, moved) {
-      cover.classList.remove('is-pulling')
-      if (cancelled || moved) pull(cancelled ? restingProgress : (progress > .45 ? 1 : 0), true)
-      else pull(restingProgress, true)
-    })
-    handle.addEventListener('click', function () { pull(progress === 1 ? 0 : 1, true) })
-    handle.addEventListener('keydown', function (event) {
-      if (['ArrowDown', 'ArrowUp', 'Escape'].includes(event.key)) {
-        event.preventDefault(); pull(event.key === 'ArrowDown' ? 1 : 0, true)
-      }
-    })
-    var observer = new ResizeObserver(measure); observer.observe(cabinet)
-    disposers.push(function () { observer.disconnect() })
-    var count = node('span', 'project-page-number')
-    var monogram = node('span', 'project-monogram'); monogram.setAttribute('aria-hidden', 'true'); page.appendChild(monogram)
-    var title = node('h2')
-    var description = node('p', 'project-note-description')
-    var destination = link('', '打开项目 ↗', 'journal-inline-link')
-    var related = node('div', 'project-related')
-    page.append(count, title, description, destination, related)
-    var articles = Array.from(source('/posts').querySelectorAll('.post-row'))
-    var buttons = projects.map(function (project, index) {
-      var button = node('button')
-      button.type = 'button'
-      button.append(node('span', 'project-register-number', String(index + 1).padStart(2, '0')), node('span', '', project.querySelector('.project-name').textContent), node('span', 'project-register-arrow', '↗'))
-      button.addEventListener('click', function () { select(index) })
-      list.appendChild(button)
-      return button
-    })
-    function select(index) {
-      if (index === selectedProject) { pull(1, true); return }
-      if (selectedProject >= 0) { pull(1, true); motion(page, [{ opacity: .4 }, { opacity: 1 }], 220) }
-      selectedProject = index
-      var project = projects[index]
-      var name = project.querySelector('.project-name').textContent
-      title.textContent = name
-      faceName.textContent = name
-      monogram.textContent = String(index + 1).padStart(2, '0')
-      count.textContent = 'PROJECT NOTES / ' + String(index + 1).padStart(2, '0')
+    projects.forEach(function (project, index) {
+      var name = project.querySelector('.project-name').textContent, href = project.getAttribute('href')
+      var entry = node('article', 'project-story')
+      entry.appendChild(node('span', 'project-story-number', String(index + 1).padStart(2, '0')))
+      var title = node('h2'), destination = project.cloneNode(false)
+      destination.className = 'project-story-destination'; destination.append(document.createTextNode(name), node('span', '', '↗'))
+      title.appendChild(destination)
       var desc = project.querySelector('.project-desc')
-      description.textContent = desc ? desc.textContent : ''
-      destination.href = project.getAttribute('href')
-      destination.target = project.getAttribute('target') || ''
-      destination.rel = project.getAttribute('rel') || ''
-      related.replaceChildren()
-      var words = name.toLowerCase().split(/\s+/).filter(function (word) { return word.length >= 4 })
-      var matches = articles.filter(function (article) { return words.some(function (word) { return article.querySelector('span').textContent.toLowerCase().includes(word) }) }).slice(0, 2)
+      entry.append(title, node('p', 'project-story-description', desc ? desc.textContent : ''))
+      var matches = articles.filter(function (article) { return article.excerpt && (article.href === href || article.links.includes(href)) }).slice(0, 2)
       if (matches.length) {
-        related.appendChild(node('h3', '', '关于它，写过这些'))
-        matches.forEach(function (article) { related.appendChild(link(article.getAttribute('href'), article.querySelector('span').textContent + ' ↗')) })
+        var notes = node('div', 'project-story-notes')
+        notes.appendChild(node('span', 'project-notes-label', '开发手记'))
+        matches.forEach(function (article) {
+          var trigger = link(article.href, article.title, 'project-note-link')
+          triggers.push(trigger)
+          trigger.addEventListener('pointerenter', function (event) { if (event.pointerType !== 'touch') preview(article, name, trigger) })
+          trigger.addEventListener('focus', function () { preview(article, name, trigger) })
+          notes.appendChild(trigger)
+          var mobile = node('details', 'project-note-mobile'), summary = node('summary', '', '读两句')
+          mobile.append(summary, node('blockquote', '', article.excerpt), link(article.href, '继续读这篇 ↗'))
+          notes.appendChild(mobile)
+          if (!selected) preview(article, name, trigger)
+        })
+        entry.appendChild(notes)
       }
-      buttons.forEach(function (button, i) { button.setAttribute('aria-pressed', String(i === index)) })
-    }
-    desk.append(list, cabinet)
+      list.appendChild(entry)
+    })
+    desk.appendChild(list)
+    if (selected) desk.appendChild(margin)
+    else desk.classList.add('without-notes')
     grid.replaceWith(desk)
     var categories = main.querySelector('.toc-nav')
     if (categories) {
-      var drawer = node('details', 'project-categories')
-      drawer.appendChild(node('summary', '', '按分类翻找'))
-      categories.before(drawer); drawer.appendChild(categories)
+      var index = node('details', 'project-categories')
+      index.appendChild(node('summary', '', '按分类翻找'))
+      categories.before(index); index.appendChild(categories)
     }
-    select(0)
-    measure()
   }
 
   function articleTrail(article, route) {
