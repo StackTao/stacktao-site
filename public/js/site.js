@@ -762,17 +762,17 @@
     }
     var paperPattern = context.createPattern(grain, 'repeat')
     var seasons = [
-      { name: 'spring', light: [196, 177, 139], air: [166, 185, 166], paper: 0.25 },
-      { name: 'summer', light: [143, 181, 176], air: [167, 185, 194], paper: 0.16 },
-      { name: 'autumn', light: [196, 155, 105], air: [192, 172, 142], paper: 0.46 },
+      { name: 'spring', light: [202, 157, 169], air: [151, 179, 145], paper: 0.25 },
+      { name: 'summer', light: [114, 170, 174], air: [167, 185, 194], paper: 0.16 },
+      { name: 'autumn', light: [195, 141, 80], air: [192, 172, 142], paper: 0.46 },
       { name: 'winter', light: [166, 181, 199], air: [186, 191, 197], paper: 0.2 },
     ]
 
     function seasonAt(time) {
-      // 每季一分钟，最后二十秒交接；四分钟一轮，不突然换色。
-      var phase = (time / 60000) % 4
+      // 每季 32 秒，最后 10 秒交接；光色和季节纹理一起平滑过渡。
+      var phase = (time / 32000) % 4
       var index = Math.floor(phase)
-      var progress = Math.max(0, (phase - index - 2 / 3) * 3)
+      var progress = Math.max(0, (phase - index - 22 / 32) * 32 / 10)
       var blend = progress * progress * (3 - 2 * progress)
       var current = seasons[index]
       var next = seasons[(index + 1) % 4]
@@ -781,7 +781,7 @@
           return Math.round(value + (next[key][channel] - value) * blend)
         })
       }
-      return { name: current.name, light: mix('light'), air: mix('air'), paper: current.paper + (next.paper - current.paper) * blend }
+      return { index: index, blend: blend, name: current.name, light: mix('light'), air: mix('air'), paper: current.paper + (next.paper - current.paper) * blend }
     }
 
     function wash(x, y, radiusX, radiusY, color, opacity) {
@@ -794,6 +794,75 @@
       gradient.addColorStop(1, 'rgba(' + color.join(',') + ',0)')
       context.fillStyle = gradient
       context.fillRect(-1, -1, 2, 2)
+      context.restore()
+    }
+
+    function drawSeasonTexture(index, weight, seconds, dark) {
+      if (weight <= 0) return
+      var mobile = width <= 760
+      var edge = width >= 1024 ? 164 : 0
+      var band = Math.min(112, width * 0.12)
+      context.save()
+      // 具象纹理另加硬边界，始终限制在正文之外，再叠加 CSS 柔边遮罩。
+      context.beginPath()
+      if (mobile) {
+        context.rect(0, 0, width, height * 0.09)
+        context.rect(0, height * 0.91, width, height * 0.09)
+      } else {
+        context.rect(edge, 0, band, height)
+        context.rect(width - band, 0, band, height)
+      }
+      context.clip()
+      var colors = dark ? ['202,165,181', '151,194,198', '207,172,121', '184,204,224']
+        : ['170,116,141', '83,139,151', '169,118,57', '114,143,171']
+      for (var side = 0; side < 2; side++) {
+        for (var i = 0; i < 3; i++) {
+          var phase = i * 2.3 + side * 1.8
+          var sway = Math.sin(seconds / 7 + phase)
+          var x = mobile ? width * (0.18 + i * 0.29) : (side ? width - band * 0.4 : edge + band * 0.4) + sway * 7
+          var y = mobile ? height * (side ? 0.97 : 0.03) : height * (0.22 + i * 0.29) + Math.sin(seconds / 11 + phase) * 16
+          context.save()
+          context.translate(x, y)
+          context.globalAlpha *= weight
+          context.strokeStyle = 'rgba(' + colors[index] + ',0.2)'
+          context.fillStyle = 'rgba(' + colors[index] + ',0.2)'
+          context.lineWidth = 0.7
+          if (index === 0) {
+            // 春：局部湿润晕染，粉与嫩绿交错，不重新画花树。
+            wash(0, 0, 24 + i * 5, 38, i % 2 ? [151,179,145] : [202,157,169], 0.2)
+            wash(9, -12, 12, 21, [202,157,169], 0.15)
+          } else if (index === 1) {
+            // 夏：三道疏朗光波，舒展而不闪烁。
+            for (var ripple = 0; ripple < 3; ripple++) {
+              context.beginPath()
+              context.ellipse(0, 0, 16 + ripple * 9 + sway * 2, 5 + ripple * 4, -0.3, 0.2, Math.PI * 1.55)
+              context.stroke()
+            }
+          } else if (index === 2) {
+            // 秋：少量暖色纸屑般的碎影，只在狭窄页边缓慢起伏。
+            context.translate(0, Math.sin(seconds / 9 + phase) * 8)
+            context.rotate(-0.5 + sway * 0.15 + i * 0.4)
+            context.beginPath()
+            context.moveTo(-3, -8)
+            context.bezierCurveTo(7, -4, 7, 3, 1, 9)
+            context.bezierCurveTo(-5, 3, -7, -2, -3, -8)
+            context.fill()
+          } else {
+            // 冬：细淡短霜纹，停留在纸边，没有满屏飘雪。
+            context.rotate(-0.3 + i * 0.2)
+            context.beginPath()
+            context.moveTo(0, 15)
+            context.lineTo(0, -15)
+            for (var frost = -1; frost <= 1; frost++) {
+              context.moveTo(-5, frost * 8 - 5)
+              context.lineTo(0, frost * 8)
+              context.lineTo(5, frost * 8 - 5)
+            }
+            context.stroke()
+          }
+          context.restore()
+        }
+      }
       context.restore()
     }
 
@@ -816,6 +885,8 @@
       wash(mobile ? width * 0.8 : width * 0.99,
         mobile ? height * 0.98 : height * (0.76 - drift),
         width * (mobile ? 0.8 : 0.24), height * 0.62, season.air, dark ? 0.085 : 0.24)
+      drawSeasonTexture(season.index, 1 - season.blend, seconds, dark)
+      drawSeasonTexture((season.index + 1) % 4, season.blend, seconds, dark)
       // 整片纸纹缓慢呼吸，颗粒本身固定；不改变页面底色和文字颜色。
       context.globalAlpha = entry * season.paper * (0.82 + Math.sin(seconds / 23) * 0.08)
       context.fillStyle = paperPattern
