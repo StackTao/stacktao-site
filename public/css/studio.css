@@ -459,3 +459,40 @@ html.dark .pull-handle { background: linear-gradient(90deg,#713a2e,#94503a 9%,#a
 @media (prefers-reduced-motion: reduce) {
   #view .podcast-disc, #view .contact-frame, #view .circles > a, #view .post-row::after, #view .project-register button::before { transition: none; transform: none; }
 }
+
+/* Guestbook is a place, not a page inside the blog shell. */
+body:has([data-guestbook]) { background: #c9c3b5; }
+body:has([data-guestbook]) :is(.nav-wrap,.footer,.back-to-top,.nav-profile-live) { display: none !important; }
+body:has([data-guestbook]) #view { min-height: 100svh; }
+#view main.guestbook-page { max-width: none !important; width: 100%; padding: 0 !important; margin: 0; min-height: 100svh; background-color: #d0cabc; background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"), radial-gradient(ellipse at 20% 5%, #f7f2df66, transparent 65%), radial-gradient(ellipse at 90% 90%, #625e4c20, transparent 55%), linear-gradient(100deg,#c7c1b5,#d6d0c2 43%,#c4bfb3); color: #605c51; }
+#view .guestbook-page .gb-wall-section { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+#view .guestbook-page .gb-wall[data-wall] { min-height: 100svh; background: transparent; border: 0; }
+.gb-wall-invitation { position: absolute; top: 38px; left: clamp(25px,5vw,74px); padding: 0; border: 0; background: none; text-align: left; color: #797465; transform: rotate(-1deg); text-shadow: 0 1px 0 #f5efdd9c; }
+.guestbook-page .gb-wall-invitation > span { display: block; font: 20px/1.8 var(--font-kai); letter-spacing: .12em; }
+.guestbook-page .gb-wall-invitation > small { display: block; font: 10px/1.8 var(--font-ui); letter-spacing: .06em; opacity: .72; }
+.gb-wall-invitation:hover { color: #555044; }
+#view .gb-wall > .gb-note { border-radius: 1px 2px 4px 1px; background-image: linear-gradient(135deg,#ffffff35,transparent 45%,#81714d0b); }
+#view .gb-wall > .gb-note[data-medium='paper']:nth-of-type(3n)::before { width: 9px; height: 9px; border-radius: 50%; top: 8px; left: 48%; background: #8c4e38; box-shadow: inset 1px 1px 2px #f4bd8270, 1px 2px 2px #201a1440; }
+#view .gb-wall .gb-note[data-medium='paper']::after { content: ''; position: absolute; bottom: -2px; right: 8px; width: 55%; height: 10px; box-shadow: 0 4px 5px #463a2728; transform: rotate(3deg); z-index: -1; }
+#view .gb-note.gb-wall-mark { background: transparent; border: 0; border-radius: 0; box-shadow: none; filter: none; cursor: pointer; }
+#view .gb-note.gb-wall-mark::before, #view .gb-note.gb-wall-mark::after { display: none; }
+#view .gb-wall > .gb-wall-mark:hover, #view .gb-wall > .gb-wall-mark:focus-visible { transform: rotate(var(--note-angle)); box-shadow: none; }
+.gb-wall-mark .gb-note-content { aspect-ratio: auto; min-height: 145px; overflow: visible; }
+.gb-wall-mark .gb-note-content p { font: 25px/1.7 var(--font-kai); padding: 22px 20px 10px; letter-spacing: .06em; }
+.gb-wall-mark[data-medium='engraving'] .gb-note-content { color: #7c7567; text-shadow: 0 1px 0 #ede6d5, 0 -1px 1px #55504485; }
+.gb-wall-mark[data-medium='engraving'] svg path { stroke: #817969; filter: drop-shadow(0 1px 0 #ede6d5); }
+.gb-wall-mark[data-medium='ink'] .gb-note-content { color: #454a43; opacity: .82; }
+.gb-wall-mark .gb-note-foot { border: 0; margin: 0 20px; padding: 10px 0; color: #787164; font-family: var(--font-kai); }
+.gb-wall-mark .gb-note-content svg { height: auto; aspect-ratio: 5 / 3; }
+.gb-materials { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-bottom: 22px; }
+.guestbook-page .gb-materials button { padding: 14px 8px; border: 1px solid var(--rule); border-radius: 3px; background: transparent; color: var(--fg-light); font-size: 13px; text-align: left; }
+.gb-materials button small { display: block; font-size: 9px; margin-top: 7px; opacity: .65; }
+.guestbook-page .gb-materials button[aria-pressed='true'] { color: var(--fg-deeper); background: var(--surface-soft); border-color: var(--fg-light); }
+.gb-writing-paper[data-medium='engraving'], .gb-preview:has([data-medium='engraving']), .gb-detail:has([data-medium='engraving']) [data-detail-note] { background: #d0cabc url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"); box-shadow: inset 0 1px 8px #524b3710; }
+.gb-writing-paper[data-medium='ink'], .gb-preview:has([data-medium='ink']), .gb-detail:has([data-medium='ink']) [data-detail-note] { background: #d0cabc url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22180%22%20height%3D%22180%22%3E%3Cfilter%20id%3D%22n%22%3E%3CfeTurbulence%20type%3D%22fractalNoise%22%20baseFrequency%3D%22.72%22%20numOctaves%3D%223%22%20stitchTiles%3D%22stitch%22/%3E%3CfeColorMatrix%20type%3D%22saturate%22%20values%3D%220%22/%3E%3C/filter%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20opacity%3D%22.18%22%20filter%3D%22url%28%23n%29%22/%3E%3C/svg%3E"); }
+.gb-writing-paper[data-medium='engraving'] textarea { color: #7c7567; text-shadow: 0 1px 0 #ede6d5, 0 -1px 1px #55504485; }
+.gb-pen-row.is-engraving .gb-inks { display: none; }
+.guestbook-page .gb-status { position: fixed; bottom: 28px; left: 50%; transform: translate(-50%,8px); z-index: 30; max-width: calc(100% - 40px); width: max-content; padding: 10px 16px; margin: 0; border-radius: 4px; background: #33372ee6; color: #f5f0e4; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+.guestbook-page .gb-status.is-visible { opacity: 1; transform: translate(-50%,0); }
+.guestbook-page .gb-undo-wall { position: fixed; bottom: 18px; right: 24px; z-index: 31; color: #48483c; background: #e7e0ce; padding: 8px 12px; }
+@media (max-width: 600px) { .gb-materials { gap: 5px; } .gb-materials button small { line-height: 1.5; } .gb-wall-mark .gb-note-content p { font-size: 23px; } }
