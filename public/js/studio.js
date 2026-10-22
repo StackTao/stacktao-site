@@ -434,9 +434,18 @@
     section.append(stage, caption, hint)
     main.appendChild(section)
     select(0, false)
-    prints.forEach(function (print, i) {
-      motion(print, [{ opacity: .65, transform: 'translate(0px, 32px) rotate(0deg)' }, { opacity: 1, transform: print.style.transform }], 760 + i * 90)
-    })
+    function arrive() {
+      prints.forEach(function (print, i) {
+        motion(print, [{ opacity: .65, transform: 'translate(0px, 24px) rotate(0deg)' }, { opacity: 1, transform: print.style.transform }], 760 + i * 90)
+      })
+    }
+    if (window.IntersectionObserver) {
+      var arrival = new IntersectionObserver(function (entries) {
+        if (entries.some(function (entry) { return entry.isIntersecting })) { arrival.disconnect(); if (pointer === null) arrive() }
+      }, { threshold: .2 })
+      arrival.observe(stage)
+      disposers.push(function () { arrival.disconnect() })
+    } else arrive()
   }
 
   function photoLoupe(stage, image, tools) {

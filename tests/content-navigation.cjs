@@ -70,7 +70,7 @@ try {
     assert(d.querySelector('.footer-links a[href="#/sponsors"]'), 'support remains reachable from the footer')
     assert.equal(d.querySelector('[data-search] span').textContent, '逛逛')
     for (const resource of ['css/collections.css', 'css/cabinet.css', 'css/navigation.css', 'css/typography.css', 'js/cabinet.js']) {
-      const link = d.querySelector('[href="' + resource + '?v=folio-35"], [src="' + resource + '?v=folio-35"]')
+      const link = d.querySelector('[href="' + resource + '?v=folio-37"], [src="' + resource + '?v=folio-37"]')
       assert(link, resource + ' is attached to both entrypoints')
       assert(fs.existsSync(path.join(root === project ? path.join(project, 'public') : root, resource)), resource + ' exists')
     }

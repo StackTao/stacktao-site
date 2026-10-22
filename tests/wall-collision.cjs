@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const source = fs.readFileSync(path.join(__dirname, '../public/js/wall-tools.js'), 'utf8')
 const context = { window: {} }
-vm.runInNewContext(source.replace('window.WallTools={', 'window.geometry={collisionIndex,leaseCells,segmentDistance};window.WallTools={'), context)
+vm.runInNewContext(source.replace('window.WallTools={', 'window.geometry={collisionIndex,leaseCells,segmentDistance,capsuleHitsRect,capsuleBox,cellRange};window.WallTools={'), context)
 const { collisionIndex, leaseCells, segmentDistance } = context.window.geometry
 const line = (x,y,x2,y2,r=4) => ({ a:[x,y],b:[x2,y2],r })
 const index = collisionIndex()
@@ -30,3 +30,15 @@ const occupied = new Set([...leaseCells(line(200,100,200,600)),...leaseCells(lin
 assert.equal(leaseCells(line(400,250,600,250)).some(c=>occupied.has(c)),false)
 assert.equal(leaseCells(line(190,300,210,300)).some(c=>occupied.has(c)),true)
 console.log('PASS: stroke gaps, swept paths, brush widths, physical surfaces, and sparse concurrent reservations')
+
+// Fast diagonal sweeps visit only candidate columns but retain the exact old mask.
+const { capsuleHitsRect, capsuleBox, cellRange } = context.window.geometry
+let seed = 123
+function random() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296 }
+for (let i = 0; i < 150; i++) {
+  const s = line(random() * 1100 - 50, random() * 700 - 20, random() * 1100 - 50, random() * 700 - 20, random() * 32)
+  const expected = []
+  cellRange(capsuleBox(s), 8, (x,y) => { if(x >= 0 && x < 125 && y >= 0 && capsuleHitsRect(s,{x:x*8,y:y*8,width:8,height:8})) expected.push(y*128+x) })
+  assert.deepEqual(Array.from(leaseCells(s)), expected, 'optimized sweep must match every occupied cell, including reversed diagonals and boundary grazes')
+}
+console.log('PASS: 150 deterministic swept-cell masks match the original exact collision rule')

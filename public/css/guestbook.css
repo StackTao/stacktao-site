@@ -126,3 +126,25 @@ html.dark .gb-note, html.dark .gb-writing-paper { filter: brightness(.88); }
 @media (prefers-reduced-motion: reduce) { .guestbook-page *, .guestbook-page *::before { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 
 .gb-preview .gb-note-content:has(p), .gb-detail .gb-note-content:has(p) { aspect-ratio: auto; min-height: 230px; overflow: visible; }
+
+/* A small sticker booklet: four original cutouts per shelf, with a full-size preview on the wall. */
+.guestbook-page .gb-sticker-picker { display: block; padding: 10px 0; background: none; }
+.guestbook-page .gb-sticker-picker[hidden], .guestbook-page .gb-sticker-options button[hidden] { display: none; }
+.gb-sticker-tabs { display: flex; gap: 8px; border-bottom: 1px solid #8d816233; padding-bottom: 6px; margin-bottom: 8px; }
+.guestbook-page .gb-sticker-picker .gb-sticker-tabs button { flex: 1; width: auto; min-height: 36px; padding: 5px 8px; border: 0; border-radius: 4px; font: 12px var(--font-ui); color: #77745e; }
+.guestbook-page .gb-sticker-tabs button[aria-pressed='true'] { transform: none; background: #d7cbb44f; color: #353b30; }
+.gb-sticker-options { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; }
+.guestbook-page .gb-sticker-picker .gb-sticker-options button { width: auto; min-width: 0; padding: 5px 2px 7px; border-radius: 6px; color: #585c4b; }
+.guestbook-page .gb-sticker-options svg { height: 58px; margin: 0 auto 4px; filter: drop-shadow(0 1px 1px #3b352b33); }
+.gb-sticker-options button > span { display: block; font: 10px/1.6 var(--font-ui); white-space: nowrap; }
+.guestbook-page .gb-sticker-options button:hover { background: #d7cbb426; }
+.guestbook-page .gb-sticker-options button[aria-pressed='true'] { background: #d7cbb43d; transform: rotate(-3deg); }
+.guestbook-page .gb-sticker-picker button:focus-visible { outline: 2px solid var(--c-seal); outline-offset: 2px; }
+.guestbook-page .gb-sticker-current { margin: 10px 0 0; font: 10px/1.7 var(--font-ui); color: #77745e; }
+
+@media (pointer: coarse) { .guestbook-page .gb-sticker-picker .gb-sticker-tabs button { min-height: 44px; } }
+
+/* The wall composer keeps its light material in both site themes. */
+#view .guestbook-page [data-composer] h2 { color: #45483d; }
+
+#view .guestbook-page .gb-stage-handle { white-space: nowrap; min-width: max-content; font: 12px/1.4 var(--font-ui); }

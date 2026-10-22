@@ -272,6 +272,7 @@ async function check(directory, generated) {
     animations.push(animation); return animation
   }
   w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  w.IntersectionObserver = undefined
   mountHome()
   assert(animations.some(animation => animation.element.classList.contains('photo-print')), 'the photo stack has a real arrival motion')
   const motionDial = q('.radio-dial')

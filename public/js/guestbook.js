@@ -3,11 +3,11 @@
   var WALL_SIZE = 24
   var markWidths = { small:190, medium:260, large:320 }
   var inks = ['#343832', '#3f5870', '#a45743', '#e9edcf', '#d7f557', '#6286ee', '#f47760']
-  var fonts = { kai:['楷书', '"Kaiti SC",STKaiti,KaiTi,serif'], song:['宋体', '"Songti SC","Noto Serif SC",serif'], hei:['黑体', '"PingFang SC","Microsoft YaHei",sans-serif'], round:['圆体', '"Yuanti SC",YouYuan,sans-serif'], brush:['行楷', '"Xingkai SC",STXingkai,"Kaiti SC",cursive'], mono:['等宽', '"DM Mono",monospace'] }
+  var fonts = { wenkai:['霞鹜文楷', '"LXGW WenKai TC","Kaiti SC",STKaiti,KaiTi,serif'], mashan:['马善政毛笔', '"Ma Shan Zheng","LXGW WenKai TC","Kaiti SC",cursive'], caveat:['Caveat · 英文手写', '"Caveat","LXGW WenKai TC","Kaiti SC",cursive'], kai:['系统楷书', '"Kaiti SC",STKaiti,KaiTi,serif'], song:['宋体', '"Songti SC","Noto Serif SC",serif'], hei:['黑体', '"PingFang SC","Microsoft YaHei",sans-serif'], round:['系统圆体', '"Yuanti SC",YouYuan,sans-serif'], brush:['系统行楷', '"Xingkai SC",STXingkai,"Kaiti SC",cursive'], mono:['等宽', '"DM Mono",monospace'] }
   var papers = ['ivory', 'sage', 'rose']
   var cleanup = function () {}
   var unsaved = function () { return false }
-  var draft = { mode: 'draw', strokes: [], text: '', name: '', paper: 'ivory', ink: '#3f5870', width: 4.5, medium: 'ink', size:'medium', sticker:'spark', font:'kai', fontSize:24 }
+  var draft = { mode: 'draw', strokes: [], text: '', name: '', paper: 'ivory', ink: '#3f5870', width: 4.5, medium: 'ink', size:'medium', sticker:'spark', font:'wenkai', fontSize:24 }
   var sample = { id: 'sample', mode: 'text', text: '山海有归期，\n风雨有相逢。', name: '墙上的题字', paper: 'ivory', medium: 'engraving', date: '', strokes: [] }
 
   // Versioned vocabulary: a bijection avoids collisions; later volumes retain a unique suffix.
@@ -51,7 +51,7 @@
       <div class="gb-dialog-head"><div><p class="gb-eyebrow" data-step>01 / 写下此刻</p><h2 id="gb-dialog-title">慢慢写，不必工整。</h2></div><button class="gb-close" data-gb="close" aria-label="关闭，保留未完成纸笺">×</button></div>
       <div data-editor>
         <div class="gb-materials" aria-label="留下痕迹的方式"><button data-medium="engraving" aria-pressed="true">刻画<small>凹槽与刮痕</small></button><button data-medium="ink" aria-pressed="false">涂鸦<small>让笔迹自由一点</small></button><button data-medium="paper" aria-pressed="false">纸条<small>一句话，一张纸</small></button><button data-medium="sticker" aria-pressed="false">贴纸<small>贴上一点自己的颜色</small></button></div>
-        <div class="gb-sticker-picker" data-stickers hidden aria-label="选择贴纸"></div>
+        <div class="gb-sticker-picker" data-stickers hidden><div class="gb-sticker-tabs" data-sticker-tabs role="group" aria-label="贴纸类别"></div><div class="gb-sticker-options" data-sticker-options role="group" aria-label="选择贴纸"></div><p class="gb-sticker-current" data-sticker-current aria-live="polite"></p></div>
         <label class="gb-mark-size">占墙大小 <select data-size aria-label="占墙大小"><option value="small">小一点</option><option value="medium" selected>适中</option><option value="large">大一点</option></select><span>留下空间，也留给下一个人。</span></label>
         <div class="gb-tools"><div class="gb-segment" aria-label="书写方式"><button data-mode="draw" aria-pressed="true">手写</button><button data-mode="text" aria-pressed="false">打字</button></div><div class="gb-papers" aria-label="纸张颜色"><button data-paper="ivory" aria-label="米白纸" aria-pressed="true"></button><button data-paper="sage" aria-label="灰绿纸" aria-pressed="false"></button><button data-paper="rose" aria-label="浅粉纸" aria-pressed="false"></button></div></div>
         <div class="gb-writing-paper" data-paper-surface="ivory">
@@ -60,7 +60,7 @@
           <textarea data-message maxlength="180" placeholder="写一句问候，或留一点此刻的想法。" aria-label="留言内容，最多180字" hidden></textarea>
         </div>
         <div class="gb-pen-row" data-pen-tools><div class="gb-inks" aria-label="墨色"><button data-ink="#343832" aria-label="石墨" aria-pressed="true"></button><button data-ink="#3f5870" aria-label="靛蓝" aria-pressed="false"></button><button data-ink="#a45743" aria-label="赭红" aria-pressed="false"></button><button data-ink="#e9edcf" aria-label="粉白" aria-pressed="false"></button><button data-ink="#d7f557" aria-label="荧光黄绿" aria-pressed="false"></button><button data-ink="#6286ee" aria-label="钴蓝" aria-pressed="false"></button><button data-ink="#f47760" aria-label="珊瑚橘" aria-pressed="false"></button></div><label class="gb-pen-size">笔触<select data-width aria-label="笔触粗细"><option value="2.4">细笔</option><option value="4.5">粗笔</option><option value="12">宽喷头</option></select></label><button class="gb-text-button" data-gb="undo">撤回一笔</button><button class="gb-text-button" data-gb="clear">清空</button></div>
-        <div class="gb-type-tools" data-type-tools hidden><label>字体<select data-font aria-label="留言字体"><option value="kai">楷书</option><option value="song">宋体</option><option value="hei">黑体</option><option value="round">圆体</option><option value="brush">行楷</option><option value="mono">等宽</option></select></label><label>字号<select data-font-size aria-label="文字大小"><option value="18">18</option><option value="24" selected>24</option><option value="32">32</option></select></label><button data-gb="preview-text" class="gb-text-button">看上墙效果</button></div><div class="gb-text-count" data-text-count hidden>0 / 180</div>
+        <div class="gb-type-tools" data-type-tools hidden><label>字体<select data-font aria-label="留言字体">${Object.keys(fonts).map(function(key){return '<option value="'+key+'">'+fonts[key][0]+'</option>'}).join('')}</select></label><label>字号<select data-font-size aria-label="文字大小"><option value="18">18</option><option value="24" selected>24</option><option value="32">32</option></select></label><button data-gb="preview-text" class="gb-text-button">看上墙效果</button></div><div class="gb-text-count" data-text-count hidden>0 / 180</div>
         <label class="gb-signature">落款 <input data-name maxlength="24" placeholder="留个名字，也可以匿名" autocomplete="nickname"></label>
       </div>
       <p class="gb-error" data-error role="alert"></p>
@@ -106,10 +106,10 @@
     var ns = 'http://www.w3.org/2000/svg', art = note.mode === 'draw' ? svg(note.strokes,note.frame) : document.createElementNS(ns, 'svg')
     art.classList.add('gb-carved-art')
     art.setAttribute('role', 'img'); art.setAttribute('aria-label', note.mode === 'draw' ? '刻入墙面的手写笔迹' : note.text)
-    var group = document.createElementNS(ns, 'g')
+    var group = document.createElementNS(ns, 'g'), cutWidth = 10
     if (note.mode === 'draw') {
       while (art.firstChild) group.appendChild(art.firstChild)
-      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(note.frame ? Number(path.getAttribute('stroke-width')) : 4.5+Number(path.getAttribute('stroke-width'))*1.2)); path.setAttribute('stroke-linejoin','bevel'); path.setAttribute('stroke-linecap',path.getAttribute('d').includes('l0.01 0') ? 'round' : 'butt') })
+      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(note.frame ? Number(path.getAttribute('stroke-width')) : 4.5+Number(path.getAttribute('stroke-width'))*1.2)); path.setAttribute('stroke-linejoin',note.frame ? 'round' : 'bevel'); path.setAttribute('stroke-linecap',note.frame || path.getAttribute('d').includes('l0.01 0') ? 'round' : 'butt') })
     }
     else {
       var lines = [], line = '', units = 0
@@ -129,14 +129,16 @@
         text.textContent = value; group.appendChild(text)
       })
     }
+    if(note.frame&&note.mode==='draw')cutWidth=Math.min.apply(null,note.strokes.map(function(stroke){return stroke.width}).concat([10]))
+    var roughness=Math.min(2.3,cutWidth*.25),slope=Math.max(.35,Math.min(1.8,cutWidth*.3))
     var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
     var defs = document.createElementNS(ns, 'defs')
     // Invert the height field: the stroke is a depression, never a raised ridge.
     // Matte diffuse light only; a darker, grainy floor prevents a metallic bright core.
     defs.innerHTML = '<filter id="' + id + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="' + ((note.frame ? note.frame.width : 600)+20) + '" height="' + ((note.frame ? note.frame.height : 360)+20) + '" color-interpolation-filters="sRGB">' +
       '<feTurbulence type="fractalNoise" baseFrequency=".13 .21" numOctaves="2" seed="' + seed + '" result="grain"/>' +
-      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="2.3" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
-      '<feGaussianBlur in="cut" stdDeviation="1.8" result="slope"/>' +
+      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="' + roughness + '" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
+      '<feGaussianBlur in="cut" stdDeviation="' + slope + '" result="slope"/>' +
       '<feComponentTransfer in="slope" result="recess"><feFuncA type="linear" slope="-1" intercept="1"/></feComponentTransfer>' +
       '<feDiffuseLighting in="recess" surfaceScale="3" diffuseConstant="1" lighting-color="#e0c29b" result="stoneLight"><feDistantLight azimuth="225" elevation="45"/></feDiffuseLighting>' +
       '<feColorMatrix in="grain" type="matrix" values="0 0 0 0 .67 0 0 0 0 .56 0 0 0 0 .43 0 0 0 .18 .82" result="sediment"/>' +
@@ -163,14 +165,25 @@
     }
     return box
   }
-  var stickerNames = { spark:'闪光', bloom:'野花', orbit:'轨道' }
+  var stickerNames = { spark:'闪光', bloom:'野花', orbit:'轨道', mountain:'远山', ticket:'车票', camp:'露营', sprout:'新芽', ginkgo:'银杏', mushroom:'小蘑菇', coffee:'慢咖啡', camera:'胶片机', cassette:'旧磁带' }
+  var stickerGroups = { travel:{label:'沿途',items:['mountain','ticket','camp','orbit']},plants:{label:'草木',items:['sprout','ginkgo','mushroom','bloom']},objects:{label:'小物',items:['coffee','camera','cassette','spark']} }
+  function stickerGroup(kind){return Object.keys(stickerGroups).find(function(key){return stickerGroups[key].items.includes(kind)})||'objects'}
   function stickerArt(kind) {
     var ns = 'http://www.w3.org/2000/svg', art = document.createElementNS(ns, 'svg')
     art.setAttribute('viewBox', '0 0 160 160'); art.setAttribute('role', 'img'); art.setAttribute('aria-label', stickerNames[kind] + '贴纸')
     var drawings = {
       spark:'<path d="M78 8 94 53 141 31 113 77 151 99 103 105 108 151 77 117 37 147 46 102 9 83 51 66 35 20 69 47Z" fill="#dfff51" stroke="#f5f4e9" stroke-width="9" stroke-linejoin="round"/><path d="m70 73 3 9m20-11 3 9m-28 17q17 13 31-3" fill="none" stroke="#30372d" stroke-width="5" stroke-linecap="round"/>',
       bloom:'<path d="M62 54C24 12 7 65 44 79 1 94 38 138 65 108 63 154 121 142 105 107 146 137 163 82 121 76 159 46 111 15 91 53 95 8 41 14 62 54Z" fill="#fa744f" stroke="#f5f4e9" stroke-width="9" stroke-linejoin="round"/><circle cx="82" cy="81" r="24" fill="#e5ed58"/><path d="m72 75 1 6m17-6 1 6m-20 10q12 8 22-1" fill="none" stroke="#30372d" stroke-width="4" stroke-linecap="round"/>',
-      orbit:'<circle cx="80" cy="80" r="49" fill="#5d78e8" stroke="#f5f4e9" stroke-width="8"/><ellipse cx="80" cy="80" rx="72" ry="23" transform="rotate(-28 80 80)" fill="none" stroke="#e7f16e" stroke-width="9"/><path d="m73 63 2 7m22-10 2 7m-26 18q15 9 26-6" fill="none" stroke="#f5f4e9" stroke-width="4" stroke-linecap="round"/>'
+      orbit:'<circle cx="80" cy="80" r="49" fill="#5d78e8" stroke="#f5f4e9" stroke-width="8"/><ellipse cx="80" cy="80" rx="72" ry="23" transform="rotate(-28 80 80)" fill="none" stroke="#e7f16e" stroke-width="9"/><path d="m73 63 2 7m22-10 2 7m-26 18q15 9 26-6" fill="none" stroke="#f5f4e9" stroke-width="4" stroke-linecap="round"/>',
+      mountain:'<path d="m80 10 61 27v72l-61 40-61-40V37Z" fill="#d7e0ce" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><circle cx="111" cy="48" r="13" fill="#d89a60"/><path d="m22 102 39-58 29 39 17-20 32 39v6l-59 37-58-37Z" fill="#426965"/><path d="m45 68 16-24 19 26-17-7-9 11Z" fill="#f1ecd8"/><path d="m54 128 28-19-9-15 16-12" fill="none" stroke="#d8d5ae" stroke-width="5" stroke-linecap="round"/>',
+      ticket:'<path d="M16 36h128v29q-17 0-17 15t17 15v29H16V95q17 0 17-15T16 65Z" fill="#b46e56" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="M105 42v76" stroke="#f4dec4" stroke-width="3" stroke-dasharray="4 6"/><path d="M47 62h39m-39 13h25m-25 24h38" stroke="#f4dec4" stroke-width="5" stroke-linecap="round"/><path d="m68 87 8 6-8 6" fill="none" stroke="#f4dec4" stroke-width="4"/><path d="M116 55v48m6-42v36" stroke="#453e36" stroke-width="3"/>',
+      camp:'<path d="m80 18 62 104-7 21H25l-7-21Z" fill="#eadbb7" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="m80 27 59 99H21Z" fill="#c87950"/><path d="m80 54 31 72H49Z" fill="#344e4c"/><path d="m80 54-8 72" stroke="#f5d3a2" stroke-width="3"/><path d="M27 135h106M22 123l-8 13m124-13 8 13" stroke="#41645e" stroke-width="4" stroke-linecap="round"/><path d="m37 44 3-7 3 7 7 3-7 3-3 7-3-7-7-3Z" fill="#41645e"/>',
+      sprout:'<path d="M49 100C15 77 22 39 56 48c13 3 23 13 26 22 2-34 29-49 51-37 5 29-12 57-44 60l1 12h29l-10 41H51l-11-41Z" fill="#f8f3e5" stroke="#f8f3e5" stroke-width="10" stroke-linejoin="round"/><path d="M80 94C43 92 29 73 32 53c27-1 46 13 48 41m3-9c-1-28 17-48 44-46-1 28-18 48-44 46" fill="#78916a"/><path d="M81 110V77m0 20L50 67m33 18 28-30" fill="none" stroke="#365e4d" stroke-width="4" stroke-linecap="round"/><path d="M47 105h67l-9 34H57Z" fill="#b97555"/><path d="M45 104h72v10H45Z" fill="#d49670"/>',
+      ginkgo:'<path d="M79 113C42 123 12 99 15 68c1-20 23-40 47-37l18 33 15-34c28-3 51 19 50 43-1 28-27 46-59 41l7 29-13 3-8-30Z" fill="#d2b765" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="m80 110-1-45m1 45L39 52m41 58L22 78m58 32 39-59m-39 59 54-31m-54 31 8 30" fill="none" stroke="#9b8645" stroke-width="3" stroke-linecap="round"/><path d="m48 39 31 27 27-28" fill="none" stroke="#ead78f" stroke-width="3"/>',
+      mushroom:'<path d="M16 86C15 45 47 19 80 19s65 27 64 67c-1 15-24 18-44 16l12 34q-31 16-64 0l12-34c-22 3-43-2-44-16Z" fill="#f8f3e5" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="M64 86h31l11 48q-26 12-52 0Z" fill="#dbccaa"/><path d="M20 83c0-38 29-60 60-60s60 23 60 60q-59 22-120 0Z" fill="#ad6253"/><ellipse cx="80" cy="87" rx="60" ry="12" fill="#ead9b9"/><path d="m34 88 27 5m19-3v7m21-4 25-5" stroke="#bba580" stroke-width="3"/><path d="M51 43q14-6 12 8t-17 8m50-10q18-6 22 10T96 69M72 31q9-4 11 4t-9 7" fill="#f0dfbc"/>',
+      coffee:'<path d="M27 59h80v10h13q29 0 27 28-1 25-39 25l-9 16H36l-9-20Z" fill="#f8f3e5" stroke="#f8f3e5" stroke-width="10" stroke-linejoin="round"/><path d="M106 77h14q18 0 18 17t-30 18" fill="none" stroke="#a76651" stroke-width="12"/><path d="M31 64h76v44q0 26-37 26t-39-26Z" fill="#b9785e"/><ellipse cx="69" cy="66" rx="38" ry="10" fill="#e0b78e"/><ellipse cx="69" cy="65" rx="29" ry="6" fill="#5b493c"/><path d="M21 139h99M51 47c-16-15 13-17 0-33m26 33c-16-15 13-17 0-33" fill="none" stroke="#f8f3e5" stroke-width="8" stroke-linecap="round"/><path d="M43 81v20" stroke="#dbb794" stroke-width="5" stroke-linecap="round"/>',
+      camera:'<path d="M18 48h28l9-17h49l10 17h28v87H18Z" fill="#486b72" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="M20 60h120v14H20Z" fill="#d5be95"/><circle cx="82" cy="94" r="31" fill="#2d4148" stroke="#ded6bc" stroke-width="7"/><circle cx="82" cy="94" r="19" fill="#668e96"/><path d="M70 88q4-10 14-8" fill="none" stroke="#c5ded5" stroke-width="5" stroke-linecap="round"/><path d="M118 84h12v11h-12Z" fill="#d9bc87"/><path d="M59 39h40v10H59Z" fill="#243f47"/>',
+      cassette:'<path d="M16 31h128v99H16Z" fill="#526c74" stroke="#f8f3e5" stroke-width="9" stroke-linejoin="round"/><path d="M28 44h104v51H28Z" fill="#e2c99f"/><path d="M33 50h94v12H33Z" fill="#b87056"/><path d="M44 72h73v16H44Z" fill="#5b6663"/><circle cx="50" cy="80" r="12" fill="#efe5ce"/><circle cx="111" cy="80" r="12" fill="#efe5ce"/><circle cx="50" cy="80" r="5" fill="#4b5960"/><circle cx="111" cy="80" r="5" fill="#4b5960"/><path d="m52 107-9 20h75l-10-20Z" fill="#c6ba9e"/><path d="M59 115h42" stroke="#667577" stroke-width="3"/><circle cx="27" cy="119" r="3" fill="#d8d1ba"/><circle cx="133" cy="119" r="3" fill="#d8d1ba"/>'
     }
     art.innerHTML = drawings[kind] || drawings.spark
     return art
@@ -214,7 +227,7 @@
     if (!root) return
     var controller = new AbortController(), signal = controller.signal
     var $ = function (selector) { return root.querySelector(selector) }
-    var freeTools = null, editingText = null, draftBaseline = null, editAnchorBaseline = null
+    var freeTools = null, editingText = null, draftBaseline = null, editAnchorBaseline = null, stickerCategory=stickerGroup(draft.sticker)
     var wall = $('[data-wall]'), composer = $('[data-composer]'), detail = $('[data-detail]'), book = $('[data-wall-book]')
     var bookFocus = null, locateAfterClose = null, locatedNote = null, locatedTimer = 0
     var canvas = $('[data-drawing]'), ctx = canvas.getContext('2d'), activeStroke = null, pointer = null
@@ -223,6 +236,28 @@
     var placementGhost=document.createElement('div');placementGhost.className='gb-placement-ghost';placementGhost.hidden=true;wall.after(placementGhost)
     var moveHandle=document.createElement('button');moveHandle.className='gb-stage-handle';moveHandle.type='button';moveHandle.textContent='⠿ 拖动位置';moveHandle.setAttribute('aria-label','拖动留言位置')
     var stageDrag=null,placeFrame=0
+    var fontRefreshTimer=0,fontRequest=null,publishingText=false
+    function refreshTypography(){
+      if(signal.aborted)return
+      if(drag||stageDrag||pointer!==null||(freeTools&&freeTools.busy())){fontRefreshTimer=setTimeout(refreshTypography,100);return}
+      var input=$('[data-message]'),scroll=input.scrollTop
+      wallLayout();input.scrollTop=scroll;liveCarving.scrollTop=scroll
+    }
+    function queueTypography(){if(signal.aborted)return;clearTimeout(fontRefreshTimer);fontRefreshTimer=setTimeout(refreshTypography,40)}
+    function loadTypedFont(){
+      if(draft.mode!=='text'||!document.fonts||!document.fonts.load)return Promise.resolve()
+      var family=(fonts[draft.font]||fonts.kai)[1],text=draft.text||'山海 Hello',key=family+'\n'+text
+      if(fontRequest&&fontRequest.key===key)return fontRequest.promise
+      var request={key:key};fontRequest=request
+      request.promise=document.fonts.load('400 '+(draft.fontSize||24)+'px '+family,text).then(function(){if(fontRequest===request)queueTypography()},function(){if(!signal.aborted&&fontRequest===request)error('字体暂未载入，当前显示备用字体。')})
+      return request.promise
+    }
+    if(document.fonts){
+      document.fonts.ready.then(queueTypography,function(){})
+      document.fonts.addEventListener('loadingdone',function(e){
+        if(!e.fontfaces||e.fontfaces.some(function(face){return Object.keys(fonts).some(function(key){return fonts[key][1].includes(face.family.replace(/["']/g,''))})}))queueTypography()
+      },{signal:signal})
+    }
     function draftSignature(){return JSON.stringify([draft.mode,draft.medium,draft.text,draft.strokes,draft.name,draft.paper,draft.ink,draft.size,draft.sticker,draft.font,draft.fontSize])}
     unsaved=function(){
       if(freeTools&&freeTools.dirty())return true
@@ -253,7 +288,7 @@
       if(composer.open){validatePlacement();var b=stage.getBoundingClientRect();composer.style.left=innerWidth>900&&b.right>innerWidth-330?'24px':'';composer.style.right=composer.style.left?'auto':''}
     }
     function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:Math.max(writing.offsetHeight,width*.6);if(draft.medium==='paper')h+=36;return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
-    function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
+    function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok||publishingText;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
     wall.addEventListener('pointermove',function(e){if(!choosing)return;var a=anchorAt(e.clientX,e.clientY),w=draftWidth();placementGhost.hidden=false;Object.assign(placementGhost.style,{left:wall.offsetLeft+16+a.x*Math.max(0,wall.clientWidth-w-32)+'px',top:wall.offsetTop+a.y+'px',width:w+'px',height:(draft.medium==='sticker'?w:w*.6)+'px'});placementGhost.textContent={ink:'喷漆文字',engraving:'刻字',paper:'纸条',sticker:'贴纸'}[draft.medium]},{signal:signal})
     moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
     moveHandle.addEventListener('pointermove',function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;writeAnchor={mode:layoutMode,x:Math.max(0,Math.min(1,stageDrag.anchor.x+(e.clientX-stageDrag.x)/Math.max(1,wall.clientWidth-draftWidth()-32))),y:Math.max(16,stageDrag.anchor.y+e.clientY-stageDrag.y)};stage.style.left=wall.offsetLeft+16+writeAnchor.x*Math.max(0,wall.clientWidth-draftWidth()-32)+'px';stage.style.top=wall.offsetTop+writeAnchor.y+'px';if(!placeFrame)placeFrame=requestAnimationFrame(function(){placeFrame=0;validatePlacement()})},{signal:signal})
@@ -586,7 +621,7 @@
       var isSticker = draft.medium === 'sticker'
       $('.gb-tools').hidden = isSticker; $('.gb-writing-paper').hidden = isSticker; $('[data-stickers]').hidden = !isSticker
       $('[data-size]').value = draft.size || 'medium'
-      root.querySelectorAll('[data-sticker]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.sticker === draft.sticker)) })
+      syncStickers()
       $('.gb-writing-paper').dataset.paperSurface = draft.paper
       $('.gb-writing-paper').dataset.medium = draft.medium || 'paper'
       root.querySelectorAll('.gb-materials [data-medium]').forEach(function (b) { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', b.dataset.medium === draft.medium) })
@@ -596,7 +631,7 @@
       $('[data-pen-tools]').hidden = isSticker||(draft.mode==='text'&&draft.medium==='engraving');$('.gb-pen-size').hidden=draft.mode!=='draw';$('[data-gb="undo"]').hidden=draft.mode!=='draw';$('[data-gb="clear"]').hidden=draft.mode!=='draw';$('[data-type-tools]').hidden=isSticker||draft.mode!=='text';$('[data-font]').value=draft.font||'kai';$('[data-font-size]').value=String(draft.fontSize||24); $('[data-text-count]').hidden = isSticker || draft.mode !== 'text'
       $('[data-message]').value = draft.text; $('[data-name]').value = draft.name; $('[data-width]').value = String(draft.width)
       $('[data-text-count]').textContent = draft.text.length + ' / 180'
-      redraw(); if (composer.open) positionStage()
+      redraw(); if (composer.open) positionStage();loadTypedFont()
     }
     function showEditor() {
       $('[data-gb="publish"]').hidden = false
@@ -606,6 +641,7 @@
     }
     function openComposer(trigger) {
       cancelPlace(); restoreFocus = trigger; previewNote = null
+      if(draft.medium==='sticker')stickerCategory=stickerGroup(draft.sticker)
       if(!writeAnchor)writeAnchor=anchorAt(innerWidth*.45,innerHeight*.4)
       showEditor();composer.show();root.classList.add('is-writing');stage.hidden=false;positionStage()
       wall.style.height=Math.max(parseFloat(wall.style.height)||0,writeAnchor.y+stage.offsetHeight+100)+'px'
@@ -630,15 +666,23 @@
       activeStroke.points.push(p);redraw()
     }, {signal:signal})
     ;['pointerup','pointercancel','lostpointercapture'].forEach(function (event) {canvas.addEventListener(event,stop,{signal:signal})})
-    $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';redraw();positionStage()},{signal:signal})
+    $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';redraw();positionStage();loadTypedFont()},{signal:signal})
     $('[data-font]').addEventListener('change',function(e){draft.font=e.target.value;syncEditor()},{signal:signal})
     $('[data-font-size]').addEventListener('change',function(e){draft.fontSize=Number(e.target.value);syncEditor()},{signal:signal})
     $('[data-message]').addEventListener('blur',function(){writing.classList.remove('is-typing')},{signal:signal})
     $('[data-message]').addEventListener('focus',function(){writing.classList.add('is-typing')},{signal:signal})
     $('[data-message]').addEventListener('scroll',function(e){liveCarving.scrollTop=e.target.scrollTop},{signal:signal})
     $('[data-name]').addEventListener('input',function(e){draft.name=e.target.value},{signal:signal})
-    Object.keys(stickerNames).forEach(function (kind) {
-      var button = document.createElement('button'); button.type = 'button'; button.dataset.sticker = kind; button.setAttribute('aria-label', stickerNames[kind] + '贴纸'); button.appendChild(stickerArt(kind)); $('[data-stickers]').appendChild(button)
+    function syncStickers(){
+      root.querySelectorAll('[data-sticker-group]').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.stickerGroup===stickerCategory))})
+      root.querySelectorAll('[data-sticker]').forEach(function(b){b.hidden=!stickerGroups[stickerCategory].items.includes(b.dataset.sticker);b.setAttribute('aria-pressed',String(b.dataset.sticker===draft.sticker))})
+      $('[data-sticker-current]').textContent='当前：'+stickerNames[draft.sticker]+' · 选好后贴在墙上'
+    }
+    Object.keys(stickerGroups).forEach(function(key){
+      var button=document.createElement('button');button.type='button';button.dataset.stickerGroup=key;button.textContent=stickerGroups[key].label;$('[data-sticker-tabs]').appendChild(button)
+      stickerGroups[key].items.forEach(function(kind){
+        var button=document.createElement('button'),label=document.createElement('span');button.type='button';button.dataset.sticker=kind;button.setAttribute('aria-label',stickerNames[kind]+'贴纸');label.textContent=stickerNames[kind];button.append(stickerArt(kind),label);$('[data-sticker-options]').appendChild(button)
+      })
     })
     $('[data-size]').addEventListener('change',function(e){draft.size=e.target.value;positionStage()},{signal:signal})
     $('[data-width]').addEventListener('change',function(e){draft.width=Number(e.target.value)},{signal:signal})
@@ -648,6 +692,7 @@
       if (button.dataset.bookNote) { locateAfterClose=button.dataset.bookNote;book.close();return }
       if (button.dataset.wallTool) { if(choosing&&editingText)abandonPlacement(); if(['ink','engraving'].includes(button.dataset.wallTool)){if(composer.open)composer.close();cancelPlace();if(!roomForNote())return;draft.medium=button.dataset.wallTool;freeTools.start(button.dataset.wallTool)}else choosePlace(button.dataset.wallTool); return }
       if (button.closest('.gb-materials') && button.dataset.medium) { draft.medium=button.dataset.medium;syncEditor();return }
+      if (button.dataset.stickerGroup) {stickerCategory=button.dataset.stickerGroup;syncStickers();return}
       if (button.dataset.sticker) {draft.sticker=button.dataset.sticker;syncEditor();return}
       if (button.dataset.mode) {if(button.dataset.mode==='draw'&&['ink','engraving'].includes(draft.medium)){if(draft.text.trim()){error('文字草稿还在，请先保存或关闭编辑，再切换手写。');return}composer.close();freeTools.start(draft.medium);return}draft.mode=button.dataset.mode;syncEditor();return}
       if (button.dataset.paper) {draft.paper=button.dataset.paper;syncEditor();return}
@@ -655,7 +700,7 @@
       if (button.dataset.note) {
         if (choosing || composer.open || (freeTools&&freeTools.active())) return
         selected=button.dataset.note==='sample'?sample:notes.find(function(n){return n.id===button.dataset.note});if(!selected)return
-        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';$('[data-gb="edit"]').hidden=selected.id==='sample'||!['ink','engraving'].includes(selected.medium);detail.showModal();document.body.classList.add('gb-dialog-open');return
+        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';$('[data-gb="edit"]').hidden=selected.id==='sample'||(!['ink','engraving'].includes(selected.medium)&&!(selected.mode==='text'&&(selected.medium||'paper')==='paper'));detail.showModal();document.body.classList.add('gb-dialog-open');return
       }
       switch(button.dataset.gb) {
         case 'wall-book':
@@ -685,7 +730,15 @@
         case 'undo':draft.strokes.pop();redraw();error('');break
         case 'clear':draft.strokes=[];redraw();error('');break
         case 'publish':
+          if(publishingText)return
           if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())) { error('先在墙面选中的位置留下一笔。'); return }
+          if(draft.mode==='text'&&draft.medium!=='sticker'){
+            var beforeFontLoad=draftSignature();publishingText=true;button.disabled=true
+            await loadTypedFont();publishingText=false
+            if(signal.aborted||!composer.open)break
+            positionStage()
+            if(draftSignature()!==beforeFontLoad){error('文字或字体已更改，请确认后再次保存。');break}
+          }
           previewNote=makeNote();if(editingText){previewNote.id=editingText.id;previewNote.date=editingText.date}
           if(!editingText&&!roomForNote()){error('本面已满。先保留草稿并关闭编辑，再点击「开新墙」。');return}
           if(!validatePlacement())return
@@ -712,7 +765,7 @@
     root.querySelectorAll('[data-wall-tool="ink"],[data-wall-tool="engraving"]').forEach(function(b){b.querySelector('span').innerHTML=window.WallTools.toolArt(b.dataset.wallTool)})
     freeTools=window.WallTools.mount({root:root,wall:wall,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,capacity:capacityText,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;choosePlace(medium)},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('痕迹已保存。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))}})
     renderWall()
-    cleanup=function(){unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,hasUnsavedChanges:function(){return unsaved()},confirmLeave:function(){return !unsaved() || window.confirm('墙上还有尚未保存的内容。离开后，未保存的手绘会丢失。确定离开吗？')},destroy:function(){cleanup();cleanup=function(){}}}
 })()
