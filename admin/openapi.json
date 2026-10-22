@@ -1975,6 +1975,84 @@
           }
         }
       }
+    },
+    "/api/v1/wall": {
+      "get": {
+        "summary": "管理员读取共享留言与类型统计",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "",
+                "ink",
+                "engraving",
+                "paper",
+                "sticker"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "分页留言、墙面总数与分类统计"
+          },
+          "403": {
+            "description": "仅管理员可用"
+          }
+        }
+      }
+    },
+    "/api/v1/wall/{id}": {
+      "delete": {
+        "summary": "管理员删除共享留言，保留删除档案",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revision"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已移除"
+          },
+          "409": {
+            "description": "版本冲突"
+          }
+        }
+      }
     }
   },
   "components": {

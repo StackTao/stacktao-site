@@ -128,6 +128,6 @@ test('analytics uses real inventory, validates collection, deduplicates daily se
     assert.equal((await fetch(base+'/api/v1/analytics')).status,401)
     const disk=await fs.readFile(path.join(state,'analytics',(await fs.readdir(path.join(state,'analytics')))[0]),'utf8')
     assert(!disk.includes(event.session));assert(!disk.includes('secret'));assert(!disk.includes('127.0.0.1'))
-    assert.equal(report.wall.total,null)
+    assert.equal(report.wall.total,0)
   }finally{if(previous===undefined)delete process.env.ANALYTICS_ORIGINS;else process.env.ANALYTICS_ORIGINS=previous;await app.close();await fs.rm(temp,{recursive:true,force:true})}
 })

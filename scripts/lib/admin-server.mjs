@@ -1,3 +1,4 @@
+import { createWallStore } from './wall-store.mjs'
 import { createAnalytics } from './analytics.mjs'
 import http from 'node:http'
 import { promises as fs } from 'node:fs'
@@ -121,12 +122,33 @@ export async function createAdminServer(options={}) {
   function admin(actor){check(actor.admin,'该操作仅限站点管理员',403)}
   const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
   async function staticFile(res,file,privateFile=false) {const data=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':privateFile?'no-store':'no-cache'});res.end(data)}
+  const wallStore=await createWallStore(state),wallRates=new Map()
   const analytics=createAnalytics({source,state,originals,writeJSON}),trackingRates=new Map()
   const server=http.createServer(async(req,res)=>{
     res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY')
     try {
       const expected=new URL(origin),url=new URL(req.url,origin),pathname=decodeURIComponent(url.pathname)
       check(req.headers.host===expected.host,'Host 不匹配',403)
+      if(pathname.startsWith('/api/wall')){
+        const allowed=[origin,...(process.env.WALL_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean)]
+        if(['127.0.0.1','localhost'].includes(expected.hostname))allowed.push('http://127.0.0.1:5173','http://localhost:5173')
+        if(req.headers.origin){check(allowed.includes(req.headers.origin),'留言墙来源未授权',403);res.setHeader('Access-Control-Allow-Origin',req.headers.origin);res.setHeader('Vary','Origin')}
+        if(req.method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','GET,POST,DELETE');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');res.writeHead(204);return res.end()}
+        const mutation=req.method!=='GET';if(mutation)check(allowed.includes(req.headers.origin),'留言操作需要可信来源',403)
+        const now=Date.now();for(const [key,r] of wallRates)if(r.until<now)wallRates.delete(key)
+        const key=req.socket.remoteAddress+':'+mutation,rate=wallRates.get(key)||{count:0,until:now+60000};check(wallRates.size<10000||wallRates.has(key),'请求过多',429);rate.count++;wallRates.set(key,rate);check(rate.count<=(mutation?600:900),'操作频繁，请稍后重试',429)
+        if(pathname==='/api/wall/session'&&req.method==='POST')return send(res,201,{token:crypto.randomBytes(32).toString('hex')})
+        const token=/^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization||'')?.[1],visitor=token?wallStore.owner(token):''
+        if(pathname==='/api/wall'&&req.method==='GET'){const section=Number(url.searchParams.get('section')||0);check(Number.isInteger(section)&&section>=0,'墙面无效');return send(res,200,wallStore.snapshot(section,visitor))}
+        check(visitor,'请先建立访客身份',401);const p=await body(req,1000000)
+        if(pathname==='/api/wall/leases'&&req.method==='POST')return send(res,200,await wallStore.reserve(visitor,p))
+        if(pathname==='/api/wall/notes'&&req.method==='POST')return send(res,200,await wallStore.put(visitor,p))
+        if(pathname==='/api/wall/walls'&&req.method==='POST')return send(res,201,await wallStore.newWall())
+        const lease=/^\/api\/wall\/leases\/([a-zA-Z0-9-]+)$/.exec(pathname);if(lease&&req.method==='DELETE')return send(res,200,await wallStore.release(visitor,lease[1]))
+        const restore=/^\/api\/wall\/notes\/([a-zA-Z0-9-]+)\/restore$/.exec(pathname);if(restore&&req.method==='POST')return send(res,200,await wallStore.restore(restore[1],visitor))
+        const note=/^\/api\/wall\/notes\/([a-zA-Z0-9-]+)$/.exec(pathname);if(note&&req.method==='DELETE')return send(res,200,await wallStore.remove(note[1],visitor,p.revision))
+        throw new Problem(404,'留言接口不存在')
+      }
       if(pathname==='/api/v1/collect'){
         const allowed=(process.env.ANALYTICS_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean)
         check(allowed.includes(req.headers.origin),'访问统计未启用或来源未授权',403)
@@ -151,7 +173,8 @@ export async function createAdminServer(options={}) {
         if(pathname==='/api/v1/session'&&method==='DELETE'){const cookie=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1];sessions.delete(cookie);res.setHeader('Set-Cookie','stacktao_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true})}
         if(method==='GET') {
           can(actor,'content:read')
-          if(pathname==='/api/v1/analytics'){const days=Number(url.searchParams.get('days')||30);check([7,30,90].includes(days),'统计范围应为 7、30 或 90 天');return send(res,200,{...await analytics.report(days),collectionEnabled:!!process.env.ANALYTICS_ORIGINS})}
+          if(pathname==='/api/v1/wall'){admin(actor);const page=Number(url.searchParams.get('page')||1);check(Number.isInteger(page)&&page>0,'页码无效');return send(res,200,wallStore.list({page,type:url.searchParams.get('type')||''}))}
+          if(pathname==='/api/v1/analytics'){const days=Number(url.searchParams.get('days')||30);check([7,30,90].includes(days),'统计范围应为 7、30 或 90 天');return send(res,200,{...await analytics.report(days),wall:{mode:'shared',...wallStore.stats()},collectionEnabled:!!process.env.ANALYTICS_ORIGINS})}
           if(pathname==='/api/v1/status')return send(res,200,{name:actor.name,admin:actor.admin,building,mode:'local-build',source:path.basename(source),preview:'/site/',scopes:actor.scopes,gitDeploy:process.env.ADMIN_GIT_PUBLISH==='1'})
           if(pathname==='/api/v1/posts'){const ids=new Set((await originals()).keys());for(const name of await fs.readdir(path.join(state,'drafts')).catch(()=>[]))if(name.endsWith('.json'))ids.add(name.slice(0,-5));const all=await Promise.all([...ids].map(post));return send(res,200,all.sort((a,b)=>b.date.localeCompare(a.date)))}
           const getPost=/^\/api\/v1\/posts\/([a-z0-9-]+)$/.exec(pathname);if(getPost)return send(res,200,await post(getPost[1]))
@@ -170,6 +193,7 @@ export async function createAdminServer(options={}) {
           return send(res,200,{html})
         }
         const payload=await body(req,pathname==='/api/v1/media'?12*1024*1024:1000000,pathname==='/api/v1/media')
+        const deleteWall=/^\/api\/v1\/wall\/([a-zA-Z0-9-]+)$/.exec(pathname);if(deleteWall&&method==='DELETE'){admin(actor);return send(res,200,await wallStore.remove(deleteWall[1],'',payload.revision,true))}
         return await serial(async()=>{
           if(pathname==='/api/v1/deploy'&&method==='POST'){
             can(actor,'deploy');check(process.env.ADMIN_GIT_PUBLISH==='1','未启用 Git 自动上线，请先配置 ADMIN_GIT_PUBLISH=1',409)
@@ -238,5 +262,5 @@ export async function createAdminServer(options={}) {
   return {server,ownerFile,source,output,state,async listen(port=Number(process.env.ADMIN_PORT||5174),host=process.env.ADMIN_HOST||'127.0.0.1'){
     check(['127.0.0.1','localhost','::1'].includes(host)||/^https:\/\//.test(origin),'对外监听必须配置 HTTPS 的 ADMIN_PUBLIC_ORIGIN')
     await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,()=>{server.removeListener('error',reject);resolve()})});if(!origin)origin=`http://${host==='::1'?'[::1]':host}:${server.address().port}`;return origin
-  },async close(){await new Promise(resolve=>server.close(resolve))}}
+  },async close(){await new Promise(resolve=>server.close(resolve));await wallStore.close()}}
 }
