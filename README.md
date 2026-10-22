@@ -15,6 +15,18 @@ npm run dev
 
 `npm run dev` 会先读取 `example-content/`，生成原型能够直接读取的页面数据，再启动本地服务。运行期间修改 Markdown 会自动重生成并刷新页面，不需要手工重启。
 
+## 内容管理后台与 AI 发布
+
+```bash
+npm run admin
+```
+
+打开 `http://127.0.0.1:5174/admin/`，用首次启动生成的 `.local/admin/owner-token` 登录。后台支持文章自动存草稿、Markdown 预览、图片拖放/粘贴、发布/撤回、相册、项目、站点菜单和 AI 令牌管理。前台静态站与管理服务独立，GitHub Pages 不运行后台。
+
+所有后台操作使用 `/api/v1`；AI 可用受限令牌写草稿，也可单独授权发布与 Git 同步。发布构建本机静态产物，线上发布需推送仓库并等待部署完成。
+
+使用与部署见 [内容工作台说明](docs/content-studio.md)，API 调用见 [AI 发布协议](docs/ai-publishing.md) 和 [OpenAPI 文档](admin/openapi.json)。
+
 ## 使用独立文章仓库
 
 将文章仓库检出到任意目录，然后通过 `CONTENT_DIR` 指向它：
@@ -56,6 +68,7 @@ public/js/
 
 ```bash
 npm run test:site
+npm run test:admin
 npm run build
 ```
 

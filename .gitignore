@@ -6,3 +6,7 @@ public/js/content-generated.js
 .DS_Store
 *.log
 .env
+
+.local/
+dist.previous/
+dist.building-*/

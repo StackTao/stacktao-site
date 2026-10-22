@@ -32,6 +32,7 @@ function slugify(value) {
 }
 
 function assetUrl(value, slug) {
+  if (/^media\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/.test(value || '')) return `content/${value}`
   if (!value || /^(?:[a-z]+:|\/)/i.test(value)) return value
   return `content/assets/${slug}/${value.replace(/^\.\//, '')}`
 }
@@ -158,7 +159,7 @@ async function renderArticle(file) {
 
   const articleDir = path.dirname(file)
   const imagesDir = path.join(articleDir, 'images')
-  try {
+  if (data.draft !== true) try {
     await fs.access(imagesDir)
     await fs.mkdir(path.join(outputDir, 'assets', slug), { recursive: true })
     await fs.cp(imagesDir, path.join(outputDir, 'assets', slug, 'images'), { recursive: true })
@@ -222,7 +223,7 @@ async function publishAlbumAssets(albums) {
   for (const album of albums) {
     for (const photo of album.photos) {
       const source = String(photo.src || '').replace(/^\.\//, '')
-      if (!source || /^(?:https?:)?\/\//i.test(source)) continue
+      if (!source || /^(?:https?:)?\/\//i.test(source) || /^media\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/.test(source)) continue
       const sourcePath = path.resolve(album.directory, source)
       const relative = path.relative(album.directory, sourcePath)
       if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`相册图片路径越界: ${source}`)
@@ -234,6 +235,7 @@ async function publishAlbumAssets(albums) {
 }
 
 function photoUrl(photo, album) {
+  if (/^media\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/.test(photo.src || '')) return `content/${photo.src}`
   const source = String(photo.src || '').trim()
   if (/^https?:\/\//i.test(source)) return source
   const relative = source.replace(/^\.\//, '').split(path.sep).join('/')
@@ -521,6 +523,7 @@ async function main() {
   await Promise.all([
     fs.rm(path.join(outputDir, 'posts'), { recursive: true, force: true }),
     fs.rm(path.join(outputDir, 'assets'), { recursive: true, force: true }),
+    fs.rm(path.join(outputDir, 'media'), { recursive: true, force: true }),
   ])
   await fs.mkdir(path.join(outputDir, 'posts'), { recursive: true })
   await publishAlbumAssets(albums)
@@ -530,6 +533,16 @@ async function main() {
   const articles = rendered
     .filter((article) => !article.draft)
     .sort((a, b) => b.date.localeCompare(a.date))
+
+  // Publish only media referenced by public content; draft uploads stay private.
+  const publicMedia = new Set()
+  for (const value of [...articles.map(a => a.html + ' ' + (a.cover || '')), ...albums.flatMap(a => a.photos.map(p => p.src || ''))]) {
+    for (const match of value.matchAll(/(?:content\/)?media\/([a-f0-9-]+\.(?:png|jpg|webp|gif|avif))/g)) publicMedia.add(match[1])
+  }
+  for (const name of publicMedia) {
+    await fs.mkdir(path.join(outputDir, 'media'), { recursive: true })
+    await fs.copyFile(path.join(sourceDir, 'media', name), path.join(outputDir, 'media', name))
+  }
 
   await Promise.all(articles.map((article) => fs.writeFile(
     path.join(outputDir, 'posts', `${article.slug}.json`),
