@@ -81,7 +81,7 @@
     var group = document.createElementNS(ns, 'g')
     if (note.mode === 'draw') {
       while (art.firstChild) group.appendChild(art.firstChild)
-      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(Math.max(8,Number(path.getAttribute('stroke-width'))))); path.setAttribute('stroke-linejoin','bevel') })
+      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(4.5+Number(path.getAttribute('stroke-width'))*1.2)); path.setAttribute('stroke-linejoin','bevel'); path.setAttribute('stroke-linecap',path.getAttribute('d').includes('l0.01 0') ? 'round' : 'butt') })
     }
     else {
       var lines = [], line = '', units = 0
@@ -103,18 +103,22 @@
     }
     var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
     var defs = document.createElementNS(ns, 'defs')
-    // All relief is clipped inside the cut: shadow on the upper lip, muted light below.
+    // Invert the height field: the stroke is a depression, never a raised ridge.
+    // Matte diffuse light only; a darker, grainy floor prevents a metallic bright core.
     defs.innerHTML = '<filter id="' + id + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="620" height="380" color-interpolation-filters="sRGB">' +
-      '<feTurbulence type="fractalNoise" baseFrequency=".12 .19" numOctaves="2" seed="' + seed + '" result="grain"/>' +
-      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="1.15" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
-      '<feOffset in="cut" dx="1.5" dy="2.1" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
-      '<feGaussianBlur in="innerShade" stdDeviation=".65"/><feComposite in2="cut" operator="in" result="softShade"/>' +
-      '<feOffset in="cut" dx="-.6" dy="-.9" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
-      '<feFlood flood-color="#999583"/><feComposite in2="cut" operator="in" result="floor"/>' +
-      '<feFlood flood-color="#37392e" flood-opacity=".88"/><feComposite in2="innerShade" operator="in" result="lip"/>' +
-      '<feFlood flood-color="#444638" flood-opacity=".65"/><feComposite in2="softShade" operator="in" result="shade"/>' +
-      '<feFlood flood-color="#ddd8c4" flood-opacity=".45"/><feComposite in2="innerLight" operator="in" result="light"/>' +
-      '<feMerge><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="lip"/><feMergeNode in="light"/></feMerge></filter>'
+      '<feTurbulence type="fractalNoise" baseFrequency=".13 .21" numOctaves="2" seed="' + seed + '" result="grain"/>' +
+      '<feDisplacementMap in="SourceAlpha" in2="grain" scale="2.3" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
+      '<feGaussianBlur in="cut" stdDeviation="1.8" result="slope"/>' +
+      '<feComponentTransfer in="slope" result="recess"><feFuncA type="linear" slope="-1" intercept="1"/></feComponentTransfer>' +
+      '<feDiffuseLighting in="recess" surfaceScale="6" diffuseConstant="1" lighting-color="#c4beaa" result="stoneLight"><feDistantLight azimuth="225" elevation="45"/></feDiffuseLighting>' +
+      '<feColorMatrix in="grain" type="matrix" values="0 0 0 0 .37 0 0 0 0 .35 0 0 0 0 .29 0 0 0 .18 .82" result="sediment"/>' +
+      '<feComposite in="stoneLight" in2="sediment" operator="arithmetic" k2=".4" k3=".6" result="stone"/>' +
+      '<feComposite in="stone" in2="cut" operator="in" result="floor"/>' +
+      '<feOffset in="cut" dx="1.1" dy="1.5" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
+      '<feFlood flood-color="#3d3b30" flood-opacity=".42"/><feComposite in2="innerShade" operator="in" result="shadow"/>' +
+      '<feOffset in="cut" dx=".6" dy=".9"/><feComposite in2="cut" operator="out" result="lip"/>' +
+      '<feFlood flood-color="#e1ddcb" flood-opacity=".32"/><feComposite in2="lip" operator="in" result="edge"/>' +
+      '<feMerge><feMergeNode in="edge"/><feMergeNode in="floor"/><feMergeNode in="shadow"/></feMerge></filter>'
     group.setAttribute('filter', 'url(#' + id + ')'); art.append(defs, group)
     return art
   }
