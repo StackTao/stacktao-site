@@ -28,7 +28,7 @@
   window.PAGE_TITLES = window.PAGE_TITLES || {}
   window.PAGE_TITLES['/guestbook'] = '留言墙 · StackTao'
   window.PAGES['/guestbook'] = `<main class="page guestbook-page" data-guestbook>
-    <div class="gb-wall-header"><a class="gb-exit" href="#/" aria-label="返回博客">← <span>返回博客</span></a><h1 class="gb-wall-title"><span data-wall-name></span><small data-wall-volume hidden></small><i aria-hidden="true"><img src="assets/materials/visitor-seal-v1.png" alt="" width="34" height="34"></i></h1><span class="gb-local-label">本机留言 · <span data-count>0</span> 处</span></div>
+    <div class="gb-wall-header"><a class="gb-exit" data-wall-protected href="#/" aria-label="返回博客">← <span>返回博客</span></a><h1 class="gb-wall-title" data-wall-protected><span data-wall-name></span><small data-wall-volume hidden></small><i aria-hidden="true"><img src="assets/materials/visitor-seal-v1.png" alt="" width="34" height="34"></i></h1><span class="gb-local-label">本机留言 · <span data-count>0</span> 处</span></div>
     <nav class="gb-wall-dock" aria-label="留言墙工具"><button data-gb="previous-wall" aria-label="上一面墙">←</button><label class="gb-wall-picker" title="每面容纳24处留言，写满自动延伸到下一面"><span>墙面</span><select data-wall-select aria-label="选择墙面"></select></label><button data-gb="next-wall" aria-label="下一面墙">→</button><span class="gb-dock-divider" aria-hidden="true"></span><button data-wall-tool="ink" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="m10 27 3-8L25 7l5 5-12 12Z" fill="#e3c492" stroke="#24382e"/><path d="m13 19 5 5m5-15 5 5" stroke="#385f7a" stroke-width="3"/><path d="m10 27 5-2-3-3Z" fill="#303a32"/></svg></span>涂鸦</button><button data-wall-tool="engraving" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="m8 29 4-9 7 7Z" fill="#bdc9c6" stroke="#f1f1dc"/><path d="m13 20 9-13q2-3 5 0l3 3q2 2-1 4L20 26Z" fill="#b58a5f" stroke="#24382e"/><path d="m17 18 6 5" stroke="#f0d2a3"/></svg></span>刻画</button><button data-wall-tool="paper" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="M9 7h18v23H9Z" fill="#f6f0df" stroke="#dad7bf"/><path d="M22 7v6h5" fill="#ddd5bf"/><path d="M13 18h9m-9 5h6" stroke="#858b73"/><path d="M13 5h9v5h-9Z" fill="#adb596" opacity=".8"/></svg></span>纸条</button><button data-wall-tool="sticker" aria-pressed="false"><span aria-hidden="true"><svg viewBox="0 0 36 36" focusable="false"><path d="M18 5c7-7 13 2 7 7 10-1 11 10 2 11 5 8-4 13-9 6-4 8-14 2-10-5-10 0-10-11-1-12-6-5 3-13 8-6Z" fill="#e3ad76" stroke="#f6f0df" stroke-width="2"/><circle cx="18" cy="18" r="5" fill="#e7eccf"/></svg></span>贴纸</button></nav>
     <section class="gb-wall-section" aria-label="一面可以留下痕迹的墙">
       <span class="journal-sr-only" id="gb-move-help">点空白墙面写留言。纸条可拖动；键盘空格拿起、方向键移动、Enter放下、Escape取消；刻痕固定在墙上。</span>
@@ -55,7 +55,7 @@
       <p class="gb-error" data-error role="alert"></p>
       <div class="gb-dialog-foot"><span data-foot-hint>这张纸会替你保留原本的笔迹。</span><button class="gb-text-button" data-gb="reposition">换个位置</button><button class="gb-button gb-primary" data-gb="publish" hidden>贴到墙上 ↗</button></div>
     </dialog>
-    <dialog class="gb-dialog gb-detail" data-detail aria-label="纸笺详情"><button class="gb-close" data-gb="detail-close" aria-label="关闭纸笺">×</button><div data-detail-note></div><p class="gb-error" data-detail-error role="alert"></p><div class="gb-detail-foot"><button class="gb-text-button" data-arrange aria-pressed="false">移动这张纸</button><span>痕迹只保存在本机。</span><button class="gb-text-button" data-gb="remove">擦去这处痕迹</button></div></dialog>
+    <dialog class="gb-dialog gb-detail" data-detail aria-label="纸笺详情"><button class="gb-close" data-gb="detail-close" aria-label="关闭纸笺">×</button><div data-detail-note></div><p class="gb-error" data-detail-error role="alert"></p><div class="gb-detail-foot"><button class="gb-text-button" data-arrange aria-pressed="false">移动这张纸</button><button class="gb-text-button" data-gb="edit" hidden>修改这处痕迹</button><span>本机创建的留言</span><button class="gb-text-button" data-gb="remove">擦去这处痕迹</button></div></dialog>
   </main>`
 
   function valid(note) {
@@ -189,7 +189,7 @@
     if (!root) return
     var controller = new AbortController(), signal = controller.signal
     var $ = function (selector) { return root.querySelector(selector) }
-    var freeTools = null
+    var freeTools = null, editingText = null
     var wall = $('[data-wall]'), composer = $('[data-composer]'), detail = $('[data-detail]')
     var canvas = $('[data-drawing]'), ctx = canvas.getContext('2d'), activeStroke = null, pointer = null
     var writing = $('.gb-writing-paper'), writingHome = writing.parentElement, stage = $('[data-live-stage]'), choosing = false, closingForMove = false, browseScroll = 0
@@ -231,9 +231,16 @@
     function error(message) { $('[data-error]').textContent = message; $('[data-detail-error]').textContent = message }
     async function persist(next) {
       var previous=notes.map(function(n){return n.id}), retained=next.map(function(n){return n.id})
-      function write(){var fresh=readNotes();if(next.some(function(n){return !previous.includes(n.id)}) && Object.values(JSON.parse(localStorage.getItem(KEY+'-live-leases')||'{}')).some(function(p){return p.wall===currentWall && p.expires>Date.now()}))throw Error('这面墙还有窗口正在创作，请待对方完成后再贴上，草稿仍在。');var merged=next.filter(function(n){return !previous.includes(n.id)}).concat(fresh.filter(function(n){return !previous.includes(n.id)||retained.includes(n.id)}));localStorage.setItem(KEY,JSON.stringify(merged));notes=merged;return true}
+      function write(){
+        var fresh=readNotes();if(editingText&&JSON.stringify(fresh.find(function(n){return n.id===editingText.id}))!==JSON.stringify(editingText))throw Error('原作已在另一窗口修改，请重新打开后再编辑。');var changed=next.filter(function(n){var old=notes.find(function(item){return item.id===n.id});return !old||JSON.stringify(old)!==JSON.stringify(n)})
+        var live=Object.values(JSON.parse(localStorage.getItem(KEY+'-live-leases')||'{}')).filter(function(p){return p.expires>Date.now()})
+        if(changed.length&&live.some(function(p){return p.wall===currentWall}) || live.some(function(p){return p.note&&previous.includes(p.note)&&!retained.includes(p.note)}))throw Error('这面墙还有窗口正在创作，请待对方完成后再保存，草稿仍在。')
+        changed.forEach(function(n){var old=notes.find(function(item){return item.id===n.id});if(old&&JSON.stringify(fresh.find(function(item){return item.id===n.id}))!==JSON.stringify(old))throw Error('原作已在另一窗口修改，请重新打开后再编辑。')})
+        var merged=changed.filter(function(n){return !previous.includes(n.id)}).concat(fresh.filter(function(n){return !previous.includes(n.id)||retained.includes(n.id)}).map(function(n){return changed.find(function(item){return item.id===n.id})||n}))
+        localStorage.setItem(KEY,JSON.stringify(merged));notes=merged;return true
+      }
       try { return navigator.locks ? await navigator.locks.request(KEY+'-mutation',write) : write() }
-      catch (err) { error(err.message.includes('正在创作') ? err.message : '浏览器空间不足或无法保存。草稿仍在，请不要关闭页面；原有留言没有改变。'); status('保存未完成，草稿和原有留言都还在。'); return false }
+      catch (err) { error((/正在创作|另一窗口/.test(err.message)) ? err.message : '浏览器空间不足或无法保存。草稿仍在，请不要关闭页面；原有留言没有改变。'); status('保存未完成，草稿和原有留言都还在。'); return false }
     }
     var layoutKey = KEY + '-positions-organic-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
     var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null, visibilityObserver = null
@@ -254,6 +261,7 @@
       return note && note.layout === 2 && note.anchor && note.anchor.mode === layoutMode ? { x:note.anchor.x, y:note.anchor.y, z:notes.length + 1 } : null
     }
     function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
+    function wallControls(){var r=wall.getBoundingClientRect();return Array.from(root.querySelectorAll('[data-wall-protected]')).map(function(el){var b=el.getBoundingClientRect();return {x:b.left-r.left-8,y:b.top-r.top-8,width:b.width+16,height:b.height+16,medium:'control'}})}
     function spotAvailable(x,y,width,height,medium,occupied) {
       return occupied.every(function (other) {
         var ox = Math.min(x+width,other.x+other.width)-Math.max(x,other.x)
@@ -292,9 +300,10 @@
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
       cards.forEach(function (el) { var n=notes.find(function(n){return n.id===el.dataset.note});el.style.width = (n && n.frame ? n.frame.width*width/1000 : Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32))) + 'px';if(n&&n.frame)el.style.height=n.frame.height*width/1000+'px' })
-      var occupied = cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240, medium:el.dataset.medium } : null }).filter(Boolean)
+      var reserved=wallControls();var occupied = reserved.concat(cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240, medium:el.dataset.medium } : null }).filter(Boolean))
       cards.forEach(function (el,index) {
         var p = positionOf(el), height = el.offsetHeight || 240, ownWidth = parseFloat(el.style.width), maxX = Math.max(0, width - ownWidth - 32)
+        if(p && !el.dataset.freeform && !spotAvailable(16+p.x*maxX,p.y,ownWidth,height,el.dataset.medium,reserved))p=null
         if (!p) {
           var spot = findWallSpot(ownWidth,height,el.dataset.medium,traceSeed({id:el.dataset.note}),occupied)
           p = { x:spot.x, y:el.dataset.note === 'sample' ? 180 : spot.y, z:index + 1 }
@@ -482,7 +491,7 @@
     }
     function openComposer(trigger) {
       cancelPlace(); restoreFocus = trigger; previewNote = null
-      var probe = makeNote(), relocated = reserveLocalSpot(probe); writeAnchor = probe.anchor
+      var probe = makeNote(), relocated = reserveLocalSpot(probe,true); writeAnchor = probe.anchor
       if (relocated) status('这里放不下完整笔迹，已选好附近的空白处。')
       showEditor(); composer.show(); root.classList.add('is-writing'); stage.hidden = false; positionStage()
       wall.style.height = Math.max(parseFloat(wall.style.height),writeAnchor.y+stage.offsetHeight+window.innerHeight*.65)+'px'
@@ -495,11 +504,12 @@
     function makeNote() {
       return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
     }
-    function reserveLocalSpot(note) {
+    function reserveLocalSpot(note,editor) {
       var width = Math.min(note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium'], Math.max(160,wall.clientWidth - 32))
       var probe = card(note,false); probe.style.width = width + 'px'; probe.style.visibility = 'hidden'; wall.appendChild(probe)
-      var height = probe.offsetHeight || width * .6 + 64; probe.remove()
-      var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]')).map(function (el) { return {x:parseFloat(el.style.left),y:parseFloat(el.style.top),width:el.offsetWidth || parseFloat(el.style.width),height:el.offsetHeight || 240,medium:el.dataset.medium} })
+      var height = Math.max(probe.offsetHeight || width*.6+64,editor ? width*.6 : 0); probe.remove()
+      var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]')).filter(function(el){return !editingText||el.dataset.note!==editingText.id}).map(function (el) { return {x:parseFloat(el.style.left),y:parseFloat(el.style.top),width:el.offsetWidth || parseFloat(el.style.width),height:el.offsetHeight || 240,medium:el.dataset.medium} })
+      occupied=occupied.concat(wallControls())
       if (note.anchor && spotAvailable(16+note.anchor.x*span,note.anchor.y,width,height,note.medium,occupied)) return false
       var relocated = !!note.anchor, spot = findWallSpot(width,height,note.medium,traceSeed(note),occupied)
       note.anchor={mode:layoutMode,x:spot.x,y:spot.y}
@@ -539,7 +549,7 @@
       if (button.dataset.note) {
         if (choosing || composer.open || (freeTools&&freeTools.active())) return
         selected=button.dataset.note==='sample'?sample:notes.find(function(n){return n.id===button.dataset.note});if(!selected)return
-        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';detail.showModal();document.body.classList.add('gb-dialog-open');return
+        restoreFocus=button;arrange.hidden=!['paper','sticker'].includes(selected.medium || 'paper');arrange.textContent=selected.medium==='sticker'?'移动这枚贴纸':'移动这张纸';error('');$('[data-detail-note]').replaceChildren(card(selected,false));$('[data-gb="remove"]').hidden=selected.id==='sample';$('[data-gb="edit"]').hidden=selected.id==='sample'||!['ink','engraving'].includes(selected.medium);detail.showModal();document.body.classList.add('gb-dialog-open');return
       }
       switch(button.dataset.gb) {
         case 'previous-wall': case 'next-wall':
@@ -552,13 +562,21 @@
         case 'reposition': choosePlace(draft.medium);break
         case 'close': composer.close();break
         case 'detail-close':detail.close();break
+        case 'edit':
+          if(!selected||selected.id==='sample')return
+          restoreFocus=null;detail.close()
+          if(selected.mode==='draw'){freeTools.start(selected.medium,selected);break}
+          editingText=JSON.parse(JSON.stringify(selected));draft=Object.assign({ink:inks[1],width:4.5,size:'medium',sticker:'spark'},JSON.parse(JSON.stringify(selected)))
+          var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===selected.id})
+          original.classList.add('gb-editing-original');var oldPosition=positionOf(original);writeAnchor={mode:layoutMode,x:oldPosition.x,y:oldPosition.y}
+          openComposer(original);$('[data-gb="publish"]').textContent='保存修改';break
         case 'undo':draft.strokes.pop();redraw();error('');break
         case 'clear':draft.strokes=[];redraw();error('');break
         case 'publish':
           if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())) { error('先在墙面选中的位置留下一笔。'); return }
-          previewNote=makeNote()
+          previewNote=makeNote();if(editingText){previewNote.id=editingText.id;previewNote.date=editingText.date}
           var destination = currentWall
-          if (wallNotes().length + (removed && removed.section === currentWall ? 1 : 0) >= WALL_SIZE) {
+          if (!editingText && wallNotes().length + (removed && removed.section === currentWall ? 1 : 0) >= WALL_SIZE) {
             var last = Math.max.apply(null, notes.map(function (note) { return note.section }).concat([0]))
             destination = notes.filter(function (note) { return note.section === last }).length + (removed && removed.section === last ? 1 : 0) < WALL_SIZE ? last : last + 1
           }
@@ -566,7 +584,7 @@
           previewNote.section = destination
           if (extended) { previewNote.anchor = null; currentWall = destination; renderWall() }
           var relocated = reserveLocalSpot(previewNote)
-          if(!await persist([previewNote].concat(notes))) { if (extended) { currentWall = previousWall; renderWall() } return }
+          if(!await persist(editingText?notes.map(function(n){return n.id===editingText.id?previewNote:n}):[previewNote].concat(notes))) { if (extended) { currentWall = previousWall; renderWall() } return }
           currentWall = destination
           try { localStorage.setItem(wallPreference, String(currentWall)) } catch (_) {}
           var newId=previewNote.id;previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium,size:draft.size,sticker:draft.sticker};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status(extended?'这面墙写满了，已为你延伸到第 '+(currentWall+1)+' 面。':relocated?'原位置较满，已留在附近空白处。':'痕迹留下了，刷新后也在。')
@@ -580,13 +598,14 @@
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(dialog===detail&&restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     composer.addEventListener('close',function () {
+      if(editingText){editingText=null;wall.querySelectorAll('.gb-editing-original').forEach(function(el){el.classList.remove('gb-editing-original')})}
       stage.hidden=true; root.classList.remove('is-writing'); writingHome.insertBefore(writing,$('[data-pen-tools]')); stage.replaceChildren(); wallLayout()
       if (!closingForMove) { cancelPlace(); if (restoreFocus && restoreFocus.isConnected) { window.scrollTo({top:browseScroll,behavior:'auto'}); restoreFocus.focus({preventScroll:true}) } }
       closingForMove = false
     },{signal:signal})
     document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ if(composer.open) composer.close(); else if(choosing) cancelPlace() } },{signal:signal})
     root.querySelectorAll('[data-wall-tool="ink"],[data-wall-tool="engraving"]').forEach(function(b){b.querySelector('span').innerHTML=window.WallTools.toolArt(b.dataset.wallTool)})
-    freeTools=window.WallTools.mount({root:root,wall:wall,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,changed:wallLayout,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;openComposer($('[data-wall-tool="'+medium+'"]'))},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('完成，已按实际笔迹保存范围。')}})
+    freeTools=window.WallTools.mount({root:root,wall:wall,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;openComposer($('[data-wall-tool="'+medium+'"]'))},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('完成，已按实际笔迹保存范围。')}})
     renderWall()
     cleanup=function(){if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }

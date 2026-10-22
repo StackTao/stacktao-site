@@ -664,31 +664,26 @@ body:has([data-guestbook]) { --wall-material: linear-gradient(#f6ead340,#f6ead34
 }
 @media (prefers-reduced-motion:reduce) { .gb-free-instrument,#view .gb-note[data-freeform].gb-just-pinned { animation: none; } }
 
-/* A wall inscription, separate from visitors’ marks and writing coordinates. */
-#view main.guestbook-page { padding-top: 242px !important; }
-.gb-wall-header { height: 242px; align-items: flex-start; }
-.gb-wall-header .gb-wall-title { left: auto; right: 8%; top: 48px; transform: rotate(-2deg); display: flex; align-items: flex-start; gap: 10px; color: #403d31; }
-.gb-wall-header .gb-wall-title [data-wall-name] { margin: 0; writing-mode: vertical-rl; font: 500 44px/1.15 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); letter-spacing: .12em; color: inherit; mix-blend-mode: multiply; }
-.gb-wall-title i { margin-top: 103px; padding: 4px 3px; border: 1px solid #994837; writing-mode: vertical-rl; font: normal 11px/1.1 var(--font-serif); letter-spacing: 2px; color: #994837; opacity: .85; transform: rotate(4deg); }
+/* Mounted calligraphy and a cinnabar seal occupy only the far-right edge. */
+#view main.guestbook-page { padding-top: 0 !important; }
+.gb-wall-header { pointer-events: none; }
+.gb-wall-header .gb-exit { pointer-events: auto; }
+.gb-wall-header .gb-wall-title { left: auto; right: 22px; top: 48px; transform: none; display: flex; flex-direction: row-reverse; align-items: flex-start; gap: 9px; }
+.gb-wall-header .gb-wall-title [data-wall-name] { margin: 0; writing-mode: vertical-rl; font: 500 44px/1.15 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); letter-spacing: .12em; color: #33342c; text-shadow: -.4px -.5px 0 #e9d7b875, .6px .8px 0 #262820, 1.2px 1.6px 0 #35372c, 1.8px 2.4px 0 #454538, 3px 4px 2px #51472e45, 5px 7px 5px #5b4d3330; }
+.gb-wall-title i { width: 34px; height: 34px; margin-top: 106px; transform: rotate(-4deg); opacity: .87; }
+.gb-wall-title i img { display: block; width: 100%; height: 100%; mix-blend-mode: multiply; }
 .gb-wall-title small { writing-mode: vertical-rl; font: 10px var(--font-serif); letter-spacing: 3px; margin-top: 5px; }
 .gb-local-label { position: absolute; top: 38px; right: 32px; opacity: .7; }
 .guestbook-page .gb-wall-picker select { max-width: 170px; font-family: var(--font-ui); }
+#view .guestbook-page .gb-wall[data-wall] { min-height: 100svh; }
 @media(max-width:600px) {
-  #view main.guestbook-page { padding-top: 206px !important; }
-  .gb-wall-header { height: 206px; }
-  .gb-wall-header .gb-wall-title { top: 54px; right: 28px; }
+  .gb-wall-header .gb-wall-title { top: 54px; right: 12px; gap: 7px; }
   .gb-wall-header .gb-wall-title [data-wall-name] { font-size: 34px; }
-  .gb-wall-title i { margin-top: 70px; font-size: 10px; }
+  .gb-wall-title i { width: 29px; height: 29px; margin-top: 76px; }
   .gb-local-label { top: 29px; right: 20px; font-size: 9px; }
   .guestbook-page .gb-wall-picker select { width: 94px; font-size: 10px; }
 }
-
-/* Individually mounted dark letters, with a narrow side face and wall shadow. */
-.gb-wall-header .gb-wall-title { right: 22px; flex-direction: row-reverse; gap: 9px; transform: none; }
-.gb-wall-header .gb-wall-title [data-wall-name] { color: #33342c; mix-blend-mode: normal; text-shadow: -.4px -.5px 0 #e9d7b875, .6px .8px 0 #262820, 1.2px 1.6px 0 #35372c, 1.8px 2.4px 0 #454538, 3px 4px 2px #51472e45, 5px 7px 5px #5b4d3330; }
-.gb-wall-title i { width: 34px; height: 34px; margin-top: 106px; padding: 0; border: 0; writing-mode: horizontal-tb; transform: rotate(-4deg); opacity: .87; }
-.gb-wall-title i img { display: block; width: 100%; height: 100%; mix-blend-mode: multiply; }
-@media(max-width:600px) {
-  .gb-wall-header .gb-wall-title { right: 12px; gap: 7px; }
-  .gb-wall-title i { width: 29px; height: 29px; margin-top: 76px; }
-}
+.gb-editing-original { visibility: hidden !important; pointer-events: none !important; }
+.gb-paint-warning { position: fixed; z-index: 1000000006; pointer-events: none; padding: 7px 10px; border: 1px solid #ad715840; border-radius: 7px; background: #fff4e4f2; color: #8b432c; box-shadow: 0 3px 12px #60432316; font: 11px var(--font-ui); }
+.gb-free-actions [data-action='erase'][aria-pressed='true'] { color: #f9ccae; box-shadow: 0 1px currentColor; }
+.gb-real-tool[data-tool='eraser'] { transform: translate(-12px,-22px) rotate(-10deg); }

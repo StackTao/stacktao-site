@@ -157,3 +157,26 @@
 - 光从左上方照入，槽口内部保留阴影，下沿只有很弱的窄反光；笔画交叉先合并轮廓再计算光照，避免铁丝搭接感。
 - 刻线使用平切端头，保留单点的圆形凿痕；三种笔触保持不同槽宽。原笔迹数据、墙面位置及留言内容不改写。
 - 浏览器检查了真实墙面已有手写、独立测试墙的中文输入与单点凿痕，并制作宽槽光照对照页确认明暗朝向。构建及原有保存、迁移、发布、分页回归检查通过。
+
+## 2026-10-22 · 暖墙、题名与沉浸式创作
+
+- 墙材改为参考村落照片的暖米黄石灰砂浆，连续纹理，无瓷砖缝。题字是靠最右侧的深色立体字，左下配篆意朱印。题字保护范围仅为自身实际边界，不再用整条顶部空白占位；返回按钮也只保护自身。
+- 名字以 32 个固定意象 × 8 个地点字组成 256 个名字。首次保存随机种子，以互质步长打乱分配，256 面以内不重名；超出后标注「续卷 N」，完整标识保持唯一。词表和种子 key 固定为 names-v1；新词表不得改变旧版本映射。本机不同浏览器的种子独立，并非服务端统一题名。
+- 喷瓶 / 刻刀在整面墙直接创作。喷瓶停留加深、提供实体工具光标与可选声音。完成才按实际笔迹外接框存储范围，保存 canonical 1000 宽度的坐标。旧留言仍可读取。
+- 触及已保存留言、题字或另一个窗口的临时占位时，落笔处出现提醒，冲突部分不写入。当前保护的是留言外接框加窄边距，尚未做逐像素避让。
+- 同一浏览器同源窗口使用 Web Locks + 15 秒临时区域租约，4 秒续期；未提交区域不冒充已完成留言。完成、取消、卸载会释放，失联后过期。保存前读取最新留言并再次检查。这个机制不是跨访客联网协作，跨浏览器仍需服务端身份和原子占位。
+- 性能：合并 Pointer Events / coalesced events，每帧处理一批；已占区域内不逐点写 storage；Canvas 增量补画新增线段，刻画停笔后再渲染完整凹槽滤镜。避免每个点重建 SVG 或重画全部喷漆。移动设备仍需真机性能测试。
+- 点击本机涂鸦 / 刻画后可「修改这处痕迹」。新旧手绘笔迹都可继续画、按整笔擦除、撤回；取消保留原作，保存更新同一个 ID。打字内容也可原位修改。另一窗口改过原作时拒绝覆盖并保留草稿。整条擦去仍可恢复。刻画文字编辑使用可见原生 textarea，避免隐藏文字与 SVG 预览字形错位造成的光标问题。
+- 仍为本机预览：本机保存的留言视为可管理的作品。上线前必须绑定作者身份，不能仅凭客户端 UI 判断所有权。
+
+验证：原型、构建版通过百万墙面标识唯一性、刷新持久化、绘制范围、ID 唯一、占位碰撞、配额失败保留、修改/取消/擦笔/撤回/删除恢复、打字修改、100 点批量输入占位写入次数、1,000 条旧留言分墙与满墙延伸检查。真实浏览器在独立测试源验证顶部左侧落笔、补画及擦笔保存、旧笔迹转换、两个窗口冲突提醒，390px 布局无横向溢出；没有向用户正式墙面发布测试留言。
+
+### 位图素材来源
+
+使用内置 imagegen 生成，墙材借用用户照片的材料、色调，不复制建筑与景观。最终资产在 `public/assets/materials/village-wall-v1.jpg`（生成 PNG 的网页压缩版）和 `visitor-seal-v1.png`（保留透明通道、缩至 160px）。原生成图保留在 Codex generated_images 中。
+
+墙材提示词：
+> Create a production website wall texture inspired ONLY by the warm pale ochre limewashed exterior wall material of the buildings in the reference photograph. A frontal photograph filling the entire wide frame with one CONTINUOUS old Chinese village lime-and-sand plaster wall, warm muted pale ochre / ivory yellow, fine stone powder grain, delicate trowel variations and very subtle weathered patches. Mostly quiet even mid-light color, so dark incised handwriting and aerosol graffiti remain highly visible. Authentic mineral texture, NOT smooth ceramic and NOT coarse exposed quarry rock. No mortar lines, no grid, no seams, no tiles, no borders, no roofs, no doors, no windows, no buildings, no landscape, no plants, no lettering or graffiti. Soft diffuse upper-left daylight. Fine small physical grain, low-contrast discoloration, occasional tiny hairline fissures only. No large cracks, no strong chipped patches, no vignette.
+
+朱印提示词：
+> Create one small authentic traditional Chinese scholar's seal impression for a personal guestbook wall. TRANSPARENT BACKGROUND. A nearly square cinnabar red seal, white-character intaglio yinwen seal carving, with four archaic seal-script characters arranged in traditional columns: right column 过 above 客, left column 留 above 痕. Tightly interlocking rounded-square calligraphic structure. Deep muted cinnabar, a thin irregular red perimeter, modest natural worn gaps and tiny dry ink flecks. Flat graphic ink impression, no embossing, no shadow, no wall, no paper, no modern printed font, no extra characters. Seal nearly fills square canvas with only 5% transparent margin. Visually crisp at 32 CSS pixels.
