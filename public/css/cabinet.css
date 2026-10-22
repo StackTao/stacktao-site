@@ -1,0 +1,113 @@
+/* Collections: an index, an inventory, a shelf and a running record. */
+.cabinet-toolbar { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin:28px 0 14px; }
+.cabinet-label { font:10px/1.6 var(--font-mono); letter-spacing:.11em; color:var(--fg-light); }
+.cabinet-toolbar > .cabinet-label { margin-right:auto; }
+.cabinet-status { font:11px/1.7 var(--font-ui); color:var(--fg-light); }
+.cabinet-toolbar button,.cabinet-copy { border:1px solid var(--rule); border-radius:3px; padding:7px 11px; font:12px var(--font-ui); color:var(--fg); }
+.cabinet-toolbar button:hover,.cabinet-copy:hover { border-color:var(--rule-strong); background:var(--surface); }
+[data-cabinet] button:focus-visible,[data-cabinet] a:focus-visible { outline:2px solid var(--c-seal); outline-offset:4px; }
+[data-cabinet] [hidden] { display:none !important; }
+/* A file can be pinned; the title and its reason for being here stay in the open. */
+.bookmark-shelf { border-top:1px solid var(--rule-strong); }
+.bookmark-file { display:grid; grid-template-columns:32px minmax(0,1fr) 52px; align-items:start; gap:18px; padding:26px 0; border-bottom:1px solid var(--rule); position:relative; }
+.bookmark-file-number { padding-top:23px; color:var(--fg-light); font:11px var(--font-mono); }
+.bookmark-origin { display:block; margin-bottom:7px; font:10px var(--font-mono); color:var(--c-seal); overflow-wrap:anywhere; }
+#view .bookmark-title { font:400 clamp(23px,3vw,33px)/1.4 var(--font-display); display:inline; text-decoration:none; border:0; }
+#view .bookmark-file-body > p { font-size:13px; line-height:1.8; margin:8px 0 0; max-width:580px; }
+.bookmark-pin { position:relative; width:48px; min-height:62px; padding:27px 0 9px; font:10px var(--font-ui); color:var(--fg-light); border:0; background:var(--surface-soft); clip-path:polygon(0 0,100% 0,100% 100%,50% 90%,0 100%); transition:transform .22s,background .22s,color .22s; }
+.bookmark-pin::before { content:'＋'; position:absolute; top:8px; left:0; width:100%; font:16px var(--font-ui); }
+.bookmark-pin:hover { transform:translateY(3px); }
+[data-cabinet] .bookmark-pin:focus-visible { outline-offset:-4px; }
+.bookmark-pin[aria-pressed='true'] { color:var(--surface); background:var(--c-seal); }
+.bookmark-pin[aria-pressed='true']::before { content:'✓'; }
+.bookmark-file.is-pinned .bookmark-file-number { color:var(--c-seal); }
+/* A compact inventory with a working, persistent-on-scroll index. */
+.tool-inventory { display:grid; grid-template-columns:175px minmax(0,1fr); gap:42px; margin-top:34px; align-items:start; }
+.tool-index { position:sticky; top:30px; display:flex; flex-direction:column; gap:3px; }
+.tool-index > span { margin-bottom:17px; }
+#view .tool-index a { border:0; font:11px/1.8 var(--font-ui); padding:8px 10px; color:var(--fg-light); text-decoration:none; border-left:2px solid var(--rule); }
+#view .tool-index a[aria-current] { border-color:var(--c-seal); color:var(--fg-deeper); background:var(--surface-soft); }
+#view .tool-section h2 { scroll-margin-top:35px; margin:0 0 20px; padding-top:25px; font:400 30px var(--font-display) !important; }
+.tool-section { margin-bottom:42px; min-width:0; }
+#view .tool-section h3 { font:12px var(--font-mono); color:var(--fg-light); margin:28px 0 15px; }
+#view .tool-section ul { list-style:none; padding-left:0; margin:0; }
+#view .tool-section li { padding:10px 0; border-bottom:1px solid var(--rule); font:14px/1.9 var(--font-ui); overflow-wrap:anywhere; }
+#view .tool-section p { font-size:14px; line-height:1.9; }
+.tool-command { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.tool-command .cabinet-copy { border:0; color:var(--fg-light); font-size:10px; }
+/* Each medium gets its own physical proportion, without disguising stock imagery as cover art. */
+.media-shelf { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:start; gap:32px; margin:48px 0; }
+#view .media-volume { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:0; border:0; background:none; padding:0; margin:0; min-width:0; }
+.media-volume-index { font:11px var(--font-mono); color:var(--fg-light); margin-bottom:18px; }
+.media-sleeve { position:relative; height:240px; display:flex; align-items:flex-end; padding-bottom:24px; margin-bottom:20px; border-bottom:1px solid var(--rule-strong); perspective:800px; }
+#view .media-sleeve img { width:100%; height:auto; max-height:210px; aspect-ratio:4/3; object-fit:cover; border-radius:0; filter:saturate(.65); box-shadow:0 8px 13px -9px #0005; transition:transform .35s,filter .35s; }
+#view .media-volume[data-media-kind='book'] .media-sleeve img { width:65%; aspect-ratio:2/3; max-height:210px; box-shadow:inset 5px 0 #0002,5px 6px 0 var(--surface-soft),6px 7px 0 var(--rule); }
+#view .media-volume[data-media-kind='album'] .media-sleeve img { aspect-ratio:1; }
+.media-sleeve-type { position:absolute; bottom:33px; left:9px; padding:4px 6px; font:9px var(--font-mono); letter-spacing:.12em; color:#fff; background:#181d18b3; }
+#view .media-volume strong { display:block; font:400 28px/1.4 var(--font-display); margin-bottom:8px; }
+#view .media-volume .op50 { font:10px var(--font-mono); text-transform:uppercase; letter-spacing:.1em; }
+#view .media-volume p { font-size:13px; line-height:1.8; margin-top:14px !important; }
+@media (hover:hover) { .media-volume:hover .media-sleeve img { transform:translateY(-6px) rotate(-1deg); filter:saturate(1); } }
+/* Duration marks belong to a programme listing, not a pretend audio player. */
+.sound-programme,.stream-programme { border-top:1px solid var(--rule-strong); margin-top:30px; }
+.programme-record { position:relative; padding:28px 0 28px 98px; border-bottom:1px solid var(--rule); min-height:135px; }
+.programme-measure { position:absolute; left:0; top:28px; width:70px; }
+.programme-number { display:block; font:400 36px/1 var(--font-display); color:var(--c-seal); }
+.programme-track { display:block; height:28px; margin-top:13px; background:repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 4px); position:relative; }
+.programme-track::before { content:''; position:absolute; inset:0 auto 0 0; width:var(--record-length); background:repeating-linear-gradient(90deg,var(--fg-light) 0 1px,transparent 1px 4px); transform-origin:left; transition:transform .25s; }
+.programme-record:hover .programme-track::before { transform:scaleY(.7); }
+#view .programme-title { display:block; font:400 clamp(23px,3vw,31px)/1.45 var(--font-display); text-decoration:none; border:0; }
+#view .programme-record > .op50 { font:10px/1.6 var(--font-mono); margin:10px 0; }
+#view .programme-record > p { font-size:13px; line-height:1.8; margin:10px 0 14px !important; }
+.programme-destination { display:block; color:var(--fg-light); font:10px var(--font-ui); margin-top:16px; pointer-events:none; }
+.stream-programme .programme-measure { top:32px; }
+.stream-programme .programme-track { height:3px; background:var(--rule); }
+.stream-programme .programme-track::before { background:var(--c-seal); }
+/* Names, not anonymous initial bubbles. */
+#view .sponsor-signatures { display:flex; flex-wrap:wrap; justify-content:flex-start; gap:0; padding:18px 0 32px; }
+#view .sponsor-signatures > a { width:auto !important; height:auto !important; border-radius:0 !important; background:transparent !important; color:var(--fg-deeper) !important; padding:12px 22px 12px 0; font:400 26px/1.5 var(--font-display); filter:none; transition:color .2s,transform .2s; }
+#view .sponsor-signatures > a:hover { color:var(--c-seal) !important; transform:translateY(-2px); }
+#view [data-cabinet='sponsors'] .tabs { justify-content:flex-start; border-bottom:1px solid var(--rule); padding-bottom:10px; }
+/* A private preparation page, with the existing availability notice kept prominent. */
+#view .conversation-page { max-width:850px; }
+#view .conversation-status { padding:22px 25px; border:1px solid var(--rule); border-left:3px solid var(--c-seal); background:var(--surface); border-radius:0; font-size:13px; line-height:1.9; }
+#view .conversation-page > p { font-size:15px; line-height:1.95; }
+#view .conversation-language { display:inline-block; font:12px var(--font-ui); padding:10px 0; color:var(--c-seal); }
+/* A running record gives each update a stable place. */
+.feed-ledger { margin-top:24px; border-top:1px solid var(--rule-strong); }
+.feed-entry { display:grid; grid-template-columns:35px minmax(0,1fr) auto; column-gap:17px; position:relative; padding:21px 0; border-bottom:1px solid var(--rule); }
+.feed-entry-number { grid-row:1 / 3; font:10px var(--font-mono); color:var(--fg-light); padding-top:7px; }
+#view .feed-entry > a { font:400 24px/1.5 var(--font-display); border:0; text-decoration:none; }
+.feed-entry-date { grid-column:2; font:10px/1.7 var(--font-mono); margin-top:6px; color:var(--fg-light); }
+@media(max-width:750px) {
+  .tool-inventory { grid-template-columns:135px minmax(0,1fr); gap:25px; }
+  .media-shelf { gap:20px; }
+  .media-sleeve { height:190px; }
+  #view .media-sleeve img { max-height:155px; }
+  #view .media-volume[data-media-kind='book'] .media-sleeve img { max-height:155px; width:80%; }
+}
+@media(max-width:600px) {
+  .bookmark-file { gap:10px; grid-template-columns:22px minmax(0,1fr) 42px; }
+  .bookmark-pin { width:40px; font-size:9px; }
+  .cabinet-toolbar { gap:10px; }
+  .cabinet-toolbar > .cabinet-status { flex-basis:100%; }
+  .tool-inventory { display:block; }
+  .tool-index { position:static; display:flex; flex-direction:row; flex-wrap:wrap; gap:4px; margin-bottom:30px; }
+  .tool-index > span { flex-basis:100%; margin-bottom:10px; }
+  #view .tool-index a { padding:6px 8px; border:1px solid var(--rule); }
+  .media-shelf { display:block; margin-top:32px; }
+  #view .media-volume { display:grid; grid-template-columns:105px minmax(0,1fr); gap:0 24px; margin-bottom:35px; padding-bottom:25px; border-bottom:1px solid var(--rule); }
+  .media-volume-index { grid-column:1 / -1; margin-bottom:15px; }
+  .media-sleeve { height:140px; margin:0; padding:0; border:0; align-items:flex-start; }
+  #view .media-sleeve img { max-height:135px; width:100%; }
+  #view .media-volume[data-media-kind='book'] .media-sleeve img { max-height:135px; width:85%; }
+  .media-sleeve-type { bottom:auto; top:7px; left:6px; font-size:8px; }
+  #view .media-volume strong { font-size:25px; }
+  .programme-record { padding-left:63px; }
+  .programme-measure { width:42px; }
+  .programme-number { font-size:30px; }
+  #view .sponsor-signatures > a { font-size:23px; padding-right:18px; }
+  #view .feed-entry > a { font-size:21px; }
+  .feed-entry { grid-template-columns:24px minmax(0,1fr) auto; gap:0 10px; }
+}
+@media(prefers-reduced-motion:reduce) { .bookmark-pin,.media-sleeve img,.programme-track::before,.sponsor-signatures > a { transition:none !important; } }

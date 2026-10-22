@@ -1,6 +1,11 @@
 (function () {
   window.__SPA__ = true
 
+  function retiredRoute(route) { return /^\/(?:talks|giving-talks)(?:\/|$)/.test(route) }
+  document.querySelectorAll('.nav-right a, .footer-links a').forEach(function (link) {
+    if (retiredRoute((link.getAttribute('href') || '').replace(/^#/, ''))) link.remove()
+  })
+
   function applyDark(on) {
     document.documentElement.classList.toggle('dark', on)
     localStorage.setItem('color-scheme', on ? 'dark' : 'light')
@@ -129,7 +134,6 @@
         : false
       if (!configuredRoute && key === 'blog') active = route === '/posts' || route.indexOf('/posts/') === 0 || route === '/notes' || route.indexOf('/notes/') === 0 || route === '/podcasts' || route === '/streams'
       if (!configuredRoute && key === 'projects') active = route === '/projects'
-      if (!configuredRoute && key === 'talks') active = route === '/talks' || route.indexOf('/talks/') === 0
       if (!configuredRoute && key === 'guestbook') active = route === '/guestbook'
       if (!configuredRoute && key === 'photos') active = route === '/photos'
       if (!configuredRoute && key === 'sponsors') active = route === '/sponsors' || route === '/collective'
@@ -408,13 +412,14 @@
     if (photoIndex >= 0) closeLightbox()
     var pages = window.PAGES || {}
     var titles = window.PAGE_TITLES || {}
-    var html = pages[route] || pages['/404'] || '<main class="page prose"><h1>404</h1></main>'
+    var pageRoute = retiredRoute(route) ? '/404' : route
+    var html = pages[pageRoute] || pages['/404'] || '<main class="page prose"><h1>404</h1></main>'
     closeSearch()
     if (window.Guestbook) window.Guestbook.destroy()
     if (window.Studio) window.Studio.destroy()
     view.innerHTML = html
     decoratePage(route)
-    document.title = titles[route] || 'StackTao'
+    document.title = titles[pageRoute] || 'StackTao'
     updateNav(route)
     bindPage()
     window.scrollTo(0, restoreY || 0)
@@ -524,9 +529,17 @@
   var searchCatalog = null
   var searchClose = null
   var searchStatus = null
+  var siteDirectory = [
+    ['/', '首页', '从这里开始'],
+    ['/posts', '文字', '读与听'], ['/notes', '随手记', '读与听'], ['/podcasts', '播客 · 展示示例', '读与听'], ['/streams', '直播 · 展示示例', '读与听'],
+    ['/projects', '造物', '动手做'], ['/demos', '小实验 · 展示示例', '动手做'],
+    ['/photos', '沿途', '看与收藏'], ['/use', '手边工具', '看与收藏'], ['/bookmarks', '书签', '看与收藏'], ['/media', '书影音 · 展示示例', '看与收藏'],
+    ['/guestbook', '留言墙', '保持联系'], ['/sponsors', '支持', '保持联系'], ['/chat-zh', '聊聊', '保持联系'], ['/feed', '更新小报', '保持联系'],
+    ['/chat', '聊聊 · 英文', '保持联系'], ['/collective', '支持开源', '保持联系'],
+  ]
 
   if (searchMask && searchPanel && searchInput && searchHits) {
-    searchMask.setAttribute('aria-label', '搜索博客')
+    searchMask.setAttribute('aria-label', '博客目录与搜索')
     searchInput.setAttribute('role', 'combobox')
     searchInput.setAttribute('aria-autocomplete', 'list')
     searchInput.setAttribute('aria-haspopup', 'listbox')
@@ -554,19 +567,18 @@
   function getSearchCatalog() {
     if (searchCatalog) return searchCatalog
     var pages = window.PAGES || {}, seen = Object.create(null)
-    var shortcuts = [['/', '首页'], ['/posts', '文章'], ['/projects', '项目'], ['/photos', '相册'], ['/guestbook', '留言墙'], ['/talks', '演讲'], ['/notes', '随手记'], ['/bookmarks', '书签']]
-    var entries = shortcuts.map(function (item) { return { href: '#' + item[0], title: item[1], kind: '页面' } }).concat(window.SEARCH_INDEX || [])
+    var entries = siteDirectory.map(function (item) { return { href: '#' + item[0], title: item[1], kind: '页面', group: item[2] } }).concat(window.SEARCH_INDEX || [])
     searchCatalog = entries.filter(function (item) {
-      if (!item.href || item.href.indexOf('#/') !== 0 || seen[item.href] || !pages[item.href.slice(1)]) return false
+      if (!item.href || item.href.indexOf('#/') !== 0 || retiredRoute(item.href.slice(1)) || item.kind === 'Talk' || item.kind === '演讲' || seen[item.href] || !pages[item.href.slice(1)]) return false
       seen[item.href] = true
       return true
     }).map(function (item) {
       var template = document.createElement('template')
       template.innerHTML = pages[item.href.slice(1)]
-      var intro = template.content.querySelector('article > p:not(.post-meta):not(.share-line), main > p:not(.post-meta), .project-desc, .talk-desc')
-      var kind = { Blog: '文章', Note: '札记', Talk: '演讲', Page: '页面' }[item.kind] || item.kind || ''
+      var intro = template.content.querySelector('article > p:not(.post-meta):not(.share-line), main > p:not(.post-meta), .project-desc')
+      var kind = { Blog: '文章', Note: '札记', Page: '页面' }[item.kind] || item.kind || ''
       var body = template.content.textContent.replace(/\s+/g, ' ').trim()
-      return { href: item.href, title: item.title, kind: kind, excerpt: intro ? intro.textContent.trim() : '', match: (item.title + ' ' + kind + ' ' + body).toLowerCase() }
+      return { href: item.href, title: item.title, kind: kind, group: item.group, excerpt: intro ? intro.textContent.trim() : '', match: (item.title + ' ' + kind + ' ' + body).toLowerCase() }
     })
     return searchCatalog
   }
@@ -586,8 +598,9 @@
     var catalog = getSearchCatalog()
     var matches = q ? catalog.filter(function (item) { return q.split(/\s+/).every(function (word) { return item.match.includes(word) }) }).sort(function (a, b) {
       return Number(b.title.toLowerCase().includes(q)) - Number(a.title.toLowerCase().includes(q))
-    }) : ['#/', '#/posts', '#/projects', '#/photos', '#/guestbook', '#/talks', '#/notes', '#/bookmarks'].map(function (href) { return catalog.find(function (item) { return item.href === href }) }).filter(Boolean)
+    }) : siteDirectory.map(function (entry) { return catalog.find(function (item) { return item.href === '#' + entry[0] }) }).filter(Boolean)
     searchHits.replaceChildren()
+    var directoryGroups = Object.create(null)
     searchOptions = matches.slice(0, 20).map(function (item, index) {
       var hit = document.createElement('a')
       hit.className = 'search-hit'
@@ -599,19 +612,37 @@
       hit.addEventListener('click', closeSearch)
       var title = document.createElement('span'), kind = document.createElement('small')
       title.textContent = item.title
-      kind.textContent = item.kind
+      kind.textContent = q ? item.kind : '↗'
       hit.append(title, kind)
       if (q && item.excerpt) {
         var excerpt = document.createElement('p')
         excerpt.textContent = item.excerpt.slice(0, 100) + (item.excerpt.length > 100 ? '…' : '')
         hit.appendChild(excerpt)
       }
-      searchHits.appendChild(hit)
+      var parent = searchHits
+      if (!q) {
+        if (!directoryGroups[item.group]) {
+          parent = document.createElement('div')
+          parent.className = 'search-directory-group'
+          parent.setAttribute('role', 'group')
+          parent.setAttribute('aria-label', item.group)
+          var label = document.createElement('p')
+          label.className = 'search-directory-label'
+          label.setAttribute('aria-hidden', 'true')
+          label.textContent = item.group
+          parent.appendChild(label)
+          directoryGroups[item.group] = parent
+          searchHits.appendChild(parent)
+        }
+        parent = directoryGroups[item.group]
+      }
+      parent.appendChild(hit)
       return hit
     })
     searchPanel.classList.toggle('has-query', !!q)
+    searchPanel.classList.toggle('is-directory', !q)
     searchInput.setAttribute('aria-expanded', String(searchOptions.length > 0))
-    searchStatus.textContent = q ? (matches.length ? '找到 ' + matches.length + ' 项' + (matches.length > 20 ? '，先显示前 20 项，请继续输入缩小范围。' : '') : '没有找到相关内容，试试更短的关键词。') : '从这里开始，或输入标题、关键词与正文内容。'
+    searchStatus.textContent = q ? (matches.length ? '找到 ' + matches.length + ' 项' + (matches.length > 20 ? '，先显示前 20 项，请继续输入缩小范围。' : '') : '没有找到相关内容，试试更短的关键词。') : '这是博客的全部栏目。也可以输入关键词，找一段文字。'
     selectSearch(-1)
     searchHits.scrollTop = 0
   }

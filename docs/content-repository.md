@@ -20,8 +20,6 @@ stacktao-content/
 │           └── index.md
 ├── projects/
 │   └── projects.json
-├── talks/
-│   └── talks.json
 ├── albums/
 │   └── 2026-jiangnan/
 │       ├── album.json
@@ -68,7 +66,7 @@ featured: true
 
 ## 站点与菜单配置
 
-文章仓库根目录必须包含 `content.config.json`。`site` 控制首页文案、左侧个人资料和页脚署名，`navigation` 控制顶部菜单，`footerNavigation` 控制页脚菜单；未提供菜单数组时保留页面框架的默认菜单。
+文章仓库根目录必须包含 `content.config.json`。`site` 控制首页作者资料和页脚署名，`navigation` 控制顶部菜单，`footerNavigation` 控制页脚菜单；未提供菜单数组时保留页面框架的默认菜单。
 
 ```json
 {
@@ -82,10 +80,10 @@ featured: true
     "email": "hi@example.com"
   },
   "navigation": [
-    { "label": "文章", "route": "/posts", "key": "blog", "enabled": true },
-    { "label": "项目", "route": "/projects", "key": "projects", "enabled": true },
-    { "label": "演讲", "route": "/talks", "key": "talks", "enabled": true },
-    { "label": "相册", "route": "/photos", "key": "photos", "enabled": true }
+    { "label": "文字", "route": "/posts", "key": "blog", "enabled": true },
+    { "label": "造物", "route": "/projects", "key": "projects", "enabled": true },
+    { "label": "沿途", "route": "/photos", "key": "photos", "enabled": true },
+    { "label": "留言墙", "route": "/guestbook", "key": "guestbook", "enabled": true }
   ],
   "footerNavigation": [
     { "label": "笔记", "route": "/notes" },
@@ -94,7 +92,7 @@ featured: true
 }
 ```
 
-- `route` 必须是站内 `/` 开头的 Hash 路由。
+- `route` 必须是站内 `/` 开头的 Hash 路由。演讲模块已移除，旧 `/talks`、其子路由及 `/giving-talks` 配置会被忽略。
 - `enabled: false` 可以临时隐藏顶部菜单项。
 - `key` 用于导航状态标识，建议使用稳定的英文名称。
 
@@ -116,35 +114,6 @@ featured: true
           "status": "Active",
           "url": "https://github.com/StackTao",
           "color": "#3f7666"
-        }
-      ]
-    }
-  ]
-}
-```
-
-## 演讲数据
-
-`talks/talks.json` 保存演讲主题和每次活动记录。缺少该文件时保留原型内置演讲页。
-
-```json
-{
-  "title": "演讲",
-  "description": "关于工具设计与长期维护的分享。",
-  "talks": [
-    {
-      "title": "让工具经得起时间",
-      "lang": "zh",
-      "url": "#/posts/tools-that-last",
-      "events": [
-        {
-          "name": "StackTao Notes",
-          "date": "2026-08-29",
-          "location": "线上",
-          "language": "中文",
-          "links": [
-            { "label": "文章", "url": "#/posts/tools-that-last" }
-          ]
         }
       ]
     }
@@ -175,4 +144,4 @@ featured: true
 
 相册目录名和 `slug` 只能使用小写英文、数字和连字符。图片建议预先压缩为 WebP 或 AVIF，并填写准确的 `alt`。
 
-提交内容后，由服务器拉取仓库并重新执行 `CONTENT_DIR=/path/to/content npm run build`。生成器会同步更新菜单、文章、项目、演讲、相册、搜索索引和章节大纲。构建成功后再替换线上 `dist/`，可避免半成品被访问。
+提交内容后，由服务器拉取仓库并重新执行 `CONTENT_DIR=/path/to/content npm run build`。生成器会同步更新菜单、文章、项目、相册、搜索索引和章节大纲。构建成功后再替换线上 `dist/`，可避免半成品被访问。

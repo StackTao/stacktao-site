@@ -9,7 +9,7 @@
     animation.onfinish = function () { motions.delete(animation) }
     return animation
   }
-  function destroy() { motions.forEach(function (animation) { animation.cancel() }); motions.clear(); disposers.forEach(function (dispose) { dispose() }); disposers = [] }
+  function destroy() { if (window.Cabinet) window.Cabinet.destroy(); motions.forEach(function (animation) { animation.cancel() }); motions.clear(); disposers.forEach(function (dispose) { dispose() }); disposers = [] }
   function node(tag, className, text) {
     var el = document.createElement(tag)
     if (className) el.className = className
@@ -68,37 +68,53 @@
 
   function readingDial(posts) {
     var device = node('aside', 'reading-radio')
-    device.setAttribute('aria-label', '文字调频，转动旋钮选一篇文章')
+    device.setAttribute('aria-label', '站内调频，转动旋钮发现文字、照片和作品')
+    var feeds = [{ name: '文字', items: posts.map(function (post) {
+      var paragraph = source(post.getAttribute('href').replace(/^#/, '')).querySelector('article > p:not(.post-meta):not(.share-line)')
+      return { title: post.querySelector('span').textContent.trim(), href: post.getAttribute('href'), text: paragraph ? paragraph.textContent.trim() : '', action: '读这一篇 ↗' }
+    }) }]
+    var firstAlbum = source('/photos').querySelector('.photo-grid')
+    var photos = firstAlbum ? Array.from(firstAlbum.querySelectorAll('img')) : []
+    if (photos.length) feeds.push({ name: '影像', items: photos.map(function (photo, index) { return { title: photo.alt || '沿途的一瞬', href: '#/photos', text: photo.getAttribute('data-place') || '把目光留给远处。', image: photo.getAttribute('src'), photo: index, action: '展开这张照片 ↗' } }) })
+    var projects = Array.from(source('/projects').querySelectorAll('.project-grid .item')).slice(0, 6)
+    if (projects.length) feeds.push({ name: '造物', items: projects.map(function (project) { return { title: project.querySelector('.project-name').textContent, href: project.getAttribute('href'), text: project.querySelector('.project-desc').textContent, action: '打开这个项目 ↗' } }) })
+    var items = feeds[0].items, band = 0
+    var stations = node('div', 'radio-stations'); stations.setAttribute('role', 'group'); stations.setAttribute('aria-label', '调频内容')
     var control = node('div', 'radio-control')
     var dial = node('button', 'radio-dial')
-    dial.type = 'button'; dial.setAttribute('role', 'slider'); dial.setAttribute('aria-label', '选文旋钮')
+    dial.type = 'button'; dial.setAttribute('role', 'slider'); dial.setAttribute('aria-label', '文字旋钮')
     dial.setAttribute('aria-valuemin', '1'); dial.setAttribute('aria-valuemax', String(posts.length))
     var wheel = node('span', 'radio-wheel'); wheel.setAttribute('aria-hidden', 'true')
     wheel.append(node('i', 'radio-needle'), node('span', 'radio-hub', 'ST'))
     dial.appendChild(wheel)
-    control.append(node('span', 'radio-station', '文字调频'), dial, node('small', '', '转一转，遇见一篇'))
+    control.append(node('span', 'radio-station', '站内调频'), dial, node('small', '', '转一转，随便逛逛'))
     var screen = node('div', 'radio-screen')
     var scale = node('div', 'radio-scale'); scale.setAttribute('aria-hidden', 'true')
     for (var n = 0; n < posts.length; n++) scale.appendChild(node('i', '', String(n + 1).padStart(2, '0')))
+    var photoPreview = node('img', 'radio-photo'); photoPreview.alt = ''; photoPreview.hidden = true
     var heading = node('h3'), excerpt = node('p', 'radio-excerpt')
     var actions = node('div', 'radio-actions'), destination = link('', '读这一篇 ↗')
     var random = node('button', 'radio-random', '随缘调频 ↻'); random.type = 'button'
-    actions.append(destination, random); screen.append(scale, heading, excerpt, actions)
-    device.append(control, screen)
+    actions.append(destination, random); screen.append(scale, photoPreview, heading, excerpt, actions)
+    device.append(stations, control, screen)
     var angle = 0, chosen = -1, step = 360 / posts.length, last = 0, initial = 0, velocity = 0, time = 0
     function tune(value, settle) {
       angle = value
-      var index = ((Math.round(angle / step) % posts.length) + posts.length) % posts.length
+      var index = ((Math.round(angle / step) % items.length) + items.length) % items.length
       if (settle) angle = Math.round(angle / step) * step
       wheel.style.transform = 'rotate(' + angle + 'deg)'
       if (chosen === index) return
       chosen = index
-      var post = posts[index], title = post.querySelector('span').textContent.trim()
-      var paragraph = source(post.getAttribute('href').replace(/^#/, '')).querySelector('article > p:not(.post-meta):not(.share-line)')
+      var item = items[index], title = item.title
       heading.textContent = title
-      excerpt.textContent = paragraph ? paragraph.textContent.trim().slice(0, 100) : '留一点时间，读一篇文字。'
-      destination.href = post.getAttribute('href')
-      dial.setAttribute('aria-valuenow', String(index + 1)); dial.setAttribute('aria-valuetext', '第 ' + (index + 1) + ' 篇：' + title)
+      excerpt.textContent = item.text.slice(0, 120)
+      photoPreview.hidden = !item.image
+      if (item.image) photoPreview.src = item.image
+      else photoPreview.removeAttribute('src')
+      destination.href = item.href; destination.textContent = item.action
+      if (/^https?:/.test(item.href)) { destination.target = '_blank'; destination.rel = 'noreferrer' }
+      else { destination.removeAttribute('target'); destination.removeAttribute('rel') }
+      dial.setAttribute('aria-valuenow', String(index + 1)); dial.setAttribute('aria-valuetext', feeds[band].name + ' · 第 ' + (index + 1) + ' 项：' + title)
       Array.from(scale.children).forEach(function (tick, i) { tick.classList.toggle('is-tuned', i === index) })
     }
     function bearing(event) {
@@ -126,9 +142,28 @@
     dial.addEventListener('keydown', function (event) {
       var delta = ['ArrowRight', 'ArrowUp'].includes(event.key) ? step : ['ArrowLeft', 'ArrowDown'].includes(event.key) ? -step : null
       if (delta !== null) { event.preventDefault(); tune(angle + delta, true) }
-      if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); tune(event.key === 'Home' ? 0 : (posts.length - 1) * step, true) }
+      if (event.key === 'Home' || event.key === 'End') { event.preventDefault(); tune(event.key === 'Home' ? 0 : (items.length - 1) * step, true) }
     })
-    random.addEventListener('click', function () { tune(angle + step * (1 + Math.floor(Math.random() * Math.max(1, posts.length - 1))), true) })
+    random.addEventListener('click', function () { tune(angle + step * (1 + Math.floor(Math.random() * Math.max(1, items.length - 1))), true) })
+    var stationButtons = feeds.map(function (feed, index) {
+      var button = node('button', '', feed.name); button.type = 'button'; button.setAttribute('aria-pressed', String(index === 0))
+      button.addEventListener('click', function () {
+        band = index; items = feed.items; step = 360 / items.length; chosen = -1
+        device.dataset.station = index === 1 && feed.name === '影像' ? 'photos' : 'words'
+        scale.replaceChildren()
+        scale.classList.toggle('is-dense', items.length > 8)
+        items.forEach(function (_, i) { scale.appendChild(node('i', '', String(i + 1).padStart(2, '0'))) })
+        dial.setAttribute('aria-valuemax', String(items.length))
+        dial.setAttribute('aria-label', feed.name + '旋钮')
+        stationButtons.forEach(function (item, i) { item.setAttribute('aria-pressed', String(index === i)) })
+        tune(0, true)
+      })
+      stations.appendChild(button); return button
+    })
+    destination.addEventListener('click', function () {
+      var item = items[chosen]
+      if (item.photo != null) try { sessionStorage.setItem('stacktao-photo-entry', String(item.photo)) } catch (_) {}
+    })
     tune(0, true)
     return device
   }
@@ -149,7 +184,9 @@
     title.appendChild(node('span', 'journal-name', name + '.'))
     intro.append(title, node('p', 'journal-bio', config.description || '写代码，也写一些关于工具、设计和日常的观察。这个博客用来存放做过的东西，以及还在慢慢想的问题。'))
     var wandering = node('p', 'journal-wandering')
-    wandering.append(document.createTextNode('大多时候在'), link('#/posts', '写字'), document.createTextNode('，偶尔'), link('#/photos', '看看别处'), document.createTextNode('。你可以随意逛逛。'))
+    wandering.append(document.createTextNode('大多时候在'), link('#/posts', '写字'))
+    if (source('/photos').querySelector('.photo-grid img')) wandering.append(document.createTextNode('，偶尔'), link('#/photos', '看看别处'))
+    wandering.append(document.createTextNode('。你可以随意逛逛。'))
     intro.appendChild(wandering)
     main.appendChild(intro)
 
@@ -278,7 +315,8 @@
     main.appendChild(about)
   }
   function photoWindow(main) {
-    var photos = Array.from(source('/photos').querySelectorAll('.photo-grid img')).slice(0, 3)
+    var album = source('/photos').querySelector('.photo-grid')
+    var photos = album ? Array.from(album.querySelectorAll('img')).slice(0, 3) : []
     if (!photos.length) return
     var controller = new AbortController(), signal = controller.signal
     var section = node('section', 'journal-photo-window photo-desk')
@@ -304,7 +342,9 @@
     var count = node('output')
     count.setAttribute('aria-live', 'polite')
     controls.append(previous, count, next)
-    caption.append(controls, link('#/photos', '去相册细看 ↗', 'journal-photo-link'))
+    var albumLink = link('#/photos', '去相册细看 ↗', 'journal-photo-link')
+    albumLink.addEventListener('click', function () { try { sessionStorage.setItem('stacktao-photo-entry', String(current)) } catch (_) {} }, { signal: signal })
+    caption.append(controls, albumLink)
     var hint = node('p', 'photo-desk-hint', '左右拨一拨，看看下一张。')
     function select(index) {
       var focusPrint = prints.indexOf(document.activeElement) >= 0
@@ -422,38 +462,42 @@
   function contactSheet(main) {
     var grids = Array.from(main.querySelectorAll('.photo-grid'))
     if (!grids.length) return
-    var layouts = [['reader', '阅片'], ['grid', '网格'], ['masonry', '瀑布流']]
-    var current = 'reader'
-    try { current = localStorage.getItem('stacktao-photo-layout') || current } catch (_) {}
-    if (!layouts.some(function (item) { return item[0] === current })) current = 'reader'
+    var layouts = [['gallery', '展览'], ['reader', '逐张'], ['grid', '索引'], ['masonry', '瀑布流']]
+    var current = 'gallery'
+    try { current = localStorage.getItem('stacktao-photo-layout-v2') || current } catch (_) {}
+    if (!layouts.some(function (item) { return item[0] === current })) current = 'gallery'
     var toolbar = main.querySelector('.photo-toolbar')
     var controls = node('div', 'photo-layout-controls')
     var group = node('div', 'photo-layout-switch')
     group.setAttribute('role', 'group'); group.setAttribute('aria-label', '相册排版')
-    group.appendChild(node('span', '', '排版'))
+    group.appendChild(node('span', '', '观看方式'))
     var buttons = layouts.map(function (item) {
       var button = node('button', '', item[1]); button.type = 'button'; button.dataset.photoLayout = item[0]
       button.addEventListener('click', function () {
         apply(item[0])
-        try { localStorage.setItem('stacktao-photo-layout', item[0]) } catch (_) {}
+        try { localStorage.setItem('stacktao-photo-layout-v2', item[0]) } catch (_) {}
       })
       group.appendChild(button); return button
     })
-    controls.appendChild(group)
+    controls.append(node('span', 'photo-total', String(main.querySelectorAll('.photo-grid img').length).padStart(2, '0') + ' 个沿途片段'), group)
     var first = main.querySelector('.photo-album') || grids[0]
     first.before(controls)
     if (toolbar) controls.appendChild(toolbar)
-    var albums = grids.map(function (grid) { return contactAlbum(grid, toolbar) }).filter(Boolean)
+    var reveal = null
+    try { var saved = sessionStorage.getItem('stacktao-photo-entry'); if (saved !== null) reveal = Number(saved); sessionStorage.removeItem('stacktao-photo-entry') } catch (_) {}
+    if (Number.isInteger(reveal) && reveal >= 0 && reveal < grids[0].querySelectorAll('img').length) current = 'reader'
+    else reveal = null
+    var albums = grids.map(function (grid, index) { return contactAlbum(grid, toolbar, index === 0 ? reveal : null) }).filter(Boolean)
     function apply(layout) {
       current = layout
       buttons.forEach(function (button) { button.setAttribute('aria-pressed', String(button.dataset.photoLayout === layout)) })
       albums.forEach(function (album) { album(layout) })
-      if (toolbar) toolbar.hidden = layout === 'masonry'
+      if (toolbar) toolbar.hidden = layout !== 'reader' && layout !== 'grid'
     }
     apply(current)
   }
 
-  function contactAlbum(grid, toolbar) {
+  function contactAlbum(grid, toolbar, reveal) {
     var active = true
     disposers.push(function () { active = false })
     var photos = Array.from(grid.querySelectorAll('img'))
@@ -478,7 +522,8 @@
     stage.setAttribute('aria-label', '照片阅览区，可用左右方向键切换')
     var image = node('img')
     image.draggable = false
-    image.style.objectFit = localStorage.getItem('yunfeng-gallery-view') || 'cover'
+    image.style.objectFit = 'contain'
+    try { image.style.objectFit = localStorage.getItem('yunfeng-gallery-view') || 'contain' } catch (_) {}
     var loading = node('span', 'contact-loading', '正在取出照片…')
     var zoom = node('button', 'contact-zoom', '放大 ↗')
     zoom.type = 'button'
@@ -535,7 +580,7 @@
       })
       if (reveal) buttons[current].scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
     }
-    image.addEventListener('load', function () { if (!active) return; loading.hidden = true; stage.setAttribute('aria-busy', 'false'); motion(image, [{ opacity: .2, clipPath: 'inset(0 0 8% 0)', transform: 'scale(1.025)' }, { opacity: 1, clipPath: 'inset(0)', transform: 'scale(1)' }], 520) })
+    image.addEventListener('load', function () { if (!active) return; loading.hidden = true; stage.setAttribute('aria-busy', 'false'); motion(image, [{ opacity: .35 }, { opacity: 1 }], 240) })
     image.addEventListener('error', function () { loading.textContent = '这张照片暂时无法加载，试试下一张。'; stage.setAttribute('aria-busy', 'false') })
     previous.addEventListener('click', function () { select(current - 1, true) })
     next.addEventListener('click', function () { select(current + 1, true) })
@@ -552,10 +597,14 @@
       var tile = node('button', 'contact-tile'); tile.type = 'button'
       tile.setAttribute('aria-label', '放大第' + (index + 1) + '张：' + (photo.alt || '未命名照片'))
       var thumb = photo.cloneNode(false)
-      thumb.alt = ''; thumb.loading = 'lazy'; thumb.removeAttribute('data-photo-index')
+      thumb.alt = ''; thumb.loading = index === 0 ? 'eager' : 'lazy'; thumb.decoding = 'async'; thumb.removeAttribute('data-photo-index')
       thumb.style.objectFit = image.style.objectFit
       var title = node('span', 'contact-tile-caption')
-      title.append(node('span', 'contact-tile-number', String(index + 1).padStart(2, '0')), node('span', '', photo.alt || '未命名照片'))
+      var words = node('span', 'contact-tile-words')
+      words.appendChild(node('span', 'contact-tile-title', photo.alt || '未命名照片'))
+      var location = photo.getAttribute('data-place')
+      if (location) words.appendChild(node('span', 'contact-tile-place', location))
+      title.append(node('span', 'contact-tile-number', String(index + 1).padStart(2, '0')), words, node('span', 'contact-tile-open', '↗'))
       tile.append(thumb, title)
       tile.addEventListener('click', function () { select(index, false); photo.click() })
       collection.appendChild(tile)
@@ -576,7 +625,7 @@
     }
     if (photos.some(function (photo) { return photo.src.includes('images.unsplash.com') })) room.appendChild(node('p', 'contact-credit', '相册含 Unsplash 示例影像'))
     grid.before(room)
-    select(0, false)
+    select(reveal == null ? 0 : reveal, false)
     return function (layout) {
       var reading = layout === 'reader', loupe = roomTools.querySelector('.contact-loupe-toggle')
       if (!reading && loupe.getAttribute('aria-pressed') === 'true') loupe.click()
@@ -584,7 +633,7 @@
       stage.hidden = caption.hidden = strip.hidden = !reading
       collection.hidden = reading
       loupe.hidden = !reading
-      roomLabel.textContent = reading ? 'LIGHT TABLE / 手动翻片' : layout === 'grid' ? 'CONTACT SHEET / 照片索引' : 'IN SEQUENCE / 沿途片段'
+      roomLabel.textContent = reading ? '一张一张，慢慢看。' : layout === 'gallery' ? '让目光在这里停一会儿。' : layout === 'grid' ? '所有片段 / 点击放大' : '沿着照片，向下走。'
     }
   }
 
@@ -733,77 +782,57 @@
   }
 
   function projectDesk(main) {
-    var grid = main.querySelector('.project-grid')
-    if (!grid) return
-    var projects = Array.from(grid.querySelectorAll('.item'))
-    if (!projects.length) return
-    var desk = node('section', 'project-context')
-    desk.setAttribute('aria-label', '项目与开发手记')
-    var list = node('div', 'project-stories')
-    // Only connect articles that link to the project, or are its own destination.
+    var grids = Array.from(main.querySelectorAll('.project-grid'))
+    if (!grids.length) return
     var articles = Array.from(source('/posts').querySelectorAll('.post-row')).map(function (row) {
       var href = row.getAttribute('href'), article = source(href.replace(/^#/, '')).querySelector('article')
       var paragraph = article && (article.querySelector('blockquote') || article.querySelector(':scope > p:not(.post-meta):not(.share-line)'))
       return { href: href, title: row.querySelector('span').textContent.trim(),
         excerpt: paragraph ? paragraph.textContent.trim() : '',
-        links: article ? Array.from(article.querySelectorAll('a[href]')).map(function (a) { return a.getAttribute('href') }) : [] }
+        links: article ? Array.from(article.querySelectorAll('a[href]')).filter(function (a) { return !a.closest('.share-line, footer, .sponsor-box, .article-next') }).map(function (a) { return a.getAttribute('href') }) : [] }
     })
-    var margin = node('aside', 'project-margin')
-    margin.setAttribute('aria-label', '开发手记旁读')
-    var label = node('span', 'project-margin-label', '项目之外 / FIELD NOTES')
-    var owner = node('p', 'project-margin-owner')
-    var quote = node('blockquote'), destination = link('', '', 'project-margin-source')
-    var hint = node('p', 'project-margin-hint', '停在手记标题上，读一小段。')
-    margin.append(label, owner, quote, destination, hint)
-    var selected = null, triggers = []
-    function preview(article, name, trigger) {
-      if (selected === trigger) return
-      var changed = selected !== null
-      selected = trigger
-      owner.textContent = '关于 ' + name
-      quote.textContent = article.excerpt
-      destination.textContent = article.title + ' ↗'; destination.href = article.href
-      triggers.forEach(function (el) { el.classList.toggle('is-reading', el === trigger) })
-      if (changed) motion(quote, [{ opacity: .3 }, { opacity: 1 }], 180)
-    }
-    projects.forEach(function (project, index) {
-      var name = project.querySelector('.project-name').textContent, href = project.getAttribute('href')
-      var entry = node('article', 'project-story')
-      entry.appendChild(node('span', 'project-story-number', String(index + 1).padStart(2, '0')))
-      var title = node('h2'), destination = project.cloneNode(false)
-      destination.className = 'project-story-destination'; destination.append(document.createTextNode(name), node('span', '', '↗'))
-      title.appendChild(destination)
-      var desc = project.querySelector('.project-desc')
-      entry.append(title, node('p', 'project-story-description', desc ? desc.textContent : ''))
-      var matches = articles.filter(function (article) { return article.excerpt && (article.href === href || article.links.includes(href)) }).slice(0, 2)
-      if (matches.length) {
-        var notes = node('div', 'project-story-notes')
-        notes.appendChild(node('span', 'project-notes-label', '开发手记'))
-        matches.forEach(function (article) {
-          var trigger = link(article.href, article.title, 'project-note-link')
-          triggers.push(trigger)
-          trigger.addEventListener('pointerenter', function (event) { if (event.pointerType !== 'touch') preview(article, name, trigger) })
-          trigger.addEventListener('focus', function () { preview(article, name, trigger) })
-          notes.appendChild(trigger)
-          var mobile = node('details', 'project-note-mobile'), summary = node('summary', '', '读两句')
-          mobile.append(summary, node('blockquote', '', article.excerpt), link(article.href, '继续读这篇 ↗'))
-          notes.appendChild(mobile)
-          if (!selected) preview(article, name, trigger)
+    var number = 0
+    grids.forEach(function (grid, groupIndex) {
+      var list = node('section', 'project-ledger')
+      list.setAttribute('aria-label', groupIndex === 0 ? '项目与开发手记' : '更多项目')
+      if (groupIndex === 0) list.classList.add('is-featured')
+      Array.from(grid.querySelectorAll('.item')).forEach(function (project) {
+        var name = project.querySelector('.project-name').textContent, href = project.getAttribute('href')
+        var entry = node('article', 'project-record'), body = node('div', 'project-record-body')
+        entry.appendChild(node('span', 'project-record-number', String(++number).padStart(2, '0')))
+        var title = node('h2'), destination = project.cloneNode(false)
+        destination.className = 'project-record-title'; destination.append(document.createTextNode(name), node('span', '', '↗'))
+        title.appendChild(destination)
+        var desc = project.querySelector('.project-desc')
+        body.append(title, node('p', 'project-record-description', desc ? desc.textContent : ''))
+        var actions = node('div', 'project-record-actions'), address = project.cloneNode(false)
+        address.className = 'project-record-address'
+        address.textContent = href.startsWith('#/') ? '打开这份记录 ↗' : href.replace(/^https?:\/\//, '').replace(/\/$/, '') + ' ↗'
+        var copy = node('button', 'project-copy', '复制链接'); copy.type = 'button'; copy.setAttribute('aria-label', '复制 ' + name + ' 的链接')
+        copy.setAttribute('aria-live', 'polite')
+        var timer = 0
+        copy.addEventListener('click', async function () {
+          clearTimeout(timer)
+          try { await navigator.clipboard.writeText(new URL(href, location.href).href); copy.textContent = '已复制 ✓' }
+          catch (_) { copy.textContent = '请复制左侧链接' }
+          timer = setTimeout(function () { copy.textContent = '复制链接' }, 2000)
         })
-        entry.appendChild(notes)
-      }
-      list.appendChild(entry)
+        disposers.push(function () { clearTimeout(timer) })
+        actions.append(address, copy); body.appendChild(actions); entry.appendChild(body)
+        var matches = articles.filter(function (article) { return article.excerpt && (article.href === href || article.links.includes(href)) }).slice(0, 2)
+        if (matches.length && groupIndex === 0) {
+          var notes = node('aside', 'project-record-notes')
+          notes.appendChild(node('span', 'project-record-label', '背后的记录 / FIELD NOTES'))
+          notes.appendChild(node('blockquote', '', matches[0].excerpt))
+          matches.forEach(function (article) { notes.appendChild(link(article.href, article.title + ' ↗')) })
+          entry.appendChild(notes)
+        } else entry.classList.add('without-notes')
+        list.appendChild(entry)
+      })
+      grid.replaceWith(list)
     })
-    desk.appendChild(list)
-    if (selected) desk.appendChild(margin)
-    else desk.classList.add('without-notes')
-    grid.replaceWith(desk)
     var categories = main.querySelector('.toc-nav')
-    if (categories) {
-      var index = node('details', 'project-categories')
-      index.appendChild(node('summary', '', '按分类翻找'))
-      categories.before(index); index.appendChild(categories)
-    }
+    if (categories) { categories.classList.add('project-directory'); categories.setAttribute('aria-label', '项目分类') }
   }
 
   function articleTrail(article, route) {
@@ -814,40 +843,6 @@
     var aside = node('aside', 'article-next')
     aside.append(node('span', '', '读到这里，不妨再走一页。'), link(next.getAttribute('href'), next.querySelector('span').textContent + ' ↗'), link('#/guestbook', '或者，留一句你的想法', 'article-next-note'))
     article.appendChild(aside)
-  }
-
-  function talkIndex(main) {
-    main.querySelectorAll('table').forEach(function (table) {
-      var scroller = node('div', 'talk-table-scroll')
-      scroller.tabIndex = 0; scroller.setAttribute('role', 'region'); scroller.setAttribute('aria-label', '完整演讲记录，可左右滚动')
-      table.before(scroller); scroller.appendChild(table)
-    })
-    var controller = new AbortController()
-    disposers.push(function () { controller.abort() })
-    main.querySelectorAll('.talk-block').forEach(function (block, index) {
-      var sessions = Array.from(block.querySelectorAll('.talk-pres, .pres-links'))
-      if (!sessions.length) return
-      var details = node('details', 'talk-recordings'), body = node('div', 'talk-recordings-body'), transition = null, expanded = index === 0
-      details.open = expanded
-      var summary = node('summary', '', (expanded ? '收起' : '展开') + '分享记录 · ' + block.querySelectorAll('.talk-pres').length)
-      var count = block.querySelectorAll('.talk-pres').length
-      details.append(summary, body)
-      sessions.forEach(function (session) { body.appendChild(session) })
-      summary.addEventListener('click', function (event) {
-        event.preventDefault()
-        var start = details.getBoundingClientRect().height
-        if (transition) { transition.onfinish = null; transition.cancel() }
-        expanded = !expanded
-        details.open = true
-        summary.textContent = (expanded ? '收起' : '展开') + '分享记录 · ' + count
-        var end = expanded ? summary.offsetHeight + body.offsetHeight : summary.offsetHeight
-        transition = motion(details, [{ height: start + 'px' }, { height: end + 'px' }], 340)
-        if (transition) transition.onfinish = function () { details.open = expanded; motions.delete(transition); transition = null }
-        else details.open = expanded
-      }, {signal:controller.signal})
-      block.appendChild(details)
-      block.prepend(node('span', 'talk-index-number', String(index + 1).padStart(2, '0')))
-    })
   }
 
   function podcastSleeves(main) {
@@ -947,6 +942,7 @@
   }
 
   function readingMark(article, route, controls) {
+    var title = article.querySelector('h1').textContent
     var key = 'stacktao-reading-marks', marks = {}, sections = Array.from(article.querySelectorAll(':scope > p:not(.post-meta):not(.share-line), :scope > h2, :scope > h3, :scope > pre, :scope > ul, :scope > ol'))
     if (!sections.length) return
     try { marks = JSON.parse(localStorage.getItem(key)) || {} } catch (_) {}
@@ -965,7 +961,7 @@
     save.addEventListener('click', function () {
       var index = 0
       sections.forEach(function (section, i) { if (section.getBoundingClientRect().top <= innerHeight * .4) index = i })
-      mark = { index: index, title: article.querySelector('h1').textContent, excerpt: sections[index].textContent.trim().slice(0, 80) }
+      mark = { index: index, title: title, excerpt: sections[index].textContent.trim().slice(0, 80) }
       try {
         marks = JSON.parse(localStorage.getItem(key)) || {}; marks[route] = mark
         localStorage.setItem(key, JSON.stringify(marks)); resume.hidden = false; hint.textContent = '已记住这一段'; save.textContent = '更新书签'
@@ -991,21 +987,19 @@
       '/posts': ['文字', 'Collected words', '把做过的事、没想通的问题，慢慢写下来。'],
       '/notes': ['随手记', 'In the margins', '还没成为文章的想法，也值得留下。'],
       '/projects': ['造物记', 'Work in progress', '一些工具，一些实验。一边使用，一边打磨。'],
-      '/talks': ['当面聊聊', 'Out loud', '从一个人的思考，到一群人的对话。'],
       '/photos': ['沿途', 'Through the viewfinder', '暂时离开屏幕，看看别处。'],
-      '/podcasts': ['声音来信', 'On the record', '留一点时间，听一段完整的对话。'],
+      '/podcasts': ['声音来信', 'On the record', '节目展示示例，正式录音尚未接入。'],
       '/sponsors': ['同行的人', 'With gratitude', '谢谢你，让这些小事得以继续。'],
       '/bookmarks': ['常翻的书签', 'A small shelf', '收藏不在多，在于还会回来。'],
-      '/use': ['手边的东西', 'Everyday tools', '工作与日常里，真正用得上的物件。'],
+      '/use': ['工具与流程', 'How this site is made', '这个站点用到的工具，以及它们各自做的事。'],
       '/demos': ['小玩意', 'Loose experiments', '不必成为作品，也可以先做出来。'],
-      '/streams': ['一起折腾', 'Live notes', '想法发生的现场，和留存下来的过程。'],
-      '/media': ['书影音', 'On the shelf', '读过、看过、听过。留一点回味。'],
+      '/streams': ['节目主题', 'A programme sketch', '节目单的交互示例，等待放入真实记录。'],
+      '/media': ['书影音', 'On the shelf', '一组示例收藏，试着把书、影像和声音放在一起。'],
       '/feed': ['更新小报', 'The latest pages', '新写下的，一页接着一页。']
     }
     if (route === '/projects') { main.classList.add('studio-projects'); projectDesk(main) }
     if (route === '/photos') { main.classList.add('studio-photos'); contactSheet(main) }
     if (route === '/posts' || route === '/notes') { readingOpening(main); archiveIndex(main, route) }
-    if (route === '/talks') talkIndex(main)
     if (route === '/podcasts') podcastSleeves(main)
     var title = main.querySelector(':scope > h1, :scope > .prose > h1')
     if (labels[route] || title) {
@@ -1016,10 +1010,10 @@
         heading.append(node('p', 'folio-edition', labels[route][1]), title, node('p', 'folio-description', labels[route][2]))
       } else heading.append(node('p', 'folio-edition', 'From the journal'), title)
       main.prepend(heading)
-      if (['/posts','/notes','/podcasts','/talks','/streams'].includes(route)) {
+      if (['/posts','/notes','/podcasts','/streams'].includes(route)) {
         var sections = node('nav', 'folio-sections')
         sections.setAttribute('aria-label', '记录分类')
-        ;[['/posts','长文'],['/notes','随手记'],['/podcasts','播客'],['/talks','演讲'],['/streams','直播']].forEach(function (item) {
+        ;[['/posts','长文'],['/notes','随手记'],['/podcasts','播客'],['/streams','直播']].forEach(function (item) {
           if (!(window.PAGES || {})[item[0]]) return
           var entry = link('#' + item[0], item[1])
           if (item[0] === route) entry.setAttribute('aria-current', 'page')
@@ -1029,5 +1023,7 @@
       }
     }
   }
-  window.Studio = { home: home, decorate: decorate, destroy: destroy }
+  var baseDecorate = decorate
+  function decorateWithCabinet(view, route) { baseDecorate(view, route); if (window.Cabinet) window.Cabinet.decorate(view, route) }
+  window.Studio = { home: home, decorate: decorateWithCabinet, destroy: destroy }
 })()

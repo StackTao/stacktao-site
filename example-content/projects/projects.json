@@ -21,7 +21,7 @@
         },
         {
           "name": "StackTao Site",
-          "summary": "由 Markdown 和 JSON 驱动的个人站框架，保留水墨 Canvas、Hash 路由和无后端静态发布。",
+          "summary": "由 Markdown 和 JSON 驱动的个人站框架，包含文章阅读、相册与本机留言墙，支持无后端静态发布。",
           "status": "JavaScript · GitHub Pages",
           "url": "https://github.com/StackTao/stacktao-site",
           "color": "#6e6961"

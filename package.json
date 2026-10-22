@@ -9,7 +9,7 @@
     "build": "npm run content && node scripts/build-site.mjs",
     "preview": "vite preview",
     "test:guestbook": "node tests/wall-collision.cjs && node tests/guestbook-flow.cjs",
-    "test:site": "node tests/navigation.cjs public && node tests/journal-flow.cjs public && npm run test:guestbook"
+    "test:site": "npm run content && node tests/content-navigation.cjs && node tests/navigation.cjs public && node tests/journal-flow.cjs public && node tests/collections.cjs public && node tests/cabinet.cjs public && npm run test:guestbook"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

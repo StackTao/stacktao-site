@@ -76,7 +76,7 @@ function safeColor(value) {
 function normalizeNavigation(items, includeKey = false) {
   if (!Array.isArray(items)) return []
   return items
-    .filter((item) => item && item.enabled !== false && item.label && /^\/[a-z0-9/_-]*$/i.test(String(item.route || '')))
+    .filter((item) => item && item.enabled !== false && item.label && !/^\/(?:talks|giving-talks)(?:\/|$)/.test(String(item.route || '')) && /^\/[a-z0-9/_-]*$/i.test(String(item.route || '')))
     .map((item) => ({
       label: String(item.label),
       route: String(item.route),
@@ -259,28 +259,6 @@ function createProjectsPage(data) {
   </main>`
 }
 
-function createTalksPage(data) {
-  if (!data || !Array.isArray(data.talks)) return null
-  const talks = data.talks.map((talk) => {
-    const events = Array.isArray(talk.events) ? talk.events : []
-    return `<div class="talk-block" data-lang="${escapeHtml(talk.lang || 'zh')}">
-      ${talk.series ? `<div class="talk-series">${escapeHtml(talk.series)}</div>` : ''}
-      <div class="talk-title"><a ${linkAttributes(talk.url || '#/talks')}>${escapeHtml(talk.title)}</a></div>
-      ${talk.description ? `<p class="talk-desc">${escapeHtml(talk.description)}</p>` : ''}
-      ${events.map((event) => `<div class="talk-pres"><strong>${escapeHtml(event.name)}</strong>${event.language ? ` <span class="lang-tag">${escapeHtml(event.language)}</span>` : ''}
-        <div class="op50">${[event.date, event.location].filter(Boolean).map(escapeHtml).join(' · ')}</div>
-      </div>
-      <div class="pres-links">${(Array.isArray(event.links) ? event.links : []).map((link) => `<a class="btn" ${linkAttributes(link.url)}>${escapeHtml(link.label)}</a>`).join('')}</div>`).join('')}
-      <hr>
-    </div>`
-  }).join('')
-  return `<main class="page prose slide-enter-content">
-    <h1>${escapeHtml(data.title || '演讲')}</h1>
-    ${data.description ? `<p class="op50">${escapeHtml(data.description)}</p>` : ''}
-    ${talks}
-  </main>`
-}
-
 function createPhotosPage(albums) {
   if (!albums.length) return null
   let photoIndex = 0
@@ -305,19 +283,14 @@ function createPhotosPage(albums) {
   </main>`
 }
 
-function createStructuredPages(projects, talks, albums) {
+function createStructuredPages(projects, albums) {
   const pages = {}
   const titles = {}
   const projectPage = createProjectsPage(projects)
-  const talksPage = createTalksPage(talks)
   const photosPage = createPhotosPage(albums)
   if (projectPage) {
     pages['/projects'] = projectPage
     titles['/projects'] = `${projects.title || '项目'} - StackTao`
-  }
-  if (talksPage) {
-    pages['/talks'] = talksPage
-    titles['/talks'] = `${talks.title || '演讲'} - StackTao`
   }
   if (photosPage) {
     pages['/photos'] = photosPage
@@ -326,17 +299,14 @@ function createStructuredPages(projects, talks, albums) {
   return { pages, titles }
 }
 
-function createStructuredSearch(projects, talks, albums) {
+function createStructuredSearch(projects, albums) {
   const projectItems = projects && Array.isArray(projects.groups)
     ? projects.groups.flatMap((group) => Array.isArray(group.projects) ? group.projects : []).map((project) => ({
         title: String(project.name || ''), kind: '项目', href: safeHref(project.url || '/projects'),
       }))
     : []
-  const talkItems = talks && Array.isArray(talks.talks)
-    ? talks.talks.map((talk) => ({ title: String(talk.title || ''), kind: '演讲', href: safeHref(talk.url || '/talks') }))
-    : []
   const albumItems = albums.map((album) => ({ title: album.title, kind: '相册', href: '#/photos' }))
-  return projectItems.concat(talkItems, albumItems).filter((item) => item.title)
+  return projectItems.concat(albumItems).filter((item) => item.title)
 }
 
 function createHomePage(config, projects) {
@@ -404,7 +374,7 @@ function createPrototypePages(articles, config, projects) {
   titles['/posts'] = '文章 - StackTao'
   pages['/feed'] = `<main class="page prose slide-enter-content">
     <h1>最近更新</h1>
-    <p class="op50">由内容仓库生成的文章索引。</p>
+    <p class="op50">最近写下的文字，按时间收在这里。</p>
     ${groups}
   </main>`
   titles['/feed'] = '最近更新 - StackTao'
@@ -417,9 +387,9 @@ function createPrototypePages(articles, config, projects) {
   return { pages, titles }
 }
 
-function createPrototypeContentScript(articles, config, projects, talks, albums) {
+function createPrototypeContentScript(articles, config, projects, albums) {
   const generated = createPrototypePages(articles, config, projects)
-  const structured = createStructuredPages(projects, talks, albums)
+  const structured = createStructuredPages(projects, albums)
   Object.assign(generated.pages, structured.pages)
   Object.assign(generated.titles, structured.titles)
   const navigation = normalizeNavigation(config.navigation, true)
@@ -428,22 +398,47 @@ function createPrototypeContentScript(articles, config, projects, talks, albums)
     title: article.title,
     kind: '文章',
     href: `#${article.route}`,
-  })).concat(createStructuredSearch(projects, talks, albums))
+  })).concat(createStructuredSearch(projects, albums))
   return `(function () {
   var pages = window.PAGES || {}
   var titles = window.PAGE_TITLES || {}
   var generatedPages = ${JSON.stringify(generated.pages)}
   var generatedTitles = ${JSON.stringify(generated.titles)}
+  var contentBase = document.currentScript && document.currentScript.getAttribute('data-content-base') || ''
+  if (contentBase) Object.keys(generatedPages).forEach(function (route) {
+    var template = document.createElement('template')
+    template.innerHTML = generatedPages[route]
+    template.content.querySelectorAll('[src], [href]').forEach(function (element) {
+      ;['src', 'href'].forEach(function (attribute) {
+        var value = element.getAttribute(attribute)
+        if (value && value.indexOf('content/') === 0) element.setAttribute(attribute, contentBase + value)
+      })
+    })
+    generatedPages[route] = template.innerHTML
+  })
   Object.keys(pages).forEach(function (route) {
     var stalePost = route.indexOf('/posts/') === 0
-    var staleTalk = generatedPages['/talks'] && route.indexOf('/talks/') === 0
-    if (stalePost || staleTalk) {
+    var retired = /^\\/(?:talks|giving-talks)(?:\\/|$)/.test(route)
+    if (stalePost || retired) {
       delete pages[route]
       delete titles[route]
     }
   })
   Object.keys(generatedPages).forEach(function (route) { pages[route] = generatedPages[route] })
   Object.keys(generatedTitles).forEach(function (route) { titles[route] = generatedTitles[route] })
+  Object.keys(pages).forEach(function (route) {
+    if (pages[route].indexOf('#/posts/') === -1) return
+    var template = document.createElement('template')
+    template.innerHTML = pages[route]
+    var changed = false
+    template.content.querySelectorAll('a[href^="#/posts/"]').forEach(function (link) {
+      var destination = link.getAttribute('href').slice(1).split('#')[0].replace(/\\/$/, '')
+      if (pages[destination]) return
+      link.replaceWith.apply(link, Array.from(link.childNodes))
+      changed = true
+    })
+    if (changed) pages[route] = template.innerHTML
+  })
   window.PAGES = pages
   window.PAGE_TITLES = titles
   window.SEARCH_INDEX = ${JSON.stringify(search)}
@@ -518,9 +513,8 @@ function createPrototypeContentScript(articles, config, projects, talks, albums)
 async function main() {
   const configPath = path.join(sourceDir, 'content.config.json')
   const config = JSON.parse(await fs.readFile(configPath, 'utf8'))
-  const [projects, talks, albums] = await Promise.all([
+  const [projects, albums] = await Promise.all([
     readJsonOptional(path.join(sourceDir, 'projects', 'projects.json')),
-    readJsonOptional(path.join(sourceDir, 'talks', 'talks.json')),
     loadAlbums(),
   ])
   await fs.mkdir(outputDir, { recursive: true })
@@ -549,7 +543,6 @@ async function main() {
     navigation: normalizeNavigation(config.navigation, true),
     footerNavigation: normalizeNavigation(config.footerNavigation),
     projects: projects || null,
-    talks: talks || null,
     albums: albums.map(({ directory, photos, ...album }) => ({ ...album, photoCount: photos.length })),
     articles: summaries,
   }
@@ -559,12 +552,12 @@ async function main() {
     tags: article.tags,
     route: article.route,
     date: article.date,
-  })).concat(createStructuredSearch(projects, talks, albums).map((item) => ({
+  })).concat(createStructuredSearch(projects, albums).map((item) => ({
     title: item.title,
     kind: item.kind,
     route: item.href,
   })))
-  const contentScript = createPrototypeContentScript(articles, config, projects, talks, albums)
+  const contentScript = createPrototypeContentScript(articles, config, projects, albums)
 
   await Promise.all([
     fs.writeFile(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
@@ -572,7 +565,7 @@ async function main() {
     fs.mkdir(path.dirname(contentScriptPath), { recursive: true })
       .then(() => fs.writeFile(contentScriptPath, contentScript)),
   ])
-  console.log(`Generated ${articles.length} articles, ${albums.length} albums, ${projects ? 'projects' : 'no projects'}, and ${talks ? 'talks' : 'no talks'} from ${sourceDir}`)
+  console.log(`Generated ${articles.length} articles, ${albums.length} albums, ${projects ? 'projects' : 'no projects'} from ${sourceDir}`)
 }
 
 main().catch((error) => {

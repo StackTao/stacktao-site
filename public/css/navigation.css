@@ -1,4 +1,6 @@
 /* Search and photo navigation stay readable, reachable, and in one place. */
+.app-shell .nav-wrap .nav-right > button.site-directory-trigger { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: auto; gap: 7px; padding-inline: 10px; white-space: nowrap; font: 12px/1 var(--font-ui); }
+.site-directory-trigger span { display: inline; }
 .search-mask { padding: clamp(20px, 9vh, 90px) 20px 20px; background: #12171266; backdrop-filter: blur(7px); }
 .search-mask .search-panel { width: min(640px, 100%); max-height: calc(100dvh - clamp(20px, 9vh, 90px) - 20px); display: flex; flex-direction: column; border-radius: 12px; transform-origin: top center; }
 .search-field { flex-shrink: 0; min-height: 68px; padding-inline: 20px 12px; }
@@ -12,6 +14,12 @@
 .search-panel .search-hit p { grid-column: 1 / -1; margin: 2px 0 0; font: 12px/1.8 var(--font-ui); color: var(--fg-light); }
 .search-panel .search-hit:hover, .search-panel .search-hit[aria-selected='true'] { background: var(--surface-soft); }
 .search-panel .search-hit[aria-selected='true'] { box-shadow: inset 3px 0 var(--c-seal); }
+.search-panel.is-directory .search-hits { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; padding: 2px 20px 14px; max-height: min(66dvh, 580px); }
+.search-directory-group { min-width: 0; }
+.search-directory-group:first-child { grid-column: 1 / -1; }
+.search-directory-label { margin: 16px 0 6px; color: var(--fg-light); font: 10px/1.6 var(--font-ui); letter-spacing: .06em; }
+.search-panel.is-directory .search-hit { padding: 9px 10px; gap: 8px; border-bottom: 0; border-radius: 4px; font-size: 14px; }
+.search-panel.is-directory .search-hit small { opacity: .55; }
 .search-status { flex-shrink: 0; margin: 0; padding: 13px 20px; font: 12px/1.7 var(--font-ui); color: var(--fg-light); }
 .search-help { flex-shrink: 0; margin: 0; padding: 10px 20px; border-top: 1px solid var(--rule); background: var(--surface-soft); font: 10px/1.6 var(--font-ui); color: var(--fg-light); }
 .lightbox-step { position: absolute; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #ffffff50; border-radius: 50%; background: #171c17cc; color: white; font: 22px/1 var(--font-ui); }
@@ -22,11 +30,14 @@
 .lightbox-step:focus-visible { outline: 2px solid white; outline-offset: 4px; }
 .lightbox-count { position: absolute; top: 31px; left: 26px; color: #ffffffb3; font: 12px var(--font-mono); }
 @media (max-width: 650px) {
+  .app-shell .nav-wrap .nav-right > button.site-directory-trigger { width: 36px; padding-inline: 8px; }
+  .site-directory-trigger span { display: none; }
   .search-mask { padding: 12px; }
   .search-mask .search-panel { max-height: calc(100dvh - 24px); }
   .search-field { min-height: 60px; padding-left: 14px; }
   .search-panel .search-hit { padding-inline: 15px; }
   .search-help { display: none; }
+  .search-panel.is-directory .search-hits { gap: 0 12px; padding-inline: 14px; }
   .lightbox-step { top: auto; bottom: 25px; transform: none; width: 44px; height: 44px; }
   .lightbox-previous { left: calc(50% - 62px); }
   .lightbox-next { right: calc(50% - 62px); }

@@ -4,6 +4,7 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 
 async function check(directory, reduced) {
+  const directoryRoutes = ['/', '/posts', '/notes', '/podcasts', '/streams', '/projects', '/demos', '/photos', '/use', '/bookmarks', '/media', '/guestbook', '/sponsors', '/chat-zh', '/feed', '/chat', '/collective']
   const dom = new JSDOM(`<!doctype html><html><body>
     <div class="app-shell"><nav class="nav-right"><button data-search>搜索</button><a href="#/posts" data-nav="blog">文章</a><a id="custom-home" href="#/" data-nav="home" data-route="/">自定首页</a><a id="custom-posts" href="#/posts" data-nav="writing" data-route="/posts">自定文章</a><a id="custom-override" href="#/projects" data-nav="blog" data-route="/projects">自定造物</a></nav><div id="view" tabindex="-1"></div></div>
     <div class="search-mask" role="dialog" aria-modal="true" aria-hidden="true"><div class="search-panel"><div class="search-field"><input aria-controls="search-results"></div><div id="search-results" class="search-hits"></div></div></div>
@@ -26,11 +27,16 @@ async function check(directory, reduced) {
     '/guestbook': '<main data-guestbook><textarea id="draft">未完成的草稿</textarea></main>',
     '/404': '<main><h1>404</h1></main>',
   }
+  directoryRoutes.forEach(route => { if (!w.PAGES[route]) w.PAGES[route] = '<main><h1>栏目</h1></main>' })
+  w.PAGES['/talks'] = '<main><h1>Retired talks</h1></main>'
+  w.PAGES['/talks/legacy'] = '<article><h1>Retired detail</h1></article>'
+  w.PAGES['/giving-talks'] = '<main><h1>Retired speaker</h1></main>'
   w.SEARCH_INDEX = [
     { title: '山间来信', kind: 'Blog', href: '#/posts/story' },
     { title: '<img src=x onerror=alert(1)>', kind: 'Blog', href: '#/posts/unsafe-title' },
     { title: 'unsafe', href: 'javascript:alert(1)' },
     { title: 'missing', href: '#/missing' },
+    { title: 'Retired talks', kind: 'Talk', href: '#/talks' },
   ]
   w.eval(fs.readFileSync(path.join(directory, 'js/site.js'), 'utf8'))
   const settle = () => new Promise(resolve => setTimeout(resolve, reduced ? 40 : 190))
@@ -48,11 +54,13 @@ async function check(directory, reduced) {
   open()
   assert(q('.app-shell').inert, 'search makes the background inert')
   assert.equal(d.activeElement, q('.search-field input'))
-  assert.equal(q('.search-mask').getAttribute('aria-label'), '搜索博客')
-  assert.equal(d.querySelectorAll('.search-hit').length, 5, 'empty search offers available destination pages')
+  assert.equal(q('.search-mask').getAttribute('aria-label'), '博客目录与搜索')
+  assert.deepEqual(Array.from(d.querySelectorAll('.search-hit'), a => a.getAttribute('href')), directoryRoutes.map(route => '#' + route), 'empty search exposes every available directory route in reading order')
+  assert.equal(d.querySelectorAll('.search-directory-group').length, 5)
+  assert(Array.from(d.querySelectorAll('.search-hit > span')).every(title => /[\u4e00-\u9fff]/.test(title.textContent)), 'directory labels are Chinese')
   assert(!q('.search-hit[href^="javascript:"]'))
   key(d.activeElement, 'ArrowUp')
-  assert.equal(q('.search-hit[aria-selected=true]').getAttribute('href'), '#/guestbook')
+  assert.equal(q('.search-hit[aria-selected=true]').getAttribute('href'), '#/collective')
   key(d.activeElement, 'ArrowDown')
   assert.equal(q('.search-hit[aria-selected=true]').getAttribute('href'), '#/')
   key(d.activeElement, 'Tab')
@@ -158,6 +166,12 @@ async function check(directory, reduced) {
   assert(!q('#custom-posts').hasAttribute('aria-current'), 'a shared prefix without a slash is not a nested route')
   await navigate('#/')
   assert.equal(q('#custom-home').getAttribute('aria-current'), 'page')
+  for (const route of ['/talks', '/talks/legacy', '/giving-talks']) {
+    await navigate('#' + route)
+    assert.equal(q('#view h1').textContent, '404', 'retired module cannot render even if stale content is loaded')
+  }
+  open(); query('Retired talks')
+  assert.equal(d.querySelectorAll('.search-hit').length, 0, 'retired module is absent from search')
   w.close()
   console.log('PASS', directory, reduced ? '(reduced motion)' : '(normal motion)', ': safe body search, empty state, keyboard/IME, modal focus, history positions, anchors, guestbook draft isolation and leave protection, visible photo navigation')
 }

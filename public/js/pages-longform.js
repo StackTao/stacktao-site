@@ -122,7 +122,7 @@
     titles[article.route] = article.title + ' - StackTao'
   })
 
-  var yearMarker = '<div data-year-group><div class="year-label">2026</div>'
+  var yearMarker = /<div data-year-group(?:="")?><div class="year-label">2026<\/div>/
   var rows = articles.map(function (article) {
     return '<a class="post-row item" data-lang="zh" href="#' + article.route + '">'
       + '<span>' + article.title + '</span>'
@@ -130,7 +130,7 @@
       + '</a>'
   }).join('')
   if (pages['/posts'] && pages['/posts'].indexOf(articles[0].route) === -1)
-    pages['/posts'] = pages['/posts'].replace(yearMarker, yearMarker + rows)
+    pages['/posts'] = pages['/posts'].replace(yearMarker, function (marker) { return marker + rows })
 
   var search = window.SEARCH_INDEX || []
   for (var i = articles.length - 1; i >= 0; i--) {

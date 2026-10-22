@@ -11,17 +11,51 @@
     "since": "2025"
   },
   "navigation": [
-    { "label": "文章", "route": "/posts", "key": "blog", "enabled": true },
-    { "label": "项目", "route": "/projects", "key": "projects", "enabled": true },
-    { "label": "相册", "route": "/photos", "key": "photos", "enabled": true },
-    { "label": "演讲", "route": "/talks", "key": "talks", "enabled": false },
-    { "label": "支持", "route": "/sponsors", "key": "sponsors", "enabled": false },
-    { "label": "留言", "route": "/guestbook", "key": "guestbook", "enabled": true }
+    {
+      "label": "文字",
+      "route": "/posts",
+      "key": "blog",
+      "enabled": true
+    },
+    {
+      "label": "造物",
+      "route": "/projects",
+      "key": "projects",
+      "enabled": true
+    },
+    {
+      "label": "沿途",
+      "route": "/photos",
+      "key": "photos",
+      "enabled": true
+    },
+    {
+      "label": "留言墙",
+      "route": "/guestbook",
+      "key": "guestbook",
+      "enabled": true
+    }
   ],
   "footerNavigation": [
-    { "label": "首页", "route": "/" },
-    { "label": "文章", "route": "/posts" },
-    { "label": "项目", "route": "/projects" },
-    { "label": "相册", "route": "/photos" }
+    {
+      "label": "随手记",
+      "route": "/notes"
+    },
+    {
+      "label": "书签",
+      "route": "/bookmarks"
+    },
+    {
+      "label": "手边工具",
+      "route": "/use"
+    },
+    {
+      "label": "支持",
+      "route": "/sponsors"
+    },
+    {
+      "label": "聊聊",
+      "route": "/chat-zh"
+    }
   ]
 }
