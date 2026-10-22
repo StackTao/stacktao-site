@@ -39,13 +39,14 @@
   function cellRange(b,size,visit){for(var y=Math.floor(b.y/size);y<=Math.floor((b.y+b.height)/size);y++)for(var x=Math.floor(b.x/size);x<=Math.floor((b.x+b.width)/size);x++)visit(x,y)}
   function collisionIndex(){var buckets=new Map();return {
     add:function(shape){cellRange(shape.a?capsuleBox(shape):shape,32,function(x,y){var key=x+','+y;if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(shape)})},
+    rectHits:function(rect){var found=false,seen=new Set();cellRange(rect,32,function(x,y){if(found)return;(buckets.get(x+','+y)||[]).some(function(b){if(seen.has(b))return false;seen.add(b);found=b.a?capsuleHitsRect(b,rect):rect.x<b.x+b.width&&rect.x+rect.width>b.x&&rect.y<b.y+b.height&&rect.y+rect.height>b.y;return found})});return found},
     hits:function(s){var found=false,seen=new Set();cellRange(capsuleBox(s),32,function(x,y){if(found)return;(buckets.get(x+','+y)||[]).some(function(b){if(seen.has(b))return false;seen.add(b);found=b.a?segmentDistance(s.a,s.b,b.a,b.b)<=s.r+b.r:capsuleHitsRect(s,b);return found})});return found}
   }}
   function leaseCells(segment){var cells=[];cellRange(capsuleBox(segment),8,function(x,y){if(x>=0&&x<125&&y>=0&&capsuleHitsRect(segment,{x:x*8,y:y*8,width:8,height:8}))cells.push(y*128+x)});return cells}
   function mount(o) {
     var root=o.root,wall=o.wall,key=o.key,leaseKey=key+'-live-leases',controller=new AbortController(),signal=controller.signal
     var owner='',active=false,medium='ink',color=inks[1],width=14,strokes=[],bounds=null,held=null,editing=null,editingSource='',erasing=false,history=[]
-    var pending=[],inflight=null,frameRequest=0,settleTimer=0,heartbeat=0,ending=false,generation=0,lastPoint=null,protectedInk=collisionIndex(),sceneStamp='',pointCount=0
+    var pending=[],inflight=null,frameRequest=0,settleTimer=0,heartbeat=0,ending=false,generation=0,lastPoint=null,protectedInk=collisionIndex(),protectedIgnore=null,sceneStamp='',pointCount=0
     var layer=document.createElement('div');layer.className='gb-free-layer';layer.hidden=true
     var canvas=document.createElement('canvas');canvas.setAttribute('aria-label','整面墙自由创作区，按住喷绘或刻画');canvas.tabIndex=0
     var carving=document.createElement('div');carving.className='gb-free-carving';layer.append(canvas,carving);wall.after(layer)
@@ -53,7 +54,7 @@
     var cursor=document.createElement('div');cursor.className='gb-real-tool';cursor.hidden=true;root.append(cursor)
     var warning=document.createElement('div');warning.className='gb-paint-warning';warning.hidden=true;warning.setAttribute('role','status');root.append(warning)
     var panel=document.createElement('div');panel.className='gb-free-panel';panel.hidden=true
-    panel.innerHTML='<div class="gb-free-instrument" aria-hidden="true"></div><div class="gb-free-controls"><div class="gb-free-heading"><strong data-title></strong><span data-instruction></span></div><div class="gb-free-colors" aria-label="喷漆颜色">'+inks.map(function(ink,i){return '<button data-color="'+ink+'" style="--swatch:'+ink+'" aria-label="'+['石墨','靛蓝','赭红','粉白','黄绿','钴蓝','珊瑚橘'][i]+'喷漆"></button>'}).join('')+'</div><div class="gb-free-actions"><label>笔触 <select aria-label="喷幅或刻刀宽度" data-brush><option value="7">细</option><option value="14" selected>中</option><option value="26">宽</option></select></label><button data-action="undo">撤回</button><button data-action="erase" aria-pressed="false">擦除笔画</button><button data-action="text">打字</button><button data-action="sound" aria-pressed="false">声音关</button><button data-action="cancel">放回工具</button><button data-action="finish" class="gb-free-finish">完成 · 留在墙上</button></div><p data-feedback role="status">本机预览 · 同一浏览器窗口之间同步占位</p></div>'
+    panel.innerHTML='<div class="gb-free-instrument" aria-hidden="true"></div><div class="gb-free-controls"><div class="gb-free-heading"><strong data-title></strong><small data-capacity></small><span data-instruction></span></div><div class="gb-free-colors" aria-label="喷漆颜色">'+inks.map(function(ink,i){return '<button data-color="'+ink+'" style="--swatch:'+ink+'" aria-label="'+['石墨','靛蓝','赭红','粉白','黄绿','钴蓝','珊瑚橘'][i]+'喷漆"></button>'}).join('')+'</div><div class="gb-free-actions"><label>笔触 <select aria-label="喷幅或刻刀宽度" data-brush><option value="7">细</option><option value="14" selected>中</option><option value="26">宽</option></select></label><button data-action="undo">撤回</button><button data-action="erase" aria-pressed="false">擦除笔画</button><button data-action="text">打字</button><button data-action="sound" aria-pressed="false">声音关</button><button data-action="cancel">放回工具</button><button data-action="finish" class="gb-free-finish">完成 · 留在墙上</button></div><p data-feedback role="status">本机预览 · 同一浏览器窗口之间同步占位</p></div>'
     root.append(panel)
     var sound=false,audio=null,hiss=null,warningTimer=0
     function audioStop(){if(hiss){hiss.stop();hiss=null}}
@@ -69,10 +70,11 @@
     function brushRadius(kind,width){return kind==='ink'?width*1.15+1:width*.5+1.5}
     function sweep(a,b,stroke,kind){return {a:a,b:b,r:brushRadius(kind||medium,stroke.width)+2/scale()}}
     function sceneVersion(){return (localStorage.getItem(key)||'')+'|'+(localStorage.getItem(key+'-positions-organic-v1')||'')}
-    function refreshBoxes(){
+    function refreshBoxes(ignoreId){
+      protectedIgnore=ignoreId||null
       var r=wall.getBoundingClientRect(),s=scale(),items=o.read();protectedInk=collisionIndex()
       function rect(el){var b=el.getBoundingClientRect();protectedInk.add({x:(b.left-r.left)/s,y:(b.top-r.top)/s,width:b.width/s,height:b.height/s})}
-      items.filter(function(n){return n.section===o.section()&&(!editing||n.id!==editing.id)}).forEach(function(n){
+      items.filter(function(n){return n.section===o.section()&&n.id!==ignoreId&&(!editing||n.id!==editing.id)}).forEach(function(n){
         var el=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===n.id})
         if(n.frame){n.strokes.forEach(function(st){var points=st.points.map(function(p){return [n.frame.x+p[0]*n.frame.width,n.frame.y+p[1]*n.frame.height]});points.forEach(function(p,i){protectedInk.add({a:points[Math.max(0,i-1)],b:p,r:brushRadius(n.medium,st.width)})})});return}
         if(!el)return
@@ -86,7 +88,8 @@
       })
       root.querySelectorAll('[data-wall-protected]').forEach(rect);sceneStamp=sceneVersion();hideOriginal()
     }
-    function currentScene(){if(sceneStamp!==sceneVersion()){o.sync();refreshBoxes()}}
+    function currentScene(){if(sceneStamp!==sceneVersion()){sceneStamp=sceneVersion();o.sync();refreshBoxes()}}
+    function canPlace(box,ignoreId){currentScene();if(protectedIgnore!==(ignoreId||null))refreshBoxes(ignoreId);var s=scale(),b={x:box.x/s,y:box.y/s,width:box.width/s,height:box.height/s},other=peers(leases()),hit=protectedInk.rectHits(b);if(!hit)cellRange(b,8,function(x,y){if(other.cells.has(y*128+x))hit=true});return !hit&&!other.old.some(function(r){return b.x<r.x+r.width&&b.x+b.width>r.x&&b.y<r.y+r.height&&b.y+b.height>r.y})}
     function draftSegments(){var all=[];strokes.forEach(function(st){st.points.forEach(function(p,i){all.push(sweep(st.points[Math.max(0,i-1)],p,st))})});return all}
     function draftConflicts(){return draftSegments().some(function(segment){return protectedInk.hits(segment)})}
     function peers(all){var cells=new Set(),old=[];Object.entries(all).forEach(function(pair){var p=pair[1];if(pair[0]===owner||p.wall!==o.section()||p.expires<Date.now())return;if(Array.isArray(p.cells))p.cells.forEach(function(c){cells.add(c)});else old.push(p.box)});return {cells:cells,old:old}}
@@ -152,7 +155,7 @@
         if(!existing.frame&&!matrix){end();o.notice('暂时无法读取这处笔迹，请刷新后重试。');return}
         strokes=existing.strokes.map(function(st){var width=st.width;if(!existing.frame&&matrix)width=(kind==='engraving'?4.5+st.width*1.2:st.width)*Math.hypot(matrix.a,matrix.b)/s;return {ink:st.ink,width:Math.min(160,width),points:st.points.map(function(p){if(existing.frame)return [existing.frame.x+p[0]*existing.frame.width,existing.frame.y+p[1]*existing.frame.height,p[2]];return [Math.max(0,Math.min(WORLD,(matrix.a*p[0]*600+matrix.c*p[1]*360+matrix.e-r.left)/s)),Math.max(0,(matrix.b*p[0]*600+matrix.d*p[1]*360+matrix.f-r.top)/s),p[2]]})}});remeasure()
       }
-      fit();feedback(existing?'可以补画或擦除笔画；取消修改会恢复原作。':'整面墙自由落笔，完成后收拢范围 · 本机多窗口占位');canvas.focus({preventScroll:true})
+      fit();panel.querySelector('[data-capacity]').textContent=o.capacity?o.capacity():'';feedback(existing?'可以补画或擦除笔画；取消修改会恢复原作。':'整面墙自由落笔，完成后收拢范围 · 本机多窗口占位');canvas.focus({preventScroll:true})
       if(existing&&bounds){try{if(!await claim())throw Error('这处痕迹正在被另一窗口编辑，请稍后再试。')}catch(err){end();o.notice(err.message);return}}
       heartbeat=setInterval(function(){showPresence();if(active&&bounds)claim().then(function(ok){if(!ok){penUp();feedback('占位已变化，请撤回冲突笔画后再保存。')}}).catch(function(){penUp();feedback('占位续期失败，当前笔迹仍保留。')})},4000)
     }
@@ -173,11 +176,11 @@
     panel.querySelector('[data-brush]').addEventListener('change',function(e){width=Number(e.target.value)},{signal:signal})
     window.addEventListener('storage',function(e){if(e.key===leaseKey){showPresence()}if(e.key===key){o.sync();refreshBoxes();showPresence()}},{signal:signal})
     window.addEventListener('resize',function(){penUp();if(active)fit();else {refreshBoxes();showPresence()}},{signal:signal})
-    window.addEventListener('scroll',function(){if(active)refreshBoxes()},{passive:true,signal:signal})
+    window.addEventListener('scroll',function(){refreshBoxes(protectedIgnore)},{passive:true,signal:signal})
     window.addEventListener('blur',penUp,{signal:signal});document.addEventListener('visibilitychange',function(){if(document.hidden)penUp()},{signal:signal})
     document.addEventListener('keydown',function(e){if(active&&e.key==='Escape'){if(held)penUp();else end()}},{signal:signal})
     window.addEventListener('pagehide',release,{signal:signal});showPresence()
-    return {start:start,active:function(){return active},resize:function(){if(active)fit();else {refreshBoxes();showPresence()}},destroy:function(){end();clearInterval(sprayTimer);clearTimeout(warningTimer);if(audio)audio.close();controller.abort();layer.remove();presence.remove();panel.remove();cursor.remove();warning.remove()}}
+    return {start:start,canPlace:canPlace,active:function(){return active},resize:function(){if(active)fit();else {refreshBoxes();showPresence()}},destroy:function(){end();clearInterval(sprayTimer);clearTimeout(warningTimer);if(audio)audio.close();controller.abort();layer.remove();presence.remove();panel.remove();cursor.remove();warning.remove()}}
   }
   window.WallTools={mount:mount,paintArt:paintArt,toolArt:toolArt}
 })()

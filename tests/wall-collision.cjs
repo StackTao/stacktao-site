@@ -15,6 +15,8 @@ assert.equal(index.hits(line(195,200,205,200)), true, 'actual engraving is prote
 assert.equal(index.hits(line(300,550,900,550)), true, 'a fast sweep cannot jump through a stroke')
 assert.equal(index.hits(line(215,250,215,300,3)), false, 'narrow tools can pass close to a stroke')
 assert.equal(index.hits(line(215,250,215,300,12)), true, 'wide spray includes its full footprint')
+assert.equal(index.rectHits({x:350,y:200,width:160,height:120}),false,'paper fits within a U without covering a stroke')
+assert.equal(index.rectHits({x:190,y:200,width:40,height:80}),true,'paper cannot cover the actual stroke')
 // A paper protects its surface, but separate marks on either side are allowed.
 index.add({x:430,y:290,width:100,height:100})
 assert.equal(index.hits(line(300,200,350,220)), false)

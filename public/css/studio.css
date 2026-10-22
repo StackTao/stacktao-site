@@ -688,3 +688,41 @@ body:has([data-guestbook]) { --wall-material: linear-gradient(#f6ead340,#f6ead34
 .gb-free-actions [data-action='erase'][aria-pressed='true'] { color: #f9ccae; box-shadow: 0 1px currentColor; }
 .gb-real-tool[data-tool='eraser'] { transform: translate(-12px,-22px) rotate(-10deg); }
 .gb-peer-trace { position: absolute; inset: 0; overflow: visible; pointer-events: none; fill: #b76c4438; }
+
+/* The selected point stays put; material and typography match the saved mark. */
+.gb-placement-ghost { position: absolute; z-index: 1000000000; pointer-events: none; border: 1px dashed #645e4c80; border-radius: 2px; background: #fff9e532; display: grid; place-items: center; color: #665a43; font: 12px var(--font-ui); }
+.gb-live-stage::before { display: none; }
+.gb-stage-handle { position: absolute; left: 0; top: -34px; padding: 5px 10px; border: 1px solid #8c7d5f45; border-radius: 16px; background: #faf5e9ed; color: #655944; font: 11px var(--font-ui); cursor: grab; touch-action: none; }
+.gb-stage-handle:active { cursor: grabbing; }
+.gb-live-stage.is-conflicting { outline-color: #b2442d; background: #b2442d09; }
+.gb-type-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0 6px; font: 12px var(--font-ui); }
+.gb-type-tools label { display: flex; align-items: center; gap: 7px; }
+.gb-type-tools select { padding: 5px; border: 1px solid #8d816233; border-radius: 5px; background: #fff9ef; color: #474737; }
+.gb-type-tools button { flex-basis: 100%; text-align: left; }
+.gb-lettering { width: 100%; position: relative; color: var(--letter-ink,#3f5870); }
+#view .gb-lettering .gb-letter-glyph,#view .gb-live-stage .is-material-text textarea { box-sizing: border-box; width: 100%; min-height: 100%; margin: 0; padding: 14px; font: 400 var(--letter-size,24px)/1.6 var(--letter-font); letter-spacing: 0; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; color: var(--letter-ink,#3f5870); text-shadow: none; }
+#view .gb-lettering[data-material='engraving'] .gb-letter-glyph { color: #817056; }
+.gb-material-defs { position: absolute !important; width: 0 !important; height: 0 !important; overflow: hidden; }
+#view .gb-note[data-typed] .gb-note-content { min-height: var(--letter-min-height,calc(var(--mark-size) * .6)); aspect-ratio: auto; align-items: flex-start; overflow: visible; }
+#view .gb-note[data-typed] .gb-note-content .gb-lettering { min-height: inherit; }
+.gb-live-stage .is-material-text { aspect-ratio: auto; min-height: 0; }
+#view .gb-live-stage .is-material-text textarea { display: block; position: relative; z-index: 1; color: transparent; caret-color: #252c23; text-shadow: none; overflow: hidden; }
+#view .gb-live-stage .is-material-text.is-typing textarea { color: var(--letter-ink); }
+#view .gb-live-stage .is-material-text.is-typing[data-medium='engraving'] textarea { color: #625240; text-shadow: -.5px -.5px .4px #352c2360,.5px 1px .4px #fff4db; }
+.gb-live-stage .is-material-text.is-typing .gb-live-carving { visibility: hidden; }
+.gb-live-stage .is-material-text .gb-live-carving { overflow: hidden; }
+.gb-live-stage .gb-note { transform: none; }
+#view .gb-wall > .gb-note[data-medium='paper'][data-mark-size] .gb-note-foot { box-sizing: border-box; height: 36px; padding: 8px 0; align-items: center; }
+.gb-wall-picker { flex-wrap: wrap; gap: 0 4px; max-width: 165px; }
+.gb-wall-picker [data-wall-capacity] { display: block !important; flex-basis: 100%; padding: 0 4px; font: 10px var(--font-mono); color: #d0d4bd; }
+.gb-wall-dock [data-gb='next-wall'] { white-space: nowrap; font-size: 11px; min-width: 44px; }
+.gb-free-heading [data-capacity] { font: 10px var(--font-ui); color: #d6d9c7; }
+.gb-free-heading { flex-wrap: wrap; }
+.gb-primary:disabled { cursor: not-allowed; opacity: .45; }
+@media(max-width:600px){.gb-wall-picker{max-width:100px}.gb-wall-dock [data-gb='next-wall']{min-width:42px!important}.gb-live-stage .gb-stage-handle{top:-30px}.gb-type-tools{gap:6px;margin:6px 0}.gb-type-tools button{flex-basis:auto}.guestbook-page [data-composer]{max-height:38dvh}}
+
+body:has([data-guestbook]) { overflow-anchor: none; }
+
+#view .gb-wall-mark[data-typed].gb-just-pinned { animation: gb-finished-cut 1.2s ease both; }
+
+#view .gb-live-stage .is-material-text textarea { min-height: 0; }
