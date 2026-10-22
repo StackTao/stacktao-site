@@ -1,6 +1,8 @@
 import {promises as fs} from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import os from 'node:os'
+const processStart=async pid=>{try{return (await fs.readFile(`/proc/${pid}/stat`,'utf8')).split(') ')[1].split(' ')[19]}catch{return null}}
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex')
 const fail=(ok,message,status=400)=>{if(!ok){const e=new Error(message);e.status=status;throw e}}
 const idOK=s=>typeof s==='string'&&/^[a-zA-Z0-9-]{1,100}$/.test(s)
@@ -29,8 +31,8 @@ function clean(input){
 export async function createWallStore(state){
  await fs.mkdir(state,{recursive:true})
  const lock=path.join(state,'wall-writer.lock')
- try{const pid=Number(await fs.readFile(lock,'utf8'));try{process.kill(pid,0);fail(false,'共享墙已由另一个服务实例管理，请先停止该实例',409)}catch(e){if(e.code!=='ESRCH')throw e;await fs.unlink(lock)}}catch(e){if(e.code!=='ENOENT')throw e}
- await fs.writeFile(lock,String(process.pid),{flag:'wx',mode:0o600})
+ try{const record=JSON.parse(await fs.readFile(lock,'utf8')),pid=typeof record==='number'?record:record.pid;try{if(typeof record==='object'&&(record.host!==os.hostname()||(record.start&&record.start!==await processStart(pid)))){const stale=new Error('Previous container');stale.code='ESRCH';throw stale}process.kill(pid,0);fail(false,'共享墙已由另一个服务实例管理，请先停止该实例',409)}catch(e){if(e.code!=='ESRCH')throw e;await fs.unlink(lock)}}catch(e){if(e.code!=='ENOENT')throw e}
+ await fs.writeFile(lock,JSON.stringify({pid:process.pid,host:os.hostname(),start:await processStart(process.pid)}),{flag:'wx',mode:0o600})
  const file=path.join(state,'wall.json'),leases=new Map();let data
  try{data=JSON.parse(await fs.readFile(file,'utf8'))}catch(e){if(e.code!=='ENOENT')throw e;data={version:1,seed:crypto.randomInt(256),walls:[0],notes:[],deleted:[]};await fs.writeFile(file,JSON.stringify(data),{mode:0o600})}
  let queue=Promise.resolve()

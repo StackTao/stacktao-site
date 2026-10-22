@@ -1,0 +1,15 @@
+{$DOMAIN} {
+    encode zstd gzip
+    header X-Content-Type-Options nosniff
+    @backend path /admin /admin/* /api/* /site /site/*
+    handle @backend {
+        reverse_proxy app:5174 {
+            header_up X-Stacktao-Client-IP {remote_host}
+        }
+    }
+    handle {
+        root * /srv/site/dist
+        header Cache-Control "no-cache"
+        file_server
+    }
+}

@@ -11,6 +11,8 @@ import { marked } from 'marked'
 import sanitizeHtml from 'sanitize-html'
 
 const exec = promisify(execFile)
+// Only enable behind the private Caddy network; Caddy overwrites this header.
+const clientIP = req => process.env.TRUST_PROXY==='caddy' && typeof req.headers['x-stacktao-client-ip']==='string' ? req.headers['x-stacktao-client-ip'] : req.socket.remoteAddress
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const uid = () => crypto.randomUUID()
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
@@ -136,7 +138,7 @@ export async function createAdminServer(options={}) {
         if(req.method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','GET,POST,DELETE');res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');res.writeHead(204);return res.end()}
         const mutation=req.method!=='GET';if(mutation)check(allowed.includes(req.headers.origin),'留言操作需要可信来源',403)
         const now=Date.now();for(const [key,r] of wallRates)if(r.until<now)wallRates.delete(key)
-        const key=req.socket.remoteAddress+':'+mutation,rate=wallRates.get(key)||{count:0,until:now+60000};check(wallRates.size<10000||wallRates.has(key),'请求过多',429);rate.count++;wallRates.set(key,rate);check(rate.count<=(mutation?600:900),'操作频繁，请稍后重试',429)
+        const key=clientIP(req)+':'+mutation,rate=wallRates.get(key)||{count:0,until:now+60000};check(wallRates.size<10000||wallRates.has(key),'请求过多',429);rate.count++;wallRates.set(key,rate);check(rate.count<=(mutation?600:900),'操作频繁，请稍后重试',429)
         if(pathname==='/api/wall/session'&&req.method==='POST')return send(res,201,{token:crypto.randomBytes(32).toString('hex')})
         const token=/^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization||'')?.[1],visitor=token?wallStore.owner(token):''
         if(pathname==='/api/wall'&&req.method==='GET'){const section=Number(url.searchParams.get('section')||0);check(Number.isInteger(section)&&section>=0,'墙面无效');return send(res,200,wallStore.snapshot(section,visitor))}
@@ -156,14 +158,14 @@ export async function createAdminServer(options={}) {
         if(req.method==='OPTIONS'){res.setHeader('Access-Control-Allow-Methods','POST');res.setHeader('Access-Control-Allow-Headers','Content-Type');res.writeHead(204);return res.end()}
         check(req.method==='POST','仅支持 POST',405)
         const now=Date.now();for(const [key,r] of trackingRates)if(r.until<now)trackingRates.delete(key)
-        const key=req.socket.remoteAddress,rate=trackingRates.get(key)||{count:0,until:now+60000};check(trackingRates.size<10000||trackingRates.has(key),'请求过多',429);rate.count++;trackingRates.set(key,rate);check(rate.count<=120,'请求过多',429)
+        const key=clientIP(req),rate=trackingRates.get(key)||{count:0,until:now+60000};check(trackingRates.size<10000||trackingRates.has(key),'请求过多',429);rate.count++;trackingRates.set(key,rate);check(rate.count<=120,'请求过多',429)
         const data=await body(req,2048);check(await serial(()=>analytics.collect(data)),'统计事件无效',400);return send(res,202,{ok:true})
       }
       if(req.headers.origin)check(req.headers.origin===origin,'不允许跨站请求',403)
       const method=req.method, mutation=!['GET','HEAD'].includes(method)
       if(mutation&&!req.headers.authorization)check(req.headers.origin===origin,'写入请求必须来自本站',403)
       if(pathname==='/api/v1/session'&&method==='POST') {
-        const ip=req.socket.remoteAddress,rate=attempts.get(ip)||{count:0,until:Date.now()+60000};if(rate.until<Date.now()){rate.count=0;rate.until=Date.now()+60000}rate.count++;attempts.set(ip,rate);check(rate.count<=20,'尝试过于频繁，请一分钟后再试',429)
+        const ip=clientIP(req),rate=attempts.get(ip)||{count:0,until:Date.now()+60000};if(rate.until<Date.now()){rate.count=0;rate.until=Date.now()+60000}rate.count++;attempts.set(ip,rate);check(rate.count<=20,'尝试过于频繁，请一分钟后再试',429)
         const data=await body(req);check(hash(String(data.token||''))===hash(owner),'管理口令不正确',401)
         attempts.delete(ip);const session=crypto.randomBytes(32).toString('base64url');sessions.set(session,Date.now()+8*3600000)
         res.setHeader('Set-Cookie',`stacktao_admin=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${expected.protocol==='https:'?'; Secure':''}`);return send(res,200,{ok:true})

@@ -1,28 +1,104 @@
-# 自有域名部署
+# 上线、登录与数据恢复
 
-## 服务器目录
+## 推荐：一台服务器，同域名前台 + 后台
+
+当前共享留言墙使用文件持久化和单进程串行写入，适合一台 Linux VPS、一个 Node 服务实例。Caddy 提供 HTTPS 和静态博客，Node 提供 `/admin/`、发布 API 和共享留言墙。不要开多个 app 副本，也不要把数据目录共享给另一台运行中的服务器。访问量增长后再迁移数据库。
+
+GitHub Pages 只能承载静态页面，不能运行当前后台和共享留言 API。已有 Pages 工作流不会部署这套服务。推荐整个站统一走下述 VPS 方案，不混用两个写入源。
 
 ```text
-/srv/
-├── stacktao-site/       # 本页面框架仓库
-└── stacktao-content/    # GitHub 文章仓库，只读 Deploy Key
-
-/var/www/stacktao/       # 对外发布的构建结果
+/srv/stacktao/code/          Git 仓库：程序，可以更新和替换
+/srv/stacktao/data/
+  content/                  文章、相册、项目、配置、media 上传图片
+  state/                    草稿、历史、登录口令、API 令牌、留言、统计
+  site/dist/                生成的公开网站（可重新构建）
+/srv/stacktao/backups/       完整校验快照，不放进公开目录
 ```
 
-## 更新流程
+必须备份 content 和 state。远程 URL 引用的图片不在本机备份里，需要先通过后台上传为本站媒体。备份包含管理凭据，权限为 0700/0600，不要上传到公开仓库或放在网站根目录。
 
-```bash
-git -C /srv/stacktao-content pull --ff-only
-cd /srv/stacktao-site
-npm ci
-CONTENT_DIR=/srv/stacktao-content npm run build
+## 首次部署
+
+服务器安装 Docker Engine 和 Compose 插件。域名 A/AAAA 记录指向服务器，开放 80/443；不要暴露 5174 端口。SSH 使用密钥登录。下列操作在服务器执行：
+
+```sh
+cd /srv/stacktao/code
+cp deploy/.env.example deploy/.env
+# 修改 DOMAIN 为真实域名，检查 DATA_DIR、BACKUP_DIR
+# APP_VERSION 建议填本次 git commit 的短 SHA，便于回滚
+mkdir -p /srv/stacktao/data /srv/stacktao/backups
+chmod 700 /srv/stacktao/data /srv/stacktao/backups
+cd deploy
+docker compose config --quiet
+docker compose up -d --build
+docker compose logs --tail=50 app caddy
 ```
 
-确认构建成功后，将 `dist/` 原子切换到 `/var/www/stacktao/current`。GitHub Webhook 可以触发这组命令；Webhook 接收端必须校验 `X-Hub-Signature-256`，并使用无登录权限的专用系统用户运行。不要把 GitHub Token 放进前端代码。
+首次启动仅在 content 目录不存在时复制示例内容；之后始终使用持久化内容。已有空目录或损坏配置会明确报错，不会偷偷覆盖。已有本机内容应在启动前复制到 `data/content`，`.local/admin` 复制到 `data/state`（先停止本机后台，排除 `wall-writer.lock`），不要用示例内容覆盖真实数据。
 
-## Nginx
+Caddy 自动申请和续期证书。打开 `https://你的域名/` 和 `https://你的域名/admin/`。管理员登录后确认设置中的留言 API 为 `/api/wall`；开启统计时把统计地址设为 `https://你的域名/api/v1/collect` 并发布配置。默认不采集访问统计。
 
-参考 [deploy/nginx.conf](../deploy/nginx.conf)。页面沿用原型的 Hash 路由，文章地址形如 `/#/posts/quiet-interface`；Nginx 只需发布静态文件，不参与文章渲染。
+首发验收：两个独立浏览器分别留言，确认互相可见；管理员删除一条测试留言；上传图片并发布测试文章；重启 app 后再次检查文章、图片、留言和统计。不要在验收前导入唯一的一份生产数据。
 
-域名的 `A` 或 `AAAA` 记录指向服务器后，使用 Certbot 或现有证书系统启用 HTTPS。`manifest.json` 使用短缓存，带 slug 的文章和图片可以使用长缓存。
+## 登录、退出和恢复访问
+
+目前是单管理员的**高强度管理口令登录**，没有访客账号注册，也没有邮箱密码找回或双重验证。管理口令首次生成在 `data/state/owner-token`，通过服务器 SSH 私下读取，保存到密码管理器，再在 HTTPS 后台登录。不要发给 AI 或放进截图。
+
+登录会设置 HttpOnly、SameSite=Strict、生产环境 Secure Cookie，8 小时过期；退出或服务重启后需重新登录。失败登录有限流；跨站写入会被拒绝。Caddy 覆盖客户端地址头，后端只在容器私有网络内信任它。若自行部署后端，不要随意启用 TRUST_PROXY，也不要映射后端端口。
+
+AI 发布使用后台创建的独立、有限权限 API 令牌。日常只给草稿和图片权限，需要直接发布时再授予发布权限；可以单独撤销，不能把管理口令当 AI 密钥。
+
+忘记口令：通过 SSH 读取上述文件即可。怀疑泄漏：先备份，停止 app，执行以下命令轮换，然后启动；原登录会话随重启失效。已签发 AI 令牌独立有效，如有泄漏也需在后台撤销。
+
+```sh
+cd /srv/stacktao/code/deploy
+docker compose stop app
+docker compose run --rm --no-deps --entrypoint node app scripts/rotate-owner.mjs
+docker compose start app
+```
+
+访客的匿名编辑凭据保存在其浏览器中；换设备或清理浏览器后不能认领原留言，管理员仍能查看和删除。不是多用户账号体系。
+
+## 备份（短暂停止写入，博客仍可阅读）
+
+```sh
+cd /srv/stacktao/code
+sh deploy/backup.sh
+```
+
+脚本停止 app，备份 content + state，生成逐文件 SHA-256 清单，然后自动启动原容器。备份期间后台和留言 API 暂不可用，静态博客仍由 Caddy 提供。半途失败的备份没有有效清单，不能恢复。不要在服务写入时直接复制 state 文件，也不要手工删除运行中的 writer lock。
+
+建议每天低峰执行一次、每次升级前再执行一次。服务器 cron 示例（先手动验证路径和权限）：
+
+```cron
+15 3 * * * /bin/sh /srv/stacktao/code/deploy/backup.sh >> /var/log/stacktao-backup.log 2>&1
+```
+
+本机备份不能防服务器磁盘损坏。还需把成功快照用加密备份工具（如 restic）复制到另一台机器或私有对象存储，并单独保管解密密码。这里没有配置云存储账号，也没有自动开启定时任务或异地备份。建议保留 14 份日备份、8 份周备份，每月做一次恢复演练；确认异地副本有效后再清理旧备份。
+
+## 恢复：先恢复到新目录，再切换
+
+需要 Node 22，或用已构建的 app 镜像运行该命令：
+
+```sh
+node scripts/data-snapshot.mjs restore /srv/stacktao/backups/某次快照 /srv/stacktao/data-restored
+```
+
+目标目录必须不存在。工具先验证全部文件的校验和及路径，才创建恢复目录；拒绝符号链接和活动锁文件。恢复后停止旧 app，修改 `deploy/.env` 的 DATA_DIR 为新目录，再运行 `docker compose up -d --force-recreate`。应用会重新生成公开站点。核对留言、图片和文章后才处理旧目录，保留旧数据方便回退。
+
+不要直接把历史备份解压覆盖正在使用的数据目录。完整恢复会回到快照时间点，之后的留言和文章需要从旧目录单独找回。
+
+## 更新与回滚
+
+1. 运行备份脚本并确认成功；记录当前 APP_VERSION 和 Git commit。
+2. 更新程序仓库到要发布的版本，修改 APP_VERSION 为新版本号。
+3. 在 deploy 目录执行 `docker compose build app`；构建成功后执行 `docker compose up -d app`。
+4. 查看日志、打开前后台，验证一次发布和留言。启动失败时旧持久化数据仍在。
+
+启动使用持久化内容重新构建网站，失败不会覆盖之前的公开结果。代码镜像不包含真实数据。不要执行 `docker compose down -v`，不要删除 DATA_DIR；不要把整个数据目录加入 Git。公开输出的父目录被挂载，后台发布时的目录切换能被 Caddy 正确看到。
+
+回滚程序：把仓库和 APP_VERSION 改回记录的版本，然后 `docker compose up -d --no-build app` 使用保留的旧镜像。旧镜像需事先保留，不要在验收前清理镜像。未来若升级改变数据格式，必须先确认兼容性；必要时恢复升级前快照，不能保证任意版本都可直接读取新数据。
+
+## 验证范围
+
+`node --test tests/deployment.test.mjs` 检查备份、恢复、校验失败、禁止覆盖。`npm run test:admin` 检查登录、权限、发布、并发留言和重启持久化。真实证书签发、服务器网络和异地备份仍需在你的域名及服务器上验收。

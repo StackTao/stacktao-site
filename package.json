@@ -12,7 +12,8 @@
     "test:site": "npm run content && node tests/content-navigation.cjs && node tests/navigation.cjs public && node tests/journal-flow.cjs public && node tests/collections.cjs public && node tests/cabinet.cjs public && npm run test:guestbook",
     "admin": "node scripts/admin.mjs",
     "test:admin": "node --test tests/admin.test.mjs tests/shared-wall.test.mjs && node tests/analytics-client.cjs",
-    "publish:article": "node scripts/publish-article.mjs"
+    "publish:article": "node scripts/publish-article.mjs",
+    "test:deployment": "node --test tests/deployment.test.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

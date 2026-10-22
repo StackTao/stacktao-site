@@ -1,0 +1,40 @@
+name: stacktao
+services:
+  app:
+    image: stacktao:${APP_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    environment:
+      CONTENT_DIR: /data/content
+      ADMIN_STATE_DIR: /data/state
+      ADMIN_OUTPUT_DIR: /data/site/dist
+      ADMIN_HOST: 0.0.0.0
+      ADMIN_PORT: 5174
+      ADMIN_PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN}
+      ANALYTICS_ORIGINS: https://${DOMAIN}
+      TRUST_PROXY: caddy
+    volumes:
+      - ${DATA_DIR:-/srv/stacktao/data}:/data
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${DATA_DIR:-/srv/stacktao/data}/site:/srv/site:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+volumes:
+  caddy_data:
+  caddy_config:
