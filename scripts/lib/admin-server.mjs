@@ -1,3 +1,4 @@
+import { createAccounts, resetMailer } from './accounts.mjs'
 import { createWallStore } from './wall-store.mjs'
 import { createAnalytics } from './analytics.mjs'
 import http from 'node:http'
@@ -60,7 +61,10 @@ export async function createAdminServer(options={}) {
   let owner=await read(ownerFile)
   if(!owner){owner='sta_owner_'+crypto.randomBytes(32).toString('base64url');await atomic(ownerFile,owner)}
   owner=owner.trim()
-  const sessions=new Map(), attempts=new Map()
+  const mailer=options.sendReset||resetMailer()
+  const accounts=await createAccounts(state,{sendReset:mailer})
+  const sessions=new Map(), attempts=new Map(), recoveryAttempts=new Map()
+  function limit(map,key,max,windowMs){const now=Date.now();for(const [id,item] of map)if(item.until<now)map.delete(id);const rate=map.get(key)||{count:0,until:now+windowMs};check(map.size<10000||map.has(key),'请求过多，请稍后重试',429);rate.count++;map.set(key,rate);check(rate.count<=max,'尝试过于频繁，请稍后重试',429)}
   let queue=Promise.resolve(), origin=options.origin||process.env.ADMIN_PUBLIC_ORIGIN||'', building=false
   const serial=fn=>{const next=queue.then(fn);queue=next.catch(()=>{});return next}
   const draftFile=id=>path.join(state,'drafts',id+'.json')
@@ -115,9 +119,9 @@ export async function createAdminServer(options={}) {
   }
   async function auth(req) {
     const bearer=/^Bearer (.+)$/i.exec(req.headers.authorization||'')?.[1]
-    if(bearer){if(hash(bearer)===hash(owner))return {name:'owner',admin:true,scopes};const tokens=await json(path.join(state,'tokens.json'),[]),token=tokens.find(t=>t.hash===hash(bearer)&&Date.parse(t.expiresAt)>Date.now());if(token)return {...token,admin:false};throw new Problem(401,'访问令牌无效或已过期')}
-    const session=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1],expires=sessions.get(session)
-    if(expires>Date.now())return {name:'owner',admin:true,scopes}
+    if(bearer){if(!accounts.configured()&&hash(bearer)===hash(owner))return {name:'owner',admin:true,scopes};const tokens=await json(path.join(state,'tokens.json'),[]),token=tokens.find(t=>t.hash===hash(bearer)&&Date.parse(t.expiresAt)>Date.now());if(token)return {...token,admin:false};throw new Problem(401,'访问令牌无效或已过期')}
+    const session=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1],entry=sessions.get(session)
+    if(entry?.expires>Date.now()&&entry.version===accounts.version())return {name:accounts.info()?.username||'owner',admin:true,scopes}
     throw new Problem(401,'请先登录工作台')
   }
   function can(actor,scope) {check(actor.admin||actor.scopes.includes(scope),'此令牌没有 '+scope+' 权限',403)}
@@ -164,14 +168,43 @@ export async function createAdminServer(options={}) {
       if(req.headers.origin)check(req.headers.origin===origin,'不允许跨站请求',403)
       const method=req.method, mutation=!['GET','HEAD'].includes(method)
       if(mutation&&!req.headers.authorization)check(req.headers.origin===origin,'写入请求必须来自本站',403)
+      if(pathname==='/api/v1/auth/config'&&method==='GET')return send(res,200,{configured:accounts.configured(),emailRecovery:!!mailer})
+      if(pathname==='/api/v1/auth/setup'&&method==='POST'){
+        limit(attempts,clientIP(req),10,60000)
+        const data=await body(req,4096);check(!accounts.configured(),'管理员账号已经创建',409);check(hash(String(data.token||''))===hash(owner),'初始化凭据不正确',401)
+        await accounts.setup(data);sessions.clear();return send(res,201,{ok:true})
+      }
+      if(pathname==='/api/v1/auth/forgot'&&method==='POST'){
+        limit(recoveryAttempts,clientIP(req)+':forgot',5,15*60000)
+        const data=await body(req,2048)
+        check(!!mailer,'尚未配置邮件找回，请联系服务器管理员',503)
+        await Promise.all([accounts.forgot(data.email,origin),new Promise(resolve=>setTimeout(resolve,300))])
+        return send(res,200,{message:'如果邮箱与管理员账号匹配，会收到重置邮件。请检查收件箱及垃圾邮件。'})
+      }
+      if(pathname==='/api/v1/auth/reset'&&method==='POST'){
+        limit(recoveryAttempts,clientIP(req)+':reset',10,15*60000)
+        await serial(async()=>{await accounts.reset(await body(req,4096));sessions.clear();await writeJSON(path.join(state,'tokens.json'),[])})
+        return send(res,200,{ok:true})
+      }
       if(pathname==='/api/v1/session'&&method==='POST') {
-        const ip=clientIP(req),rate=attempts.get(ip)||{count:0,until:Date.now()+60000};if(rate.until<Date.now()){rate.count=0;rate.until=Date.now()+60000}rate.count++;attempts.set(ip,rate);check(rate.count<=20,'尝试过于频繁，请一分钟后再试',429)
-        const data=await body(req);check(hash(String(data.token||''))===hash(owner),'管理口令不正确',401)
-        attempts.delete(ip);const session=crypto.randomBytes(32).toString('base64url');sessions.set(session,Date.now()+8*3600000)
+        limit(attempts,clientIP(req),20,60000)
+        const data=await body(req,4096)
+        let version
+        if(accounts.configured())version=(await accounts.login(data)).version
+        else {check(hash(String(data.token||''))===hash(owner),'请先初始化管理员账号',401);version=accounts.version()}
+        const session=crypto.randomBytes(32).toString('base64url')
+        for(const [id,entry] of sessions)if(entry.expires<Date.now())sessions.delete(id)
+        check(sessions.size<1000,'登录会话过多，请稍后重试',429)
+        sessions.set(session,{expires:Date.now()+8*3600000,version})
         res.setHeader('Set-Cookie',`stacktao_admin=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${expected.protocol==='https:'?'; Secure':''}`);return send(res,200,{ok:true})
       }
       if(pathname.startsWith('/api/')) {
         const actor=await auth(req)
+        if(pathname==='/api/v1/account'&&method==='GET'){admin(actor);return send(res,200,{account:accounts.info(),emailRecovery:!!mailer})}
+        if(pathname==='/api/v1/account/password'&&method==='POST'){
+          admin(actor);limit(attempts,clientIP(req)+':change',10,60000)
+          await accounts.change(await body(req,4096));sessions.clear();return send(res,200,{ok:true})
+        }
         if(pathname==='/api/v1/session'&&method==='DELETE'){const cookie=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1];sessions.delete(cookie);res.setHeader('Set-Cookie','stacktao_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true})}
         if(method==='GET') {
           can(actor,'content:read')

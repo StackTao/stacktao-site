@@ -9,13 +9,13 @@ npm ci
 npm run admin
 ```
 
-打开 `http://127.0.0.1:5174/admin/`。首次启动会生成 `.local/admin/owner-token`，权限为仅当前用户可读写。使用终端查看并粘贴到登录框：
+打开 `http://127.0.0.1:5174/admin/`。首次启动会生成 `.local/admin/owner-token`，权限为仅当前用户可读写。使用终端查看并填入首次初始化表单，再设置账号、找回邮箱和密码：
 
 ```bash
 cat .local/admin/owner-token
 ```
 
-口令不写入前端资源或浏览器 localStorage。登录使用 8 小时 HttpOnly、SameSite=Strict 会话。`.local/` 已加入 Git 忽略，仍需自行妥善备份其中的草稿与历史。
+初始化完成后旧口令失效，日常使用账号密码。后台「账号与安全」可以修改密码，登录页可申请邮件找回，详见 [账号与安全](authentication.md)。密码不写入前端资源或浏览器 localStorage。登录使用 8 小时 HttpOnly、SameSite=Strict 会话。`.local/` 已加入 Git 忽略，仍需自行妥善备份其中的草稿与历史。
 
 默认内容来自 `example-content/`，也可指定：
 

@@ -42,20 +42,24 @@ Caddy 自动申请和续期证书。打开 `https://你的域名/` 和 `https://
 
 ## 登录、退出和恢复访问
 
-目前是单管理员的**高强度管理口令登录**，没有访客账号注册，也没有邮箱密码找回或双重验证。管理口令首次生成在 `data/state/owner-token`，通过服务器 SSH 私下读取，保存到密码管理器，再在 HTTPS 后台登录。不要发给 AI 或放进截图。
+后台采用单管理员账号密码登录。首次打开会显示初始化表单，需要服务器 `data/state/owner-token` 中的初始化凭据，然后自行设置账号、找回邮箱和至少 12 位密码。账号创建后，旧初始化口令不能登录，也不能作为管理 API Bearer 令牌使用。
 
-登录会设置 HttpOnly、SameSite=Strict、生产环境 Secure Cookie，8 小时过期；退出或服务重启后需重新登录。失败登录有限流；跨站写入会被拒绝。Caddy 覆盖客户端地址头，后端只在容器私有网络内信任它。若自行部署后端，不要随意启用 TRUST_PROXY，也不要映射后端端口。
+登录会话为 8 小时 HttpOnly、SameSite=Strict、生产环境 Secure Cookie。修改密码需验证当前密码，并退出所有设备。忘记密码通过一次性邮件链接找回，15 分钟过期；成功重置会退出所有设备并撤销 AI/API 令牌。
 
-AI 发布使用后台创建的独立、有限权限 API 令牌。日常只给草稿和图片权限，需要直接发布时再授予发布权限；可以单独撤销，不能把管理口令当 AI 密钥。
+在 `deploy/.env` 配置 `RESEND_API_KEY` 和 `MAIL_FROM`（Resend 已验证域名的发件地址），然后 `docker compose up -d app`。未配置邮件时，页面明确提示无法邮件找回。配置后应实际向自己的邮箱验证投递，不能仅凭配置存在就认为投递成功。
 
-忘记口令：通过 SSH 读取上述文件即可。怀疑泄漏：先备份，停止 app，执行以下命令轮换，然后启动；原登录会话随重启失效。已签发 AI 令牌独立有效，如有泄漏也需在后台撤销。
+账号与密码哈希保存在 `state/account.json`，随数据快照备份。不要手动删除此文件重新初始化。邮件服务不可用时，可通过 SSH 在停止 app 后生成一次性恢复链接：
 
 ```sh
 cd /srv/stacktao/code/deploy
 docker compose stop app
-docker compose run --rm --no-deps --entrypoint node app scripts/rotate-owner.mjs
+docker compose run --rm --no-deps --entrypoint node app scripts/recover-account.mjs
 docker compose start app
 ```
+
+在自己浏览器中打开输出的链接，设置新密码；不要分享链接或保存终端输出到公开日志。该脚本必须在服务停止时运行。旧的 `rotate-owner.mjs` 仅轮换初始化凭据，不能重置已创建账号的密码。
+
+AI 发布使用独立、有限权限 API 令牌，不使用账号密码。修改密码保留这些令牌；忘记密码重置会全部撤销，需要重新签发。Google 登录暂未启用，后续关联到同一个稳定账号 ID，不能按相同邮箱自动授予管理员权限。完整安全设计见 [账号与安全](authentication.md)。
 
 访客的匿名编辑凭据保存在其浏览器中；换设备或清理浏览器后不能认领原留言，管理员仍能查看和删除。不是多用户账号体系。
 

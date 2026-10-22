@@ -17,6 +17,8 @@ services:
       ADMIN_PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN}
       ANALYTICS_ORIGINS: https://${DOMAIN}
       TRUST_PROXY: caddy
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     volumes:
       - ${DATA_DIR:-/srv/stacktao/data}:/data
   caddy:

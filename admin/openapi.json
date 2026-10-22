@@ -21,8 +21,8 @@
   "paths": {
     "/api/v1/session": {
       "post": {
-        "summary": "交换管理口令为 HttpOnly 会话",
-        "description": "需要与当前服务相同的 Origin；管理口令保存在私有状态目录的 owner-token 文件中。",
+        "summary": "账号密码登录",
+        "description": "同源请求，返回 HttpOnly 会话。首次初始化前保留旧口令兼容；创建账号后仅接受 username/password。",
         "responses": {
           "200": {
             "description": "成功",
@@ -92,11 +92,16 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "token"
+                  "username",
+                  "password"
                 ],
                 "properties": {
-                  "token": {
+                  "username": {
                     "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
                   }
                 }
               }
@@ -2050,6 +2055,243 @@
           },
           "409": {
             "description": "版本冲突"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/config": {
+      "get": {
+        "summary": "查询初始化和邮件服务配置状态",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/setup": {
+      "post": {
+        "summary": "首次初始化管理员，须持有服务器初始化凭据",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          },
+          "201": {
+            "description": "管理员已创建"
+          },
+          "409": {
+            "description": "已经初始化"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "username",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/forgot": {
+      "post": {
+        "summary": "申请邮件重置（统一响应，不暴露账号存在性）",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          },
+          "503": {
+            "description": "邮件找回未配置"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/reset": {
+      "post": {
+        "summary": "使用一次性链接重置密码并撤销所有会话和 API 令牌",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "password"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/account": {
+      "get": {
+        "summary": "管理员查看账号资料",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        }
+      }
+    },
+    "/api/v1/account/password": {
+      "post": {
+        "summary": "验证当前密码并修改密码，退出所有会话",
+        "responses": {
+          "200": {
+            "description": "成功"
+          },
+          "400": {
+            "description": "参数或重置链接无效"
+          },
+          "401": {
+            "description": "认证失败"
+          },
+          "403": {
+            "description": "权限或来源不允许"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "password"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
           }
         }
       }
