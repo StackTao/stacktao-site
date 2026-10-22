@@ -81,7 +81,7 @@
     var group = document.createElementNS(ns, 'g')
     if (note.mode === 'draw') {
       while (art.firstChild) group.appendChild(art.firstChild)
-      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(Math.max(5.5,Number(path.getAttribute('stroke-width'))))); path.setAttribute('stroke-linejoin','bevel') })
+      group.querySelectorAll('path').forEach(function (path) { path.setAttribute('stroke-width',String(Math.max(8,Number(path.getAttribute('stroke-width'))))); path.setAttribute('stroke-linejoin','bevel') })
     }
     else {
       var lines = [], line = '', units = 0
@@ -103,18 +103,18 @@
     }
     var id = 'gb-cut-' + (++carvingSerial), seed = Array.from(note.id).reduce(function (n,c) { return (n * 31 + c.charCodeAt(0)) % 997 }, 7)
     var defs = document.createElementNS(ns, 'defs')
-    // A dark cut stays legible at wall scale; light catches only its lower inner edge.
+    // All relief is clipped inside the cut: shadow on the upper lip, muted light below.
     defs.innerHTML = '<filter id="' + id + '" filterUnits="userSpaceOnUse" x="-10" y="-10" width="620" height="380" color-interpolation-filters="sRGB">' +
       '<feTurbulence type="fractalNoise" baseFrequency=".12 .19" numOctaves="2" seed="' + seed + '" result="grain"/>' +
       '<feDisplacementMap in="SourceAlpha" in2="grain" scale="1.15" xChannelSelector="R" yChannelSelector="G" result="cut"/>' +
-      '<feOffset in="cut" dx="2.2" dy="3" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
-      '<feOffset in="cut" dx="-1" dy="-1.6" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
-      '<feComposite in="down" in2="cut" operator="out" result="rimMask"/>' +
-      '<feFlood flood-color="#fff9e7" flood-opacity=".85"/><feComposite in2="rimMask" operator="in" result="rim"/>' +
-      '<feFlood flood-color="#696659" flood-opacity="1"/><feComposite in2="cut" operator="in" result="floor"/>' +
-      '<feFlood flood-color="#232820" flood-opacity=".95"/><feComposite in2="innerShade" operator="in" result="shade"/>' +
-      '<feFlood flood-color="#f2eddb" flood-opacity=".9"/><feComposite in2="innerLight" operator="in" result="light"/>' +
-      '<feMerge><feMergeNode in="rim"/><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter>'
+      '<feOffset in="cut" dx="1.5" dy="2.1" result="down"/><feComposite in="cut" in2="down" operator="out" result="innerShade"/>' +
+      '<feGaussianBlur in="innerShade" stdDeviation=".65"/><feComposite in2="cut" operator="in" result="softShade"/>' +
+      '<feOffset in="cut" dx="-.6" dy="-.9" result="up"/><feComposite in="cut" in2="up" operator="out" result="innerLight"/>' +
+      '<feFlood flood-color="#999583"/><feComposite in2="cut" operator="in" result="floor"/>' +
+      '<feFlood flood-color="#37392e" flood-opacity=".88"/><feComposite in2="innerShade" operator="in" result="lip"/>' +
+      '<feFlood flood-color="#444638" flood-opacity=".65"/><feComposite in2="softShade" operator="in" result="shade"/>' +
+      '<feFlood flood-color="#ddd8c4" flood-opacity=".45"/><feComposite in2="innerLight" operator="in" result="light"/>' +
+      '<feMerge><feMergeNode in="floor"/><feMergeNode in="shade"/><feMergeNode in="lip"/><feMergeNode in="light"/></feMerge></filter>'
     group.setAttribute('filter', 'url(#' + id + ')'); art.append(defs, group)
     return art
   }
@@ -136,7 +136,7 @@
     el.className = 'gb-note'
     var markSeed = traceSeed(note)
     el.dataset.fastener = markSeed%3 === 0 ? 'pin' : 'tape'
-    el.style.setProperty('--note-angle',[-3.2,2.1,-1.4,3.8][markSeed%4]+'deg')
+    el.style.setProperty('--note-angle',((markSeed%101)/100 * (note.medium === 'paper' ? 12 : 8) - (note.medium === 'paper' ? 6 : 4)).toFixed(2)+'deg')
     el.dataset.paperSurface = note.paper
     el.dataset.medium = note.medium || 'paper'
     el.dataset.markSize = note.size || 'medium'
@@ -207,7 +207,7 @@
       try { localStorage.setItem(KEY, JSON.stringify(next)); notes = next; return true }
       catch (_) { error('浏览器空间不足或无法保存。草稿仍在，请不要关闭页面；原有留言没有改变。'); status('保存未完成，草稿和原有留言都还在。'); return false }
     }
-    var layoutKey = KEY + '-positions-studio-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
+    var layoutKey = KEY + '-positions-organic-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
     var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null, visibilityObserver = null
     try {
       var saved = JSON.parse(localStorage.getItem(layoutKey) || '{}')
@@ -224,32 +224,53 @@
       return note && note.layout === 2 && note.anchor && note.anchor.mode === layoutMode ? { x:note.anchor.x, y:note.anchor.y, z:notes.length + 1 } : null
     }
     function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
+    function spotAvailable(x,y,width,height,medium,occupied) {
+      return occupied.every(function (other) {
+        var ox = Math.min(x+width,other.x+other.width)-Math.max(x,other.x)
+        var oy = Math.min(y+height,other.y+other.height)-Math.max(y,other.y)
+        if (ox < -8 || oy < -8) return true
+        var physical = ['paper','sticker'].includes(medium) && ['paper','sticker'].includes(other.medium)
+        return physical && ox > 0 && oy > 0 && ((ox <= 12 && oy <= 60) || (oy <= 12 && ox <= 60))
+      })
+    }
+    // Sample the wall continuously, never snap to rows or columns. Only blank paper edges may overlap.
+    function findWallSpot(ownWidth, height, medium, seed, occupied) {
+      var span = Math.max(0, wall.clientWidth-ownWidth-32), state = seed+1
+      function random() { state = (state*1664525+1013904223) >>> 0; return state/4294967296 }
+      function available(x,y) { return spotAvailable(x,y,ownWidth,height,medium,occupied) }
+      var bottom = Math.max.apply(null,occupied.map(function (o) { return o.y+o.height }).concat([24]))
+      var best = { x:16+random()*span, y:bottom+24+random()*28 }, score = best.y+40
+      for (var i=0; i<240; i++) {
+        var x = 16+random()*span, y = 24+seed%59+random()*(bottom+height*.4)
+        var rank = y+random()*42
+        if (rank < score && available(x,y)) { best={x:x,y:y}; score=rank }
+      }
+      // A few physical notes meet at their corners; their written area stays clear.
+      if (span > 100 && ['paper','sticker'].includes(medium)) {
+        occupied.forEach(function (other) {
+          if (!['paper','sticker'].includes(other.medium)) return
+          var x = seed%2 ? other.x+other.width-38 : other.x-ownWidth+38, y = other.y+other.height-10
+          if (x >= 16 && x <= 16+span && y <= best.y+72 && available(x,y)) best={x:x,y:y}
+        })
+      }
+      return { x:span ? (best.x-16)/span : .5, y:best.y }
+    }
     function wallLayout() {
       finishPaper(true)
-      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32)), columns = Math.max(1, Math.min(4,Math.floor(width / 235)))
+      var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32))
       layoutMode = width < 600 ? 'narrow' : 'wide'
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
       cards.forEach(function (el) { el.style.width = Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32)) + 'px' })
-      var occupied = cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240 } : null }).filter(Boolean)
-      cards.forEach(function (el) {
+      var occupied = cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240, medium:el.dataset.medium } : null }).filter(Boolean)
+      cards.forEach(function (el,index) {
         var p = positionOf(el), height = el.offsetHeight || 240, ownWidth = parseFloat(el.style.width), maxX = Math.max(0, width - ownWidth - 32)
         if (!p) {
-          var cell = width / columns, candidates = []
-          for (var column = 0; column < columns; column++) {
-            var left = Math.max(16, Math.min(width-ownWidth-16, column*cell+(cell-ownWidth)/2 + [-8,8,0][column%3]))
-            var y = el.dataset.note === 'sample' ? 180 : 30 + [18,0,35][column%3]
-            var collisions
-            do {
-              collisions = occupied.filter(function (other) { return left < other.x+other.width+12 && left+ownWidth+12 > other.x && y < other.y+other.height+16 && y+height+16 > other.y })
-              if (collisions.length) y = Math.max.apply(null,collisions.map(function (other) { return other.y+other.height+20 }))
-            } while (collisions.length)
-            candidates.push({x:maxX ? (left-16)/maxX : .5,y:y})
-          }
-          candidates.sort(function (a,b) { return a.y-b.y }); var x=candidates[0].x,y=candidates[0].y
-          p = { x:x, y:y, z:cards.indexOf(el) + 1 }
-          Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true }); occupied.push({x:16 + p.x * maxX,y:p.y,width:ownWidth,height:height})
+          var spot = findWallSpot(ownWidth,height,el.dataset.medium,traceSeed({id:el.dataset.note}),occupied)
+          p = { x:spot.x, y:el.dataset.note === 'sample' ? 180 : spot.y, z:index + 1 }
+          occupied.push({x:16 + p.x * maxX,y:p.y,width:ownWidth,height:height,medium:el.dataset.medium})
         }
+        Object.defineProperty(layouts[layoutMode], el.dataset.note, { value:p, writable:true, enumerable:true, configurable:true })
         paintPaper(el, 16 + p.x * maxX, p.y); el.style.zIndex = String(p.z)
         bottom = Math.max(bottom, p.y + height)
       })
@@ -351,7 +372,7 @@
         invitation.innerHTML = '<span>一面墙，等一个路过的人。</span><small>写一句话，画一个念头。这里不必工整。</small>'
         wall.appendChild(invitation)
       }
-      ;(notes.length ? wallNotes().sort(function (a,b) { return traceSeed(a)-traceSeed(b) }) : [sample]).forEach(function (note) {
+      ;(notes.length ? wallNotes().sort(function (a,b) { var physical = function (n) { return !n.medium || ['paper','sticker'].includes(n.medium) }; return Number(physical(b))-Number(physical(a)) || traceSeed(a)-traceSeed(b) }) : [sample]).forEach(function (note) {
         var el = card(note, true)
         el.setAttribute('aria-describedby', 'gb-move-help'); if (el.dataset.medium === 'paper') el.setAttribute('aria-pressed', 'false')
         if (note.id === newId) el.classList.add('gb-just-pinned')
@@ -435,12 +456,10 @@
       var width = Math.min(note.medium === 'sticker' ? {small:100,medium:148,large:200}[note.size || 'medium'] : markWidths[note.size || 'medium'], Math.max(160,wall.clientWidth - 32))
       var probe = card(note,false); probe.style.width = width + 'px'; probe.style.visibility = 'hidden'; wall.appendChild(probe)
       var height = probe.offsetHeight || width * .6 + 64; probe.remove()
-      var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]'))
-      function available(x,y) { return occupied.every(function (el) { var left=parseFloat(el.style.left), top=parseFloat(el.style.top); return x + width + 18 <= left || x >= left + (el.offsetWidth || parseFloat(el.style.width)) + 18 || y + height + 18 <= top || y >= top + (el.offsetHeight || 240) + 18 }) }
-      if (note.anchor && available(16 + note.anchor.x * span,note.anchor.y)) return false
-      var relocated = !!note.anchor, columns = Math.max(1,Math.min(4,Math.floor(wall.clientWidth / 235))), slot=0, x,y
-      do { x=columns === 1 ? .5 : ((slot%columns+.5)*wall.clientWidth/columns-width/2-16)/Math.max(1,span); x=Math.max(0,Math.min(1,x)); y=32+Math.floor(slot/columns)*(height+20); slot++ } while (!available(16+x*span,y))
-      note.anchor={mode:layoutMode,x:x,y:y}
+      var span = Math.max(0,wall.clientWidth - width - 32), occupied = Array.from(wall.querySelectorAll('[data-note]')).map(function (el) { return {x:parseFloat(el.style.left),y:parseFloat(el.style.top),width:el.offsetWidth || parseFloat(el.style.width),height:el.offsetHeight || 240,medium:el.dataset.medium} })
+      if (note.anchor && spotAvailable(16+note.anchor.x*span,note.anchor.y,width,height,note.medium,occupied)) return false
+      var relocated = !!note.anchor, spot = findWallSpot(width,height,note.medium,traceSeed(note),occupied)
+      note.anchor={mode:layoutMode,x:spot.x,y:spot.y}
       return relocated
     }
     function point(e) { var r = canvas.getBoundingClientRect(); return [Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)), e.pressure || 0.5].map(function (n) { return Math.round(n * 10000) / 10000 }) }
