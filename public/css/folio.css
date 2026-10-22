@@ -360,3 +360,95 @@ html.dark .app-shell .nav-wrap .nav-right > button.icon-btn .icon-moon { display
 .talk-table-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: thin; margin-block: 24px; }
 .talk-table-scroll:focus-visible { outline: 2px solid var(--c-seal); outline-offset: 4px; }
 #view .talk-table-scroll table { min-width: 560px; width: 100%; margin: 0; }
+
+/* A desk beside the writing, rather than a device before every article. */
+#view .journal-home { grid-template-columns: minmax(0,1fr) 300px; column-gap: 60px; padding-top: 42px; }
+#view .journal-intro h1 { font-size: clamp(68px,7vw,90px); margin-bottom: 18px; }
+.journal-bio { max-width: 490px; font-size: 14px; }
+.journal-letter { margin-bottom: 32px; }
+.journal-objects { grid-column: 2; grid-row: 3; min-width: 0; }
+.journal-objects .reading-radio { grid-template-columns: 85px minmax(0,1fr); gap: 14px; padding: 20px 16px 20px 10px; margin: 0 0 38px; background: linear-gradient(145deg,var(--surface),var(--surface-soft)); }
+.journal-objects .radio-dial { width: 85px; height: 85px; padding: 7px; }
+.journal-objects .radio-needle { top: 10px; height: 12px; }
+.journal-objects .radio-control { gap: 16px; }
+.journal-objects .radio-control small { font-size: 8px; }
+.journal-objects .radio-screen { height: 236px; }
+#view .journal-objects .radio-screen h3 { font-size: 17px; line-height: 1.7; }
+#view .journal-objects .radio-excerpt { -webkit-line-clamp: 3; font-size: 10px; }
+.journal-objects .radio-actions { flex-direction: column; gap: 12px; align-items: flex-start; }
+.journal-objects .journal-work { border-top-color: var(--rule-strong); }
+.journal-entry { transition: background .2s; }
+.journal-entry:hover { background: var(--surface); }
+.journal-entry-row { min-height: 82px; }
+.journal-number { transition: color .2s; }
+.journal-entry:hover .journal-number { color: var(--c-seal); }
+.journal-section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.journal-home .photo-print { width: 218px; margin-left: -109px; }
+.journal-home .photo-desk-stage { height: 235px; }
+/* The archive is quiet, searchable, and keeps its place when returning. */
+.archive-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 14px 0; border-block: 1px solid var(--rule); font: 11px/1.5 var(--font-ui); }
+.archive-field { display: flex; align-items: center; gap: 12px; flex: 1 1 230px; min-width: 0; }
+.archive-field > span { color: var(--fg-light); }
+.archive-field input { min-width: 0; flex: 1; width: 120px; border: 0; background: transparent; font: 13px var(--font-ui); color: var(--fg-deeper); padding: 9px 0; }
+.archive-tools select, .reading-size { border: 1px solid var(--rule); border-radius: 3px; background: var(--c-bg); color: var(--fg); padding: 8px 7px; font: 11px var(--font-ui); }
+.archive-count { color: var(--fg-light); font: 10px var(--font-mono); }
+.archive-reset { color: var(--c-seal); padding: 8px 0; }
+#view .archive-empty { padding: 40px 0; color: var(--fg-light); font: 14px/1.9 var(--font-ui); }
+#view :is(.archive-tools,[data-year-group],.index-page) [hidden], #view .index-page [data-year-group][hidden], .archive-empty[hidden] { display: none !important; }
+#view .folio-page.index-page.is-filtering [data-year-group] { margin-top: 24px; }
+/* Reader-owned type and bookmarks; only the marginal control is sticky. */
+.reading-types { flex-wrap: wrap; row-gap: 10px; }
+.reading-types .reading-resume { color: var(--c-seal); margin-left: auto; border-bottom: 1px dotted var(--rule-strong); }
+.reading-types [hidden] { display: none; }
+#view .article-prose[data-reading-size='small'] > :is(p:not(.post-meta):not(.share-line),ul,ol) { font-size: 15px; }
+#view .article-prose[data-reading-size='large'] > :is(p:not(.post-meta):not(.share-line),ul,ol) { font-size: 20px; }
+.reading-marker { position: fixed; bottom: 24px; right: max(24px,calc((100vw - 1120px)/2)); z-index: 18; display: flex; flex-direction: column; align-items: flex-end; gap: 7px; font: 11px var(--font-ui); }
+.reading-mark { padding: 11px 15px; border: 1px solid var(--rule-strong); background: var(--surface); color: var(--fg); border-radius: 4px; box-shadow: 0 2px 5px #00000008; }
+.reading-mark::before { content: ''; display: inline-block; width: 6px; height: 11px; margin-right: 8px; background: var(--c-seal); clip-path: polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); transition: transform .25s; }
+.reading-mark:hover::before { transform: translateY(-2px); }
+.reading-mark-hint { font-size: 10px; color: var(--fg-light); background: var(--c-bg); }
+body[data-route-kind='article'] .back-to-top { bottom: 86px; }
+#view .prose pre.has-copy { position: relative; padding-top: 49px; }
+.code-copy { position: absolute; top: 10px; right: 13px; padding: 5px 8px; border: 1px solid var(--rule); background: var(--surface); border-radius: 3px; font: 10px/1.4 var(--font-ui); color: var(--fg-light); }
+#view .article-prose > :is(p,ul,ol,h2,h3):focus { outline: none; }
+/* Each collection keeps its own cadence. */
+#view .folio-page[data-folio='talks'] .talk-block { background: transparent; border-width: 1px 0 0; margin-top: 0; padding-top: 34px; padding-bottom: 36px; }
+.folio-page[data-folio='talks'] .talk-index-number { top: 38px; color: var(--fg-light); }
+.folio-page[data-folio='talks'] .talk-recordings { border-top-color: var(--rule); }
+#view .folio-page[data-folio='bookmarks'] > div { position: relative; padding-left: 30px; }
+#view .folio-page[data-folio='bookmarks'] > div::before { content: '↗'; position: absolute; left: 0; top: 20px; font: 15px var(--font-mono); color: var(--c-seal); transition: transform .2s; }
+#view .folio-page[data-folio='bookmarks'] > div:hover::before { transform: translate(2px,-2px); }
+#view .folio-page[data-folio='use'] > ul { padding-left: 20px; }
+#view .folio-page[data-folio='use'] li { margin-bottom: 12px; }
+.folio-page .demo-card { transition: border-color .2s; }
+.folio-page .demo-card:hover { border-color: var(--rule-strong); }
+.folio-page .demo-card img { transition: filter .3s; }
+.folio-page .demo-card:hover img { filter: saturate(1.15); }
+@media (max-width:900px) {
+  #view .journal-home { grid-template-columns: minmax(0,1fr) 255px; gap: 0 30px; }
+  .journal-objects .reading-radio { grid-template-columns: 70px minmax(0,1fr); gap: 10px; padding-inline: 8px 12px; }
+  .journal-objects .radio-dial { width: 70px; height: 70px; }
+  .journal-objects .radio-station { font-size: 10px; }
+}
+@media (max-width:650px) {
+  #view .journal-home { display: flex; padding-top: 28px; }
+  #view .journal-intro h1 { font-size: 70px; }
+  .journal-letter { margin-bottom: 5px; }
+  .journal-writing { margin-top: 25px; }
+  .journal-objects { order: 4; width: 100%; margin-top: 35px; }
+  .journal-objects .reading-radio { grid-template-columns: 95px minmax(0,1fr); padding: 20px 18px 20px 10px; gap: 14px; }
+  .journal-objects .radio-dial { width: 90px; height: 90px; }
+  .journal-objects .radio-screen { height: 210px; }
+  .journal-objects .radio-actions { flex-direction: row; flex-wrap: wrap; }
+  .journal-objects .journal-work { margin-top: 36px; }
+  .reading-marker { bottom: 16px; right: 16px; }
+  .reading-mark { padding: 9px 12px; }
+  .reading-types > span { flex-basis: 100%; }
+  .archive-field { flex-basis: 100%; }
+  #view .article-prose[data-reading-size='large'] > :is(p:not(.post-meta):not(.share-line),ul,ol) { font-size: 19px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .journal-entry,.journal-number,.reading-mark::before,.folio-page .demo-card,.folio-page .demo-card img,#view .folio-page[data-folio='bookmarks'] > div::before { transition: none; }
+}
+@media (max-width:650px) { .archive-field input,.archive-tools select,.reading-size { font-size: 16px; } }
+@media (max-width:650px) { #view .folio-page[data-folio='talks'] .talk-block { padding: 28px 0 30px 48px; } .folio-page[data-folio='talks'] .talk-index-number { left: 0; top: 34px; } }

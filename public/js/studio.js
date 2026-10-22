@@ -194,7 +194,10 @@
     var heading = node('h2', '', '最近写下的')
     heading.id = 'journal-writing-title'
     head.appendChild(heading)
-    if (posts.length) writing.appendChild(readingDial(posts))
+    var objects = node('aside', 'journal-objects')
+    objects.setAttribute('aria-label', '桌上的小物件')
+    if (posts.length) objects.appendChild(readingDial(posts))
+    main.appendChild(objects)
     writing.appendChild(head)
     var entries = []
     var selected = -1
@@ -252,7 +255,7 @@
       writing.appendChild(entry)
     })
     writing.appendChild(link('#/posts', '更早的文字 ↗', 'journal-archive'))
-    main.appendChild(writing)
+    main.insertBefore(writing, main.querySelector('.journal-photo-window') || objects)
 
     if (projects.length) {
       var work = node('section', 'journal-work')
@@ -268,7 +271,7 @@
         list.appendChild(item)
       })
       work.append(list, link('#/projects', '还有这些 ↗', 'journal-inline-link'))
-      main.appendChild(work)
+      objects.appendChild(work)
     }
     var about = node('details', 'journal-about')
     about.append(node('summary', '', '再多认识我一点'), original)
@@ -856,9 +859,50 @@
     })
   }
 
-  function readingType(article) {
-    var type = 'serif'
-    try { type = localStorage.getItem('stacktao-reading-type') || type } catch (_) {}
+  function archiveIndex(main, route) {
+    var rows = Array.from(main.querySelectorAll('.post-row'))
+    if (!rows.length) return
+    var groups = Array.from(main.querySelectorAll('[data-year-group]'))
+    var bar = node('section', 'archive-tools')
+    bar.setAttribute('aria-label', '筛选文字')
+    var field = node('label', 'archive-field')
+    var input = node('input'); input.type = 'search'; input.placeholder = '找一篇文字…'
+    input.setAttribute('aria-label', '按标题筛选文字')
+    field.append(node('span', '', '检索'), input)
+    var year = node('select'); year.setAttribute('aria-label', '按年份筛选')
+    var option = node('option', '', '所有年份'); option.value = ''; year.appendChild(option)
+    groups.forEach(function (group) {
+      var label = group.querySelector('.year-label')
+      if (!label) return
+      var option = node('option', '', label.textContent.trim()); option.value = option.textContent; year.appendChild(option)
+    })
+    var count = node('output', 'archive-count'); count.setAttribute('aria-live', 'polite')
+    var reset = node('button', 'archive-reset', '清除筛选'); reset.type = 'button'
+    var empty = node('p', 'archive-empty', '没有找到这篇文字，试试更短的关键词。'); empty.hidden = true
+    var key = 'stacktao-index-' + route, state = {}
+    try { state = JSON.parse(sessionStorage.getItem(key)) || {} } catch (_) {}
+    input.value = typeof state.query === 'string' ? state.query : ''; year.value = state.year || ''
+    if (year.selectedIndex < 0) year.value = ''
+    function update() {
+      var query = input.value.trim().toLowerCase(), total = 0
+      rows.forEach(function (row) {
+        var group = row.closest('[data-year-group]'), label = group && group.querySelector('.year-label')
+        var matches = row.textContent.toLowerCase().includes(query) && (!year.value || (label && label.textContent.trim() === year.value))
+        row.hidden = !matches; if (matches) total++
+      })
+      groups.forEach(function (group) { group.hidden = !group.querySelector('.post-row:not([hidden])') })
+      count.textContent = total + ' / ' + rows.length + ' 篇'; reset.hidden = !query && !year.value; empty.hidden = total !== 0
+      main.classList.toggle('is-filtering', !!query || !!year.value)
+      try { sessionStorage.setItem(key, JSON.stringify({ query: input.value, year: year.value })) } catch (_) {}
+    }
+    input.addEventListener('input', update); year.addEventListener('change', update)
+    reset.addEventListener('click', function () { input.value = ''; year.value = ''; update(); input.focus({preventScroll:true}) })
+    bar.append(field, year, count, reset); groups[0].before(bar, empty); update()
+  }
+
+  function readingType(article, route) {
+    var type = 'serif', size = 'normal'
+    try { type = localStorage.getItem('stacktao-reading-type') || type; size = localStorage.getItem('stacktao-reading-size') || size } catch (_) {}
     var controls = node('div', 'reading-types')
     controls.setAttribute('role', 'group'); controls.setAttribute('aria-label', '正文排字')
     controls.appendChild(node('span', '', '正文排字'))
@@ -872,6 +916,12 @@
       controls.appendChild(button)
       return button
     })
+    var sizes = node('select', 'reading-size'); sizes.setAttribute('aria-label', '正文字号')
+    ;[['small','小字'],['normal','标准'],['large','大字']].forEach(function (item) { var option = node('option', '', item[1]); option.value = item[0]; sizes.appendChild(option) })
+    sizes.value = ['small','normal','large'].includes(size) ? size : 'normal'
+    sizes.addEventListener('change', function () { article.dataset.readingSize = sizes.value; try { localStorage.setItem('stacktao-reading-size', sizes.value) } catch (_) {} })
+    article.dataset.readingSize = sizes.value
+    controls.appendChild(sizes)
     function sync() {
       article.dataset.readingType = type === 'sans' ? 'sans' : 'serif'
       buttons.forEach(function (button, index) { button.setAttribute('aria-pressed', String((index === 0 ? 'serif' : 'sans') === article.dataset.readingType)) })
@@ -880,12 +930,60 @@
     var meta = article.querySelector('.post-meta')
     if (meta) meta.after(controls)
     else article.querySelector('h1').after(controls)
+    readingMark(article, route, controls)
+    article.querySelectorAll('pre').forEach(function (pre) {
+      var code = pre.querySelector('code') || pre
+      var text = code.textContent, button = node('button', 'code-copy', '复制代码'), timer = 0
+      button.type = 'button'; button.setAttribute('aria-label', '复制这段代码'); button.setAttribute('aria-live', 'polite')
+      pre.classList.add('has-copy'); pre.appendChild(button)
+      button.addEventListener('click', async function () {
+        clearTimeout(timer)
+        try { await navigator.clipboard.writeText(text); button.textContent = '已复制 ✓' }
+        catch (_) { button.textContent = '请选择代码复制' }
+        timer = setTimeout(function () { button.textContent = '复制代码' }, 2200)
+      })
+      disposers.push(function () { clearTimeout(timer) })
+    })
+  }
+
+  function readingMark(article, route, controls) {
+    var key = 'stacktao-reading-marks', marks = {}, sections = Array.from(article.querySelectorAll(':scope > p:not(.post-meta):not(.share-line), :scope > h2, :scope > h3, :scope > pre, :scope > ul, :scope > ol'))
+    if (!sections.length) return
+    try { marks = JSON.parse(localStorage.getItem(key)) || {} } catch (_) {}
+    var mark = marks[route]
+    function markedSection() {
+      if (!mark) return null
+      return (mark.excerpt && sections.find(function (section) { return section.textContent.trim().startsWith(mark.excerpt) })) || (Number.isInteger(mark.index) && sections[mark.index])
+    }
+    var valid = markedSection()
+    var resume = node('button', 'reading-resume', '回到书签 ↗'); resume.type = 'button'; resume.hidden = !valid
+    var save = node('button', 'reading-mark', '留个书签'); save.type = 'button'; save.setAttribute('aria-label', '记住当前阅读段落')
+    var hint = node('span', 'reading-mark-hint'); hint.setAttribute('role', 'status')
+    var rail = node('aside', 'reading-marker'); rail.setAttribute('aria-label', '阅读书签'); rail.append(save, hint)
+    controls.appendChild(resume); article.parentNode.appendChild(rail)
+    disposers.push(function () { rail.remove() })
+    save.addEventListener('click', function () {
+      var index = 0
+      sections.forEach(function (section, i) { if (section.getBoundingClientRect().top <= innerHeight * .4) index = i })
+      mark = { index: index, title: article.querySelector('h1').textContent, excerpt: sections[index].textContent.trim().slice(0, 80) }
+      try {
+        marks = JSON.parse(localStorage.getItem(key)) || {}; marks[route] = mark
+        localStorage.setItem(key, JSON.stringify(marks)); resume.hidden = false; hint.textContent = '已记住这一段'; save.textContent = '更新书签'
+      } catch (_) { hint.textContent = '当前浏览器无法保存书签' }
+    })
+    resume.addEventListener('click', function () {
+      var target = markedSection(); if (!target) return
+      target.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})
+      target.tabIndex = -1; target.focus({preventScroll:true})
+      motion(target, [{backgroundColor:'transparent'},{backgroundColor:'var(--surface-soft)'},{backgroundColor:'transparent'}], 900)
+    })
+    if (valid) { save.textContent = '更新书签'; resume.title = mark.excerpt || '回到上次标记的段落' }
   }
 
   function decorate(view, route) {
     var main = view.querySelector('main')
     var article = view.querySelector('article.article-prose')
-    if (article) { articleTrail(article, route); readingType(article) }
+    if (article) { articleTrail(article, route); readingType(article, route) }
     if (!main || route === '/' || route === '/guestbook') return
     main.classList.add('folio-page')
     main.dataset.folio = route.slice(1).split('/')[0]
@@ -906,7 +1004,7 @@
     }
     if (route === '/projects') { main.classList.add('studio-projects'); projectDesk(main) }
     if (route === '/photos') { main.classList.add('studio-photos'); contactSheet(main) }
-    if (route === '/posts' || route === '/notes') readingOpening(main)
+    if (route === '/posts' || route === '/notes') { readingOpening(main); archiveIndex(main, route) }
     if (route === '/talks') talkIndex(main)
     if (route === '/podcasts') podcastSleeves(main)
     var title = main.querySelector(':scope > h1, :scope > .prose > h1')

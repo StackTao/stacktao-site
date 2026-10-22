@@ -273,23 +273,49 @@
   var lightReturnFocus = null
   var photoNodes = []
   var photoIndex = -1
+  var lightPrevious = null, lightNext = null, lightCount = null
+  if (light) {
+    lightPrevious = document.createElement('button')
+    lightNext = document.createElement('button')
+    ;[[lightPrevious, '上一张照片', '←', 'previous'], [lightNext, '下一张照片', '→', 'next']].forEach(function (item) {
+      item[0].type = 'button'
+      item[0].className = 'lightbox-step lightbox-' + item[3]
+      item[0].setAttribute('aria-label', item[1])
+      item[0].textContent = item[2]
+      light.appendChild(item[0])
+    })
+    lightCount = document.createElement('output')
+    lightCount.className = 'lightbox-count'
+    lightCount.setAttribute('aria-label', '照片序号')
+    lightCount.setAttribute('aria-live', 'polite')
+    light.appendChild(lightCount)
+    lightPrevious.addEventListener('click', function () { showPhoto(photoIndex - 1) })
+    lightNext.addEventListener('click', function () { showPhoto(photoIndex + 1) })
+    if (lightClose) lightClose.addEventListener('click', closeLightbox)
+  }
 
   function syncOverlayLock() {
-    document.body.classList.toggle('overlay-open', !!document.querySelector('.search-mask.is-open, .lightbox.is-open'))
+    var open = !!document.querySelector('.search-mask.is-open, .lightbox.is-open')
+    document.body.classList.toggle('overlay-open', open)
+    document.querySelector('.app-shell').inert = open
   }
 
   function showPhoto(i) {
     if (!light || !photoNodes[i]) return
-    if (photoIndex < 0) lightReturnFocus = document.activeElement
+    var opening = photoIndex < 0
+    if (opening) lightReturnFocus = document.activeElement
     photoIndex = i
     var img = photoNodes[i]
     lightImg.src = img.src
     lightImg.alt = img.alt || ''
     lightCap.textContent = (img.alt || '') + (img.getAttribute('data-place') ? ' · ' + img.getAttribute('data-place') : '')
+    lightCount.textContent = (i + 1) + ' / ' + photoNodes.length
+    lightPrevious.disabled = i === 0
+    lightNext.disabled = i === photoNodes.length - 1
     light.classList.add('is-open')
     light.setAttribute('aria-hidden', 'false')
     document.querySelector('.app-shell').inert = true
-    if (lightClose) lightClose.focus({ preventScroll: true })
+    if (opening && lightClose) lightClose.focus({ preventScroll: true })
     syncOverlayLock()
   }
 
@@ -298,11 +324,10 @@
       light.classList.remove('is-open')
       light.setAttribute('aria-hidden', 'true')
     }
-    document.querySelector('.app-shell').inert = false
+    syncOverlayLock()
     if (photoIndex >= 0 && lightReturnFocus && lightReturnFocus.isConnected) lightReturnFocus.focus({ preventScroll: true })
     lightReturnFocus = null
     photoIndex = -1
-    syncOverlayLock()
   }
 
   function bindPage() {
@@ -369,8 +394,17 @@
   var lastRoute = ''
   var routeRenderTimer = 0
   var routeRenderToken = 0
+  var routePositions = Object.create(null)
+  var routeIntent = null
+  var routeChanging = false
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
-  function commitRender(route) {
+  function rememberRoutePosition() {
+    if (lastRoute && !routeChanging) routePositions[lastRoute] = window.scrollY
+  }
+
+  function commitRender(route, restoreY) {
+    var navigating = !!lastRoute
     if (photoIndex >= 0) closeLightbox()
     var pages = window.PAGES || {}
     var titles = window.PAGE_TITLES || {}
@@ -383,21 +417,26 @@
     document.title = titles[route] || 'StackTao'
     updateNav(route)
     bindPage()
-    window.scrollTo(0, 0)
+    window.scrollTo(0, restoreY || 0)
     updateReadingStatus(route)
     playEnter(view)
     lastRoute = route
+    routeChanging = false
+    if (navigating && route !== '/guestbook') view.focus({ preventScroll: true })
     if (location.hash && location.hash.indexOf('#/') !== 0 && document.querySelector(location.hash)) {
       document.querySelector(location.hash).scrollIntoView()
     }
   }
 
-  function render(route, withBar) {
+  function render(route, withBar, restoreY) {
     if (withBar) nStart()
     closeSearch()
 
     if (!withBar || !lastRoute || prefersReducedMotion()) {
-      commitRender(route)
+      clearTimeout(routeRenderTimer)
+      routeRenderToken++
+      view.classList.remove('is-route-leaving')
+      commitRender(route, restoreY)
       if (withBar) setTimeout(nDone, 280)
       return
     }
@@ -407,13 +446,17 @@
     view.classList.add('is-route-leaving')
     routeRenderTimer = setTimeout(function () {
       if (token !== routeRenderToken) return
-      commitRender(route)
+      commitRender(route, restoreY)
       requestAnimationFrame(function () {
         if (token !== routeRenderToken) return
         view.classList.remove('is-route-leaving')
       })
       setTimeout(nDone, 360)
     }, 140)
+  }
+
+  function confirmRouteLeave(route) {
+    return route === lastRoute || lastRoute !== '/guestbook' || !window.Guestbook || !window.Guestbook.confirmLeave || window.Guestbook.confirmLeave()
   }
 
   function go(route, replace) {
@@ -426,6 +469,7 @@
       }
       return
     }
+    if (!confirmRouteLeave(route)) return
     var next = '#/' + route.replace(/^\//, '')
     if (route === '/') next = '#/'
     if ((location.hash || '#/') === next) {
@@ -436,6 +480,8 @@
       render(route, true)
       return
     }
+    rememberRoutePosition()
+    routeIntent = next
     if (replace) location.replace(next)
     else location.hash = next
   }
@@ -452,28 +498,137 @@
   })
 
   window.addEventListener('hashchange', function () {
-    render(currentRoute(), true)
+    var route = currentRoute()
+    if (route === lastRoute) { routeIntent = null; return }
+    if (routeIntent !== location.hash && !confirmRouteLeave(route)) {
+      routeIntent = null
+      // Restore the visible wall without remounting it; Back can be tried again after saving.
+      history.pushState(history.state, '', '#' + lastRoute)
+      return
+    }
+    rememberRoutePosition()
+    var restoreY = routeIntent === location.hash ? 0 : routePositions[route] || 0
+    routeIntent = null
+    routeChanging = true
+    render(route, true, restoreY)
   })
+  window.addEventListener('scroll', rememberRoutePosition, { passive: true })
 
   var searchMask = document.querySelector('.search-mask')
   var searchPanel = document.querySelector('.search-panel')
   var searchInput = document.querySelector('.search-panel input')
   var searchHits = document.querySelector('.search-hits')
   var searchTrigger = null
+  var searchOptions = []
+  var searchSelected = -1
+  var searchCatalog = null
+  var searchClose = null
+  var searchStatus = null
+
+  if (searchMask && searchPanel && searchInput && searchHits) {
+    searchMask.setAttribute('aria-label', '搜索博客')
+    searchInput.setAttribute('role', 'combobox')
+    searchInput.setAttribute('aria-autocomplete', 'list')
+    searchInput.setAttribute('aria-haspopup', 'listbox')
+    searchInput.setAttribute('autocomplete', 'off')
+    searchHits.setAttribute('role', 'listbox')
+    searchHits.setAttribute('aria-label', '搜索结果')
+    searchHits.removeAttribute('aria-live')
+    searchClose = document.createElement('button')
+    searchClose.type = 'button'
+    searchClose.className = 'search-close'
+    searchClose.setAttribute('aria-label', '关闭搜索')
+    searchClose.textContent = '关闭'
+    searchClose.addEventListener('click', closeSearch)
+    searchInput.parentNode.appendChild(searchClose)
+    searchStatus = document.createElement('p')
+    searchStatus.className = 'search-status'
+    searchStatus.setAttribute('role', 'status')
+    searchPanel.appendChild(searchStatus)
+    var searchHelp = document.createElement('p')
+    searchHelp.className = 'search-help'
+    searchHelp.textContent = '↑ ↓ 选择 · Enter 打开 · Esc 关闭'
+    searchPanel.appendChild(searchHelp)
+  }
+
+  function getSearchCatalog() {
+    if (searchCatalog) return searchCatalog
+    var pages = window.PAGES || {}, seen = Object.create(null)
+    var shortcuts = [['/', '首页'], ['/posts', '文章'], ['/projects', '项目'], ['/photos', '相册'], ['/guestbook', '留言墙'], ['/talks', '演讲'], ['/notes', '随手记'], ['/bookmarks', '书签']]
+    var entries = shortcuts.map(function (item) { return { href: '#' + item[0], title: item[1], kind: '页面' } }).concat(window.SEARCH_INDEX || [])
+    searchCatalog = entries.filter(function (item) {
+      if (!item.href || item.href.indexOf('#/') !== 0 || seen[item.href] || !pages[item.href.slice(1)]) return false
+      seen[item.href] = true
+      return true
+    }).map(function (item) {
+      var template = document.createElement('template')
+      template.innerHTML = pages[item.href.slice(1)]
+      var intro = template.content.querySelector('article > p:not(.post-meta):not(.share-line), main > p:not(.post-meta), .project-desc, .talk-desc')
+      var kind = { Blog: '文章', Note: '札记', Talk: '演讲', Page: '页面' }[item.kind] || item.kind || ''
+      var body = template.content.textContent.replace(/\s+/g, ' ').trim()
+      return { href: item.href, title: item.title, kind: kind, excerpt: intro ? intro.textContent.trim() : '', match: (item.title + ' ' + kind + ' ' + body).toLowerCase() }
+    })
+    return searchCatalog
+  }
+
+  function selectSearch(index) {
+    searchSelected = index
+    searchOptions.forEach(function (option, i) { option.setAttribute('aria-selected', String(i === index)) })
+    if (searchOptions[index]) {
+      searchInput.setAttribute('aria-activedescendant', searchOptions[index].id)
+      searchOptions[index].scrollIntoView({ block: 'nearest' })
+    } else searchInput.removeAttribute('aria-activedescendant')
+  }
+
+  function updateSearch() {
+    if (!searchHits || !searchStatus) return
+    var q = searchInput.value.trim().toLowerCase()
+    var catalog = getSearchCatalog()
+    var matches = q ? catalog.filter(function (item) { return q.split(/\s+/).every(function (word) { return item.match.includes(word) }) }).sort(function (a, b) {
+      return Number(b.title.toLowerCase().includes(q)) - Number(a.title.toLowerCase().includes(q))
+    }) : ['#/', '#/posts', '#/projects', '#/photos', '#/guestbook', '#/talks', '#/notes', '#/bookmarks'].map(function (href) { return catalog.find(function (item) { return item.href === href }) }).filter(Boolean)
+    searchHits.replaceChildren()
+    searchOptions = matches.slice(0, 20).map(function (item, index) {
+      var hit = document.createElement('a')
+      hit.className = 'search-hit'
+      hit.href = item.href
+      hit.id = 'search-option-' + index
+      hit.tabIndex = -1
+      hit.setAttribute('role', 'option')
+      hit.setAttribute('aria-selected', 'false')
+      hit.addEventListener('click', closeSearch)
+      var title = document.createElement('span'), kind = document.createElement('small')
+      title.textContent = item.title
+      kind.textContent = item.kind
+      hit.append(title, kind)
+      if (q && item.excerpt) {
+        var excerpt = document.createElement('p')
+        excerpt.textContent = item.excerpt.slice(0, 100) + (item.excerpt.length > 100 ? '…' : '')
+        hit.appendChild(excerpt)
+      }
+      searchHits.appendChild(hit)
+      return hit
+    })
+    searchPanel.classList.toggle('has-query', !!q)
+    searchInput.setAttribute('aria-expanded', String(searchOptions.length > 0))
+    searchStatus.textContent = q ? (matches.length ? '找到 ' + matches.length + ' 项' + (matches.length > 20 ? '，先显示前 20 项，请继续输入缩小范围。' : '') : '没有找到相关内容，试试更短的关键词。') : '从这里开始，或输入标题、关键词与正文内容。'
+    selectSearch(-1)
+    searchHits.scrollTop = 0
+  }
 
   function openSearch() {
     if (!searchMask) return
+    if (searchMask.classList.contains('is-open')) { searchInput.focus(); return }
+    if (photoIndex >= 0) closeLightbox()
     searchTrigger = document.activeElement
     searchMask.classList.add('is-open')
     searchMask.setAttribute('aria-hidden', 'false')
     syncOverlayLock()
     if (searchInput) {
       searchInput.value = ''
-      searchInput.setAttribute('aria-expanded', 'false')
       searchInput.focus()
     }
-    if (searchPanel) searchPanel.classList.remove('has-query')
-    if (searchHits) searchHits.innerHTML = ''
+    updateSearch()
   }
   function closeSearch() {
     if (!searchMask || !searchMask.classList.contains('is-open')) return
@@ -481,8 +636,9 @@
     searchMask.setAttribute('aria-hidden', 'true')
     if (searchPanel) searchPanel.classList.remove('has-query')
     if (searchInput) searchInput.setAttribute('aria-expanded', 'false')
+    if (searchInput) searchInput.removeAttribute('aria-activedescendant')
     syncOverlayLock()
-    if (searchTrigger && searchTrigger.focus) searchTrigger.focus()
+    if (searchTrigger && searchTrigger.isConnected && searchTrigger.focus) searchTrigger.focus({ preventScroll: true })
     searchTrigger = null
   }
   document.querySelectorAll('[data-search]').forEach(function (btn) {
@@ -499,8 +655,32 @@
       if (e.key === 'Escape') closeLightbox()
       else if (e.key === 'ArrowRight') showPhoto(Math.min(photoNodes.length - 1, photoIndex + 1))
       else if (e.key === 'ArrowLeft') showPhoto(Math.max(0, photoIndex - 1))
-      else if (e.key === 'Tab' && lightClose) lightClose.focus({ preventScroll: true })
+      else if (e.key === 'Tab') {
+        var controls = Array.from(light.querySelectorAll('button:not(:disabled)'))
+        var index = controls.indexOf(document.activeElement)
+        if (controls.length) controls[(index + (e.shiftKey ? -1 : 1) + controls.length) % controls.length].focus({ preventScroll: true })
+      }
       return
+    }
+    if (searchMask && searchMask.classList.contains('is-open')) {
+      if (e.key === 'Escape') { e.preventDefault(); closeSearch(); return }
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        ;(document.activeElement === searchInput ? searchClose : searchInput).focus()
+        return
+      }
+      if (e.target === searchInput && !e.isComposing) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault()
+          if (searchOptions.length) selectSearch((searchSelected + (e.key === 'ArrowDown' ? 1 : searchSelected < 0 ? 0 : -1) + searchOptions.length) % searchOptions.length)
+          return
+        }
+        if (e.key === 'Enter' && searchOptions.length) {
+          e.preventDefault()
+          searchOptions[Math.max(0, searchSelected)].click()
+          return
+        }
+      }
     }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault()
@@ -512,25 +692,9 @@
     }
   })
   if (searchInput) {
-    searchInput.addEventListener('input', function () {
-      var q = searchInput.value.trim().toLowerCase()
-      var items = window.SEARCH_INDEX || []
-      var html = ''
-      var hasQuery = !!q
-      if (searchPanel) searchPanel.classList.toggle('has-query', hasQuery)
-      searchInput.setAttribute('aria-expanded', String(hasQuery))
-      if (q) {
-        items.forEach(function (item) {
-          var kindLabel = { Blog: '文章', Note: '札记', Talk: '演讲', Page: '页面' }[item.kind] || item.kind || ''
-          if ((item.title + ' ' + (item.kind || '') + ' ' + kindLabel).toLowerCase().indexOf(q) === -1) return
-          html += '<a class="search-hit" href="' + item.href + '">' + item.title + (kindLabel ? '<small>' + kindLabel + '</small>' : '') + '</a>'
-        })
-        if (!html) html = '<div class="search-hit op50">没有找到相关内容</div>'
-      }
-      searchHits.innerHTML = html
-    })
+    searchInput.addEventListener('input', updateSearch)
   }
-  if (light) light.addEventListener('click', closeLightbox)
+  if (light) light.addEventListener('click', function (event) { if (event.target === light) closeLightbox() })
 
   var readingStatus = document.querySelector('[data-reading-status]')
   var readingLabel = readingStatus && readingStatus.querySelector('[data-reading-label]')
