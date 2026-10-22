@@ -687,3 +687,4 @@ body:has([data-guestbook]) { --wall-material: linear-gradient(#f6ead340,#f6ead34
 .gb-paint-warning { position: fixed; z-index: 1000000006; pointer-events: none; padding: 7px 10px; border: 1px solid #ad715840; border-radius: 7px; background: #fff4e4f2; color: #8b432c; box-shadow: 0 3px 12px #60432316; font: 11px var(--font-ui); }
 .gb-free-actions [data-action='erase'][aria-pressed='true'] { color: #f9ccae; box-shadow: 0 1px currentColor; }
 .gb-real-tool[data-tool='eraser'] { transform: translate(-12px,-22px) rotate(-10deg); }
+.gb-peer-trace { position: absolute; inset: 0; overflow: visible; pointer-events: none; fill: #b76c4438; }

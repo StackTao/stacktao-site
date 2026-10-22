@@ -163,7 +163,7 @@
 - 墙材改为参考村落照片的暖米黄石灰砂浆，连续纹理，无瓷砖缝。题字是靠最右侧的深色立体字，左下配篆意朱印。题字保护范围仅为自身实际边界，不再用整条顶部空白占位；返回按钮也只保护自身。
 - 名字以 32 个固定意象 × 8 个地点字组成 256 个名字。首次保存随机种子，以互质步长打乱分配，256 面以内不重名；超出后标注「续卷 N」，完整标识保持唯一。词表和种子 key 固定为 names-v1；新词表不得改变旧版本映射。本机不同浏览器的种子独立，并非服务端统一题名。
 - 喷瓶 / 刻刀在整面墙直接创作。喷瓶停留加深、提供实体工具光标与可选声音。完成才按实际笔迹外接框存储范围，保存 canonical 1000 宽度的坐标。旧留言仍可读取。
-- 触及已保存留言、题字或另一个窗口的临时占位时，落笔处出现提醒，冲突部分不写入。当前保护的是留言外接框加窄边距，尚未做逐像素避让。
+- 触及已保存留言、题字或另一个窗口的临时占位时，落笔处出现提醒，冲突部分不写入。最初使用留言外接框；已由下述「按实际笔迹避让」修复替代。
 - 同一浏览器同源窗口使用 Web Locks + 15 秒临时区域租约，4 秒续期；未提交区域不冒充已完成留言。完成、取消、卸载会释放，失联后过期。保存前读取最新留言并再次检查。这个机制不是跨访客联网协作，跨浏览器仍需服务端身份和原子占位。
 - 性能：合并 Pointer Events / coalesced events，每帧处理一批；已占区域内不逐点写 storage；Canvas 增量补画新增线段，刻画停笔后再渲染完整凹槽滤镜。避免每个点重建 SVG 或重画全部喷漆。移动设备仍需真机性能测试。
 - 点击本机涂鸦 / 刻画后可「修改这处痕迹」。新旧手绘笔迹都可继续画、按整笔擦除、撤回；取消保留原作，保存更新同一个 ID。打字内容也可原位修改。另一窗口改过原作时拒绝覆盖并保留草稿。整条擦去仍可恢复。刻画文字编辑使用可见原生 textarea，避免隐藏文字与 SVG 预览字形错位造成的光标问题。
@@ -180,3 +180,12 @@
 
 朱印提示词：
 > Create one small authentic traditional Chinese scholar's seal impression for a personal guestbook wall. TRANSPARENT BACKGROUND. A nearly square cinnabar red seal, white-character intaglio yinwen seal carving, with four archaic seal-script characters arranged in traditional columns: right column 过 above 客, left column 留 above 痕. Tightly interlocking rounded-square calligraphic structure. Deep muted cinnabar, a thin irregular red perimeter, modest natural worn gaps and tiny dry ink flecks. Flat graphic ink impression, no embossing, no shadow, no wall, no paper, no modern printed font, no extra characters. Seal nearly fills square canvas with only 5% transparent margin. Visually crisp at 32 CSS pixels.
+
+
+## 2026-10-22 · 按实际笔迹避让
+
+- 修复两类误报：已有手绘作品的空白外框不再锁住；当前草稿的分散笔画也不再合成大矩形检测。自由喷绘、刻画按线段及实际笔触宽度检测，额外留 2 屏幕像素间距；纸条、贴纸和打字内容仍保护整块表面，题名与返回控件保护自身。
+- 检查整个移动线段，防止快速划过穿透已有笔迹。受阻后在新位置恢复时另起一段，不跨过被保护区域补连线。新自由刻画落墙与绘制时使用相同折线路径，旧曲线则采样实际 SVG 路径及其缩放。
+- 同源多窗口占位改为笔迹沿线的稀疏 8 单位网格（墙面宽度标准化为 1000），不再占用外接框内的空白；这不是逐像素检测，格边有少量保守余量。旧版本窗口仍使用旧框占位，刷新或租约过期后消失。保留 Web Locks、续期及保存前二次检查；仍非跨访客后端。
+- 新增可直接运行的几何回归：`node tests/wall-collision.cjs`，覆盖 U 形内部空白、笔宽、快速跨线、纸张表面及稀疏占位。原型与构建版通过集成检查，包括分散笔画围住纸条、受阻后断开恢复、保存、编辑、擦除、撤回及批量输入。
+- 真实浏览器在独立测试墙验证 U 形刻痕内部喷绘并保存、跨线提醒、双窗口空白可写和实际笔迹受保护；未向用户的墙面写入测试内容。

@@ -78,7 +78,7 @@
       var path = document.createElementNS(ns, 'path')
       var d = 'M' + p[0][0] * sw + ' ' + p[0][1] * sh
       if (p.length === 1) d += ' l0.01 0'
-      for (var i = 1; i < p.length - 1; i++) d += ' Q' + p[i][0] * sw + ' ' + p[i][1] * sh + ' ' + (p[i][0] + p[i + 1][0]) * sw / 2 + ' ' + (p[i][1] + p[i + 1][1]) * sh / 2
+      for (var i = 1; i < p.length - 1; i++) if(frame) d += ' L'+p[i][0]*sw+' '+p[i][1]*sh; else d += ' Q' + p[i][0] * sw + ' ' + p[i][1] * sh + ' ' + (p[i][0] + p[i + 1][0]) * sw / 2 + ' ' + (p[i][1] + p[i + 1][1]) * sh / 2
       if (p.length > 1) d += ' L' + p[p.length - 1][0] * sw + ' ' + p[p.length - 1][1] * sh
       path.setAttribute('d', d)
       path.setAttribute('fill', 'none')
