@@ -101,3 +101,33 @@ test('Git synchronization commits only content and pushes to an isolated local r
     assert.equal((await exec('git',['--git-dir='+remote,'rev-parse','refs/heads/main'])).stdout.trim(),await git('rev-parse','HEAD'))
   }finally{await app.close();if(previous===undefined)delete process.env.ADMIN_GIT_PUBLISH;else process.env.ADMIN_GIT_PUBLISH=previous;await fs.rm(temp,{recursive:true,force:true})}
 })
+
+test('analytics uses real inventory, validates collection, deduplicates daily sessions and isolates reporting',async()=>{
+  const temp=await fs.mkdtemp(path.join(os.tmpdir(),'stacktao-analytics-')),source=path.join(temp,'content'),state=path.join(temp,'state')
+  await fs.mkdir(path.join(source,'posts/2026/test'),{recursive:true})
+  await fs.writeFile(path.join(source,'posts/2026/test/index.md'),'---\ntitle: Test\ndate: 2026-10-22\ntags: [writing]\n---\n你好 world')
+  await fs.writeFile(path.join(source,'content.config.json'),'{}')
+  const app=await createAdminServer({root,source,state,output:path.join(temp,'dist')}),base=await app.listen(0),owner=(await fs.readFile(app.ownerFile,'utf8')).trim(),previous=process.env.ANALYTICS_ORIGINS
+  const get=async route=>{const r=await fetch(base+route,{headers:{Authorization:'Bearer '+owner}});return {status:r.status,data:await r.json()}}
+  const event={event:'pageview',path:'/posts/test',session:'abcd1234-abcd-1234-abcd-123456789012',referrer:'https://example.com/private?secret=yes',device:'mobile'}
+  const send=(data=event,origin='https://blog.example')=>fetch(base+'/api/v1/collect',{method:'POST',headers:{Origin:origin,'Content-Type':'text/plain'},body:JSON.stringify(data)})
+  try{
+    delete process.env.ANALYTICS_ORIGINS
+    assert.equal((await send()).status,403)
+    process.env.ANALYTICS_ORIGINS='https://blog.example'
+    assert.equal((await send(event,'https://evil.example')).status,403)
+    assert.equal((await send({...event,path:'/posts/test?secret=1'})).status,400)
+    assert.equal((await send({...event,event:'arbitrary'})).status,400)
+    assert.equal((await send()).status,202);assert.equal((await send()).status,202)
+    assert.equal((await send({...event,event:'read_complete'})).status,202)
+    const report=(await get('/api/v1/analytics?days=7')).data
+    assert.equal(report.content.published,1);assert.equal(report.content.words,3);assert.equal(report.content.tags[0].name,'writing')
+    assert.equal(report.traffic.views,2);assert.equal(report.traffic.dailySessions,1);assert.equal(report.traffic.sources[0].name,'example.com');assert.equal(report.traffic.trend.length,7)
+    assert.equal(report.traffic.events.find(e=>e.name==='read_complete').value,1)
+    assert.equal((await get('/api/v1/analytics?days=400')).status,400)
+    assert.equal((await fetch(base+'/api/v1/analytics')).status,401)
+    const disk=await fs.readFile(path.join(state,'analytics',(await fs.readdir(path.join(state,'analytics')))[0]),'utf8')
+    assert(!disk.includes(event.session));assert(!disk.includes('secret'));assert(!disk.includes('127.0.0.1'))
+    assert.equal(report.wall.total,null)
+  }finally{if(previous===undefined)delete process.env.ANALYTICS_ORIGINS;else process.env.ANALYTICS_ORIGINS=previous;await app.close();await fs.rm(temp,{recursive:true,force:true})}
+})

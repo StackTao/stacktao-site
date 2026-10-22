@@ -1916,6 +1916,65 @@
           }
         }
       }
+    },
+    "/api/v1/analytics": {
+      "get": {
+        "summary": "内容存量、访问趋势和发布统计（content:read）",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "enum": [
+                7,
+                30,
+                90
+              ],
+              "default": 30
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "真实内容存量、Asia/Shanghai 每日访问聚合、维度排行和发布记录汇总"
+          },
+          "401": {
+            "description": "需要认证"
+          }
+        }
+      }
+    },
+    "/api/v1/collect": {
+      "post": {
+        "summary": "公开访问事件采集，需要 ANALYTICS_ORIGINS 来源白名单",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "text/plain": {
+              "schema": {
+                "type": "string",
+                "description": "JSON：event(pageview/read_complete/photo_open/outbound), path, session(随机 UUID), referrer(来源 origin), device(desktop/mobile/tablet)"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "已聚合"
+          },
+          "400": {
+            "description": "事件无效"
+          },
+          "403": {
+            "description": "未启用或来源不允许"
+          },
+          "429": {
+            "description": "请求过多"
+          }
+        }
+      }
     }
   },
   "components": {

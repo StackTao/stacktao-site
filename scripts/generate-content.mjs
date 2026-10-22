@@ -444,7 +444,7 @@ function createPrototypeContentScript(articles, config, projects, albums) {
   window.PAGES = pages
   window.PAGE_TITLES = titles
   window.SEARCH_INDEX = ${JSON.stringify(search)}
-  window.CONTENT_CONFIG = ${JSON.stringify({ site: config.site || {}, navigation, footerNavigation })}
+  window.CONTENT_CONFIG = ${JSON.stringify({ site: config.site || {}, navigation, footerNavigation, analytics: config.analytics || {} })}
 
   var siteConfig = ${JSON.stringify(config.site || {})}
   var profile = document.querySelector('.nav-profile')
