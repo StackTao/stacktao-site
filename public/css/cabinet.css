@@ -14,9 +14,10 @@
 .bookmark-origin { display:block; margin-bottom:7px; font:10px var(--font-mono); color:var(--c-seal); overflow-wrap:anywhere; }
 #view .bookmark-title { font:400 clamp(23px,3vw,33px)/1.4 var(--font-display); display:inline; text-decoration:none; border:0; }
 #view .bookmark-file-body > p { font-size:13px; line-height:1.8; margin:8px 0 0; max-width:580px; }
-.bookmark-pin { position:relative; width:48px; min-height:62px; padding:27px 0 9px; font:10px var(--font-ui); color:var(--fg-light); border:0; background:var(--surface-soft); clip-path:polygon(0 0,100% 0,100% 100%,50% 90%,0 100%); transition:transform .22s,background .22s,color .22s; }
+.bookmark-pin { position:relative; width:48px; min-height:62px; padding:27px 0 9px; font:10px var(--font-ui); color:var(--fg-light); border:0; background:var(--surface-soft); clip-path:polygon(0 0,100% 0,100% 100%,50% 90%,0 100%); transform-origin:50% 0; transition:transform .15s,background .22s,color .22s,filter .22s; }
 .bookmark-pin::before { content:'＋'; position:absolute; top:8px; left:0; width:100%; font:16px var(--font-ui); }
-.bookmark-pin:hover { transform:translateY(3px); }
+.bookmark-pin:hover { filter:brightness(.94); }
+.bookmark-pin:active { transform:translateY(6px) scaleY(.88); transition-duration:70ms; }
 [data-cabinet] .bookmark-pin:focus-visible { outline-offset:-4px; }
 .bookmark-pin[aria-pressed='true'] { color:var(--surface); background:var(--c-seal); }
 .bookmark-pin[aria-pressed='true']::before { content:'✓'; }
@@ -40,14 +41,16 @@
 #view .media-volume { position:relative; display:flex; flex-direction:column; align-items:stretch; gap:0; border:0; background:none; padding:0; margin:0; min-width:0; }
 .media-volume-index { font:11px var(--font-mono); color:var(--fg-light); margin-bottom:18px; }
 .media-sleeve { position:relative; height:240px; display:flex; align-items:flex-end; padding-bottom:24px; margin-bottom:20px; border-bottom:1px solid var(--rule-strong); perspective:800px; }
-#view .media-sleeve img { width:100%; height:auto; max-height:210px; aspect-ratio:4/3; object-fit:cover; border-radius:0; filter:saturate(.65); box-shadow:0 8px 13px -9px #0005; transition:transform .35s,filter .35s; }
+#view .media-sleeve img { width:100%; height:auto; max-height:210px; aspect-ratio:4/3; object-fit:cover; border-radius:0; filter:saturate(.65); box-shadow:0 8px 13px -9px #0005; transform-origin:50% 85%; transition:transform .5s cubic-bezier(.2,1.45,.45,1),filter .3s; }
 #view .media-volume[data-media-kind='book'] .media-sleeve img { width:65%; aspect-ratio:2/3; max-height:210px; box-shadow:inset 5px 0 #0002,5px 6px 0 var(--surface-soft),6px 7px 0 var(--rule); }
 #view .media-volume[data-media-kind='album'] .media-sleeve img { aspect-ratio:1; }
 .media-sleeve-type { position:absolute; bottom:33px; left:9px; padding:4px 6px; font:9px var(--font-mono); letter-spacing:.12em; color:#fff; background:#181d18b3; }
 #view .media-volume strong { display:block; font:400 28px/1.4 var(--font-display); margin-bottom:8px; }
 #view .media-volume .op50 { font:10px var(--font-mono); text-transform:uppercase; letter-spacing:.1em; }
 #view .media-volume p { font-size:13px; line-height:1.8; margin-top:14px !important; }
-@media (hover:hover) { .media-volume:hover .media-sleeve img { transform:translateY(-6px) rotate(-1deg); filter:saturate(1); } }
+@media (hover:hover) { #view .media-volume:hover .media-sleeve img { transform:translateY(-10px) rotate(-2deg); filter:saturate(1); } }
+#view .media-volume:focus-within .media-sleeve img { transform:translateY(-10px) rotate(-2deg); filter:saturate(1); }
+#view .media-volume:active .media-sleeve img { transform:translateY(-2px) rotate(0deg) scale(.98); transition-duration:85ms; }
 /* Duration marks belong to a programme listing, not a pretend audio player. */
 .sound-programme,.stream-programme { border-top:1px solid var(--rule-strong); margin-top:30px; }
 .programme-record { position:relative; padding:28px 0 28px 98px; border-bottom:1px solid var(--rule); min-height:135px; }
@@ -110,4 +113,4 @@
   #view .feed-entry > a { font-size:21px; }
   .feed-entry { grid-template-columns:24px minmax(0,1fr) auto; gap:0 10px; }
 }
-@media(prefers-reduced-motion:reduce) { .bookmark-pin,.media-sleeve img,.programme-track::before,.sponsor-signatures > a { transition:none !important; } }
+@media(prefers-reduced-motion:reduce) { .bookmark-pin,.media-sleeve img,.programme-track::before,.sponsor-signatures > a { transition:none !important; } #view .bookmark-pin,#view .media-sleeve img { transform:none !important; } }

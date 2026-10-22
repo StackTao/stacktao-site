@@ -1,15 +1,18 @@
 (function () {
   var disposers = [], motions = new Set(), motionByElement = new WeakMap()
-  function motion(el, frames, duration) {
+  function stopMotion(el) {
     var previous = motionByElement.get(el)
-    if (previous) { previous.cancel(); motions.delete(previous) }
+    if (previous) { previous.cancel(); motions.delete(previous); motionByElement.delete(el) }
+  }
+  function motion(el, frames, duration) {
+    stopMotion(el)
     if (!el.animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     var animation = el.animate(frames, { duration: duration, easing: 'cubic-bezier(.2,.75,.25,1)' })
     motionByElement.set(el, animation); motions.add(animation)
     animation.onfinish = function () { motions.delete(animation) }
     return animation
   }
-  function destroy() { if (window.Cabinet) window.Cabinet.destroy(); motions.forEach(function (animation) { animation.cancel() }); motions.clear(); disposers.forEach(function (dispose) { dispose() }); disposers = [] }
+  function destroy() { if (window.Cabinet) window.Cabinet.destroy(); disposers.forEach(function (dispose) { dispose() }); disposers = []; motions.forEach(function (animation) { animation.cancel() }); motions.clear() }
   function node(tag, className, text) {
     var el = document.createElement(tag)
     if (className) el.className = className
@@ -92,13 +95,15 @@
     var scale = node('div', 'radio-scale'); scale.setAttribute('aria-hidden', 'true')
     for (var n = 0; n < posts.length; n++) scale.appendChild(node('i', '', String(n + 1).padStart(2, '0')))
     var photoPreview = node('img', 'radio-photo'); photoPreview.alt = ''; photoPreview.hidden = true
-    var heading = node('h3'), excerpt = node('p', 'radio-excerpt')
+    var heading = node('h3'), excerpt = node('p', 'radio-excerpt'), content = node('div', 'radio-content')
     var actions = node('div', 'radio-actions'), destination = link('', '读这一篇 ↗')
     var random = node('button', 'radio-random', '随缘调频 ↻'); random.type = 'button'
-    actions.append(destination, random); screen.append(scale, photoPreview, heading, excerpt, actions)
+    content.append(photoPreview, heading, excerpt)
+    actions.append(destination, random); screen.append(scale, content, actions)
     device.append(stations, control, screen)
-    var angle = 0, chosen = -1, step = 360 / posts.length, last = 0, initial = 0, velocity = 0, time = 0
+    var angle = 0, chosen = -1, step = 360 / posts.length, last = 0, initial = 0, velocity = 0, time = 0, ready = false
     function tune(value, settle) {
+      var direction = value < angle ? -1 : 1
       angle = value
       var index = ((Math.round(angle / step) % items.length) + items.length) % items.length
       if (settle) angle = Math.round(angle / step) * step
@@ -116,6 +121,8 @@
       else { destination.removeAttribute('target'); destination.removeAttribute('rel') }
       dial.setAttribute('aria-valuenow', String(index + 1)); dial.setAttribute('aria-valuetext', feeds[band].name + ' · 第 ' + (index + 1) + ' 项：' + title)
       Array.from(scale.children).forEach(function (tick, i) { tick.classList.toggle('is-tuned', i === index) })
+      scale.style.setProperty('--tuning', items.length > 1 ? index / (items.length - 1) : .5)
+      if (ready) motion(content, [{ opacity: .35, transform: 'translateY(' + (direction * 18) + 'px)' }, { opacity: 1, transform: 'translateY(0)' }], 380)
     }
     function bearing(event) {
       var box = dial.getBoundingClientRect()
@@ -148,6 +155,7 @@
     var stationButtons = feeds.map(function (feed, index) {
       var button = node('button', '', feed.name); button.type = 'button'; button.setAttribute('aria-pressed', String(index === 0))
       button.addEventListener('click', function () {
+        if (band === index) return
         band = index; items = feed.items; step = 360 / items.length; chosen = -1
         device.dataset.station = index === 1 && feed.name === '影像' ? 'photos' : 'words'
         scale.replaceChildren()
@@ -164,7 +172,7 @@
       var item = items[chosen]
       if (item.photo != null) try { sessionStorage.setItem('stacktao-photo-entry', String(item.photo)) } catch (_) {}
     })
-    tune(0, true)
+    tune(0, true); ready = true
     return device
   }
 
@@ -346,16 +354,32 @@
     albumLink.addEventListener('click', function () { try { sessionStorage.setItem('stacktao-photo-entry', String(current)) } catch (_) {} }, { signal: signal })
     caption.append(controls, albumLink)
     var hint = node('p', 'photo-desk-hint', '左右拨一拨，看看下一张。')
-    function select(index) {
+    function select(index, animate) {
       var focusPrint = prints.indexOf(document.activeElement) >= 0
+      var before = prints.map(function (print) { return getComputedStyle(print).transform })
+      var old = current, direction = index < current ? 1 : -1
       current = (index + photos.length) % photos.length
       prints.forEach(function (print, i) {
+        stopMotion(print)
         var order = (i - current + photos.length) % photos.length
-        print.style.zIndex = String(photos.length - order)
-        print.style.transform = order === 0 ? 'translate(0px, 0px) rotate(-3deg)' : order === 1 ? 'translate(15px, -10px) rotate(6deg)' : 'translate(-14px, -19px) rotate(-8deg)'
+        var end = order === 0 ? 'translate(0px, 0px) rotate(-3deg)' : order === 1 ? 'translate(15px, -10px) rotate(6deg)' : 'translate(-14px, -19px) rotate(-8deg)'
+        var depth = photos.length - order
+        print.style.zIndex = String(depth)
+        print.style.transform = end
         print.classList.toggle('is-front', order === 0)
         print.inert = order !== 0; print.tabIndex = order === 0 ? 0 : -1
         print.setAttribute('aria-hidden', String(order !== 0))
+        if (animate !== false) {
+          if (i === old && old !== current) {
+            var lifted = 'translate(' + (direction * 92) + 'px, -24px) rotate(' + (direction * 14) + 'deg) scale(1.025)'
+            motion(print, [
+              { transform: before[i], zIndex: photos.length + 1, offset: 0 },
+              { transform: lifted, zIndex: photos.length + 1, offset: .42 },
+              { transform: lifted, zIndex: depth, offset: .43 },
+              { transform: end, zIndex: depth, offset: 1 }
+            ], 680)
+          } else motion(print, [{ transform: before[i] }, { transform: end }], 520)
+        }
       })
       count.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(photos.length).padStart(2, '0')
       if (focusPrint) prints[current].focus({ preventScroll: true })
@@ -364,7 +388,7 @@
       if (pointer === null) return
       var id = pointer, print = held
       pointer = null; held = null
-      stage.classList.remove('is-dragging')
+      stage.classList.remove('is-dragging', 'is-holding')
       if (print.hasPointerCapture && print.hasPointerCapture(id)) print.releasePointerCapture(id)
       suppressClick = moved || cancelled
       select(!cancelled && Math.abs(dx) >= 48 ? current + (dx < 0 ? 1 : -1) : current)
@@ -373,6 +397,9 @@
       var print = event.target.closest('.photo-print')
       if (print !== prints[current] || pointer !== null || !event.isPrimary || event.button !== 0) return
       pointer = event.pointerId; held = print; startX = event.clientX; startY = event.clientY; dx = dy = 0; moved = false; suppressClick = false
+      var visible = getComputedStyle(print).transform
+      stopMotion(print); print.style.transform = visible
+      stage.classList.add('is-holding')
       print.setPointerCapture(pointer)
     }, { signal: signal })
     stage.addEventListener('pointermove', function (event) {
@@ -382,8 +409,8 @@
       if (Math.abs(dx) > 5) moved = true
       if (!moved) return
       stage.classList.add('is-dragging')
-      var travel = Math.max(-95, Math.min(95, dx * .75))
-      held.style.transform = 'translate(' + travel + 'px,' + Math.max(-12, Math.min(12, dy * .2)) + 'px) rotate(' + (-3 + travel * .09) + 'deg)'
+      var travel = dx / (1 + Math.abs(dx) / 300)
+      held.style.transform = 'translate(' + travel + 'px,' + Math.max(-24, Math.min(24, dy * .35)) + 'px) rotate(' + (-3 + travel * .08) + 'deg) scale(1.025)'
     }, { signal: signal })
     ;['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (type) {
       stage.addEventListener(type, function (event) { if (event.pointerId === pointer) finish(type !== 'pointerup') }, { signal: signal })
@@ -406,7 +433,10 @@
     disposers.push(function () { finish(true); controller.abort() })
     section.append(stage, caption, hint)
     main.appendChild(section)
-    select(0)
+    select(0, false)
+    prints.forEach(function (print, i) {
+      motion(print, [{ opacity: .65, transform: 'translate(0px, 32px) rotate(0deg)' }, { opacity: 1, transform: print.style.transform }], 760 + i * 90)
+    })
   }
 
   function photoLoupe(stage, image, tools) {
@@ -627,12 +657,17 @@
     grid.before(room)
     select(reveal == null ? 0 : reveal, false)
     return function (layout) {
+      var changed = room.dataset.layout && room.dataset.layout !== layout
       var reading = layout === 'reader', loupe = roomTools.querySelector('.contact-loupe-toggle')
       if (!reading && loupe.getAttribute('aria-pressed') === 'true') loupe.click()
       room.dataset.layout = layout
       stage.hidden = caption.hidden = strip.hidden = !reading
       collection.hidden = reading
       loupe.hidden = !reading
+      if (changed) {
+        stopMotion(stage); stopMotion(collection)
+        motion(reading ? stage : collection, [{ opacity: .6, transform: 'translateY(18px)' }, { opacity: 1, transform: 'translateY(0)' }], 460)
+      }
       roomLabel.textContent = reading ? '一张一张，慢慢看。' : layout === 'gallery' ? '让目光在这里停一会儿。' : layout === 'grid' ? '所有片段 / 点击放大' : '沿着照片，向下走。'
     }
   }
@@ -902,7 +937,7 @@
     controls.setAttribute('role', 'group'); controls.setAttribute('aria-label', '正文排字')
     controls.appendChild(node('span', '', '正文排字'))
     var buttons = ['serif', 'sans'].map(function (value) {
-      var button = node('button', '', value === 'serif' ? '宋体' : '黑体')
+      var button = node('button', '', value === 'serif' ? '文楷' : '黑体')
       button.type = 'button'
       button.addEventListener('click', function () {
         type = value; sync()

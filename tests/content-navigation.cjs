@@ -69,8 +69,8 @@ try {
     assert.deepEqual(Array.from(d.querySelectorAll('.nav-right a[data-nav]'), a => [a.textContent, a.getAttribute('href')]), [['文字', '#/posts'], ['造物', '#/projects'], ['沿途', '#/photos'], ['留言墙', '#/guestbook']])
     assert(d.querySelector('.footer-links a[href="#/sponsors"]'), 'support remains reachable from the footer')
     assert.equal(d.querySelector('[data-search] span').textContent, '逛逛')
-    for (const resource of ['css/collections.css', 'css/cabinet.css', 'css/navigation.css', 'js/cabinet.js']) {
-      const link = d.querySelector('[href="' + resource + '?v=folio-34"], [src="' + resource + '?v=folio-34"]')
+    for (const resource of ['css/collections.css', 'css/cabinet.css', 'css/navigation.css', 'css/typography.css', 'js/cabinet.js']) {
+      const link = d.querySelector('[href="' + resource + '?v=folio-35"], [src="' + resource + '?v=folio-35"]')
       assert(link, resource + ' is attached to both entrypoints')
       assert(fs.existsSync(path.join(root === project ? path.join(project, 'public') : root, resource)), resource + ' exists')
     }

@@ -265,6 +265,45 @@ async function check(directory, generated) {
   assert(q('.project-directory')); assert(!q('.project-directory').closest('details'))
   records[3].querySelector('.project-copy').click(); await settle()
   assert.equal(copied.pop(), 'https://collections.test/#/posts/self', 'internal project links copy as complete URLs')
+  // Motion must not delay content or survive a second action / route change.
+  const animations = []
+  w.HTMLElement.prototype.animate = function (frames, options) {
+    const animation = { element: this, frames, options, cancelled: false, cancel() { this.cancelled = true } }
+    animations.push(animation); return animation
+  }
+  w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+  mountHome()
+  assert(animations.some(animation => animation.element.classList.contains('photo-print')), 'the photo stack has a real arrival motion')
+  const motionDial = q('.radio-dial')
+  key(motionDial, 'ArrowRight')
+  const firstTune = animations.filter(animation => animation.element.classList.contains('radio-content')).at(-1)
+  assert(firstTune, 'tuning visibly transitions the content')
+  key(motionDial, 'ArrowRight')
+  assert(firstTune.cancelled, 'rapid tuning cancels the previous transition')
+  assert.equal(q('.radio-screen h3').textContent, q('.radio-dial').getAttribute('aria-valuetext').split('：')[1], 'new content is usable before its transition ends')
+  q('.photo-print.is-front').click()
+  const turn = animations.filter(animation => animation.frames.some(frame => frame.zIndex != null)).at(-1)
+  if (all('.photo-print').length > 1) assert(turn, 'a turning print lifts in front before falling behind')
+  w.HTMLElement.prototype.setPointerCapture = function () {}
+  w.HTMLElement.prototype.hasPointerCapture = () => false
+  const front = q('.photo-print.is-front')
+  const down = new w.Event('pointerdown', { bubbles: true })
+  Object.assign(down, { pointerId: 1, clientX: 100, clientY: 100, isPrimary: true, button: 0 })
+  front.dispatchEvent(down)
+  w.Studio.destroy()
+  assert(animations.every(animation => animation.cancelled), 'navigation cancels animations including the release of a held print')
+  w.localStorage.setItem('stacktao-photo-layout-v2', 'gallery')
+  mount('/photos')
+  q('[data-photo-layout="reader"]').click()
+  const layoutMotion = animations.filter(animation => animation.element.classList.contains('contact-stage')).at(-1)
+  assert(layoutMotion, 'switching to reader animates the visible stage even when its image was already cached')
+  q('[data-photo-layout="grid"]').click()
+  assert(layoutMotion.cancelled, 'another layout stops the old stage motion')
+  w.Studio.destroy()
+  const beforeReduced = animations.length
+  w.matchMedia = () => ({ matches: true, addEventListener() {}, removeEventListener() {} })
+  mountHome(); key(q('.radio-dial'), 'ArrowRight'); q('.photo-print.is-front').click()
+  assert.equal(animations.length, beforeReduced, 'reduced motion keeps interactions immediate without scripted animations')
   assert.equal(errors.length, 0, errors.map(error => error.message).join('\n'))
   w.Studio.destroy(); w.close()
   global.console.log('PASS', directory, generated ? '(generated content)' : '(prototype content)', `: ${photoCount} photos / ${albumCount} albums, ${expectedProjects.length} projects / ${expectedGroups} groups; home explorer bands/real destinations/photo entry/fallbacks, photo desk handoff/first-album isolation; layouts, source lightbox, independent albums, keyboard, storage failures, visible records, clipboard, honest note links`)

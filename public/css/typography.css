@@ -1,0 +1,53 @@
+@import url('../assets/fonts/font-faces.css');
+
+/* Local type, three voices: readable writing, open titles, handwritten marginalia. */
+:root {
+  --font-ui: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --font-heading: "LXGW WenKai TC", "Kaiti SC", STKaiti, "Songti SC", serif;
+  --font-serif: "Newsreader", "LXGW WenKai TC", "Songti SC", Georgia, serif;
+  --font-display: "Newsreader", "LXGW WenKai TC", "Songti SC", Georgia, serif;
+  --font-kai: "LXGW WenKai TC", "Kaiti SC", STKaiti, KaiTi, serif;
+  --font-hand: "Caveat", "LXGW WenKai TC", "Kaiti SC", cursive;
+  --font-brush: "Ma Shan Zheng", "LXGW WenKai TC", "Kaiti SC", cursive;
+}
+body { font-kerning: normal; }
+.nav-wrap .logo { font-optical-sizing: auto; letter-spacing: -.035em; }
+#view .journal-intro h1 { font-size: clamp(58px, 7vw, 88px); line-height: 1.1; letter-spacing: -.045em; }
+#view .journal-name { font-size: 1em; }
+#view .folio-heading h1,
+#view .article-prose > h1:first-of-type { font-weight: 400; letter-spacing: .015em; line-height: 1.45; text-wrap: balance; }
+#view .article-prose h2, #view .article-prose h3 { font-weight: 400; letter-spacing: .015em; }
+#view .folio-page .post-row > span:first-of-type,
+#view .journal-entry h3 { font-size: 19px; line-height: 1.65; font-weight: 400; letter-spacing: .01em; }
+#view .journal-entry h3 { text-wrap: balance; }
+#view .journal-section-head h2, #view .journal-work h2 { font-weight: 400; font-size: 23px; }
+.journal-bio { font-family: var(--font-kai); font-size: 18px; line-height: 1.95; }
+.journal-wandering { font-size: 13px; line-height: 1.9; }
+
+/* The saved reading size and sans-serif choice remain the reader's own. */
+#view .article-prose[data-reading-type='serif'] > :is(p:not(.post-meta):not(.share-line), ul, ol, blockquote) { font-family: var(--font-serif); }
+#view .article-prose > :is(p:not(.post-meta):not(.share-line), ul, ol) { line-height: 1.95; letter-spacing: .012em; }
+#view .article-prose[data-reading-size='normal'] > :is(p:not(.post-meta):not(.share-line), ul, ol) { font-size: 18px; }
+#view .article-prose > :is(h1, h2, h3) { overflow-wrap: anywhere; }
+#view .article-prose pre, #view .article-prose code { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* A letter and photo captions can show a hand; controls and metadata stay plain. */
+.journal-letter-toggle { font-family: var(--font-kai); font-size: 17px; }
+.journal-letter-text p { font-family: var(--font-kai); font-size: 18px; line-height: 1.95; }
+.journal-letter-text small, .journal-letter-text .journal-inline-link { font-family: var(--font-ui); }
+#view .folio-heading .folio-edition { font-family: var(--font-hand); font-size: 26px; font-style: normal; line-height: 1.3; letter-spacing: .015em; }
+#view .studio-photos .folio-heading .folio-edition { font-size: 24px; letter-spacing: .02em; }
+.photo-print > span { font-family: var(--font-hand); font-size: 17px; letter-spacing: .02em; }
+.contact-tile-title, .contact-caption p { font-family: var(--font-kai); font-weight: 400; }
+#view .project-margin blockquote, #view .project-record-notes blockquote { font-family: var(--font-kai); font-size: 18px; line-height: 1.95; }
+#view .folio-page .reading-opening blockquote { font-family: var(--font-brush); font-size: clamp(25px, 2.5vw, 30px); font-weight: 400; line-height: 1.8; letter-spacing: .025em; }
+#view .reading-opening .reading-source { font-family: var(--font-kai); }
+@media (max-width: 650px) {
+  #view .journal-intro h1 { font-size: clamp(51px, 13vw, 70px); }
+  #view .folio-heading h1 { font-size: 38px; }
+  #view .article-prose[data-reading-size='normal'] > :is(p:not(.post-meta):not(.share-line), ul, ol) { font-size: 17px; }
+  #view .folio-page .post-row > span:first-of-type, #view .journal-entry h3 { font-size: 18px; }
+  #view .folio-page .reading-opening blockquote { font-size: 24px; }
+  .journal-bio, .journal-letter-text p { font-size: 17px; }
+}

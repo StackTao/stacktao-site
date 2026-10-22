@@ -1,6 +1,6 @@
 /* Small collections keep their own character; the content is never a hidden panel. */
 (function () {
-  var disposers = []
+  var disposers = [], pinMotions = new Set(), pinMotionByElement = new WeakMap()
   function el(tag, className, text) {
     var node = document.createElement(tag)
     if (className) node.className = className
@@ -10,7 +10,24 @@
   function button(text, className) { var node = el('button', className, text); node.type = 'button'; return node }
   function read(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) || fallback } catch (_) { return fallback } }
   function write(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); return true } catch (_) { return false } }
-  function destroy() { disposers.splice(0).forEach(function (dispose) { dispose() }) }
+  function destroy() {
+    pinMotions.forEach(function (animation) { animation.cancel() }); pinMotions.clear()
+    disposers.splice(0).forEach(function (dispose) { dispose() })
+  }
+  function snapPin(pin) {
+    var previous = pinMotionByElement.get(pin)
+    if (previous) { previous.cancel(); pinMotions.delete(previous) }
+    if (!pin.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    var animation = pin.animate([
+      { transform: 'translateY(6px) scaleY(.88)', offset: 0 },
+      { transform: 'translateY(-5px) rotate(-4deg) scaleY(1.04)', offset: .36 },
+      { transform: 'translateY(2px) rotate(2deg)', offset: .62 },
+      { transform: 'translateY(-1px) rotate(-.8deg)', offset: .82 },
+      { transform: 'none', offset: 1 }
+    ], { duration: 560, easing: 'cubic-bezier(.2,.7,.25,1)' })
+    pinMotionByElement.set(pin, animation); pinMotions.add(animation)
+    animation.onfinish = function () { pinMotions.delete(animation) }
+  }
   function copyControl(text, label) {
     var control = button(label, 'cabinet-copy'), timer
     control.addEventListener('click', async function () {
@@ -43,7 +60,7 @@
       pin.addEventListener('click', function () {
         var next = pinned.includes(href) ? pinned.filter(function (item) { return item !== href }) : pinned.concat(href)
         if (!write(key, next)) { status.textContent = '浏览器暂时无法保存钉住的书签'; return }
-        pinned = next; update(); if (row.hidden) filter.focus({ preventScroll: true })
+        pinned = next; update(); if (row.hidden) filter.focus({ preventScroll: true }); else snapPin(pin)
       })
       old.remove(); shelf.appendChild(row)
       return { node: row, pin: pin, href: href, title: anchor.textContent.trim() }

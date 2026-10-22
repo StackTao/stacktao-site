@@ -529,6 +529,7 @@
   var searchCatalog = null
   var searchClose = null
   var searchStatus = null
+  var searchEnterTimer = 0
   var siteDirectory = [
     ['/', '首页', '从这里开始'],
     ['/posts', '文字', '读与听'], ['/notes', '随手记', '读与听'], ['/podcasts', '播客 · 展示示例', '读与听'], ['/streams', '直播 · 展示示例', '读与听'],
@@ -540,6 +541,7 @@
 
   if (searchMask && searchPanel && searchInput && searchHits) {
     searchMask.setAttribute('aria-label', '博客目录与搜索')
+    searchMask.inert = true
     searchInput.setAttribute('role', 'combobox')
     searchInput.setAttribute('aria-autocomplete', 'list')
     searchInput.setAttribute('aria-haspopup', 'listbox')
@@ -584,6 +586,7 @@
   }
 
   function selectSearch(index) {
+    if (index >= 0) stopSearchEntrance()
     searchSelected = index
     searchOptions.forEach(function (option, i) { option.setAttribute('aria-selected', String(i === index)) })
     if (searchOptions[index]) {
@@ -592,8 +595,15 @@
     } else searchInput.removeAttribute('aria-activedescendant')
   }
 
+  function stopSearchEntrance() {
+    clearTimeout(searchEnterTimer)
+    searchEnterTimer = 0
+    if (searchMask) searchMask.classList.remove('is-entering')
+  }
+
   function updateSearch() {
     if (!searchHits || !searchStatus) return
+    stopSearchEntrance()
     var q = searchInput.value.trim().toLowerCase()
     var catalog = getSearchCatalog()
     var matches = q ? catalog.filter(function (item) { return q.split(/\s+/).every(function (word) { return item.match.includes(word) }) }).sort(function (a, b) {
@@ -652,6 +662,7 @@
     if (searchMask.classList.contains('is-open')) { searchInput.focus(); return }
     if (photoIndex >= 0) closeLightbox()
     searchTrigger = document.activeElement
+    searchMask.inert = false
     searchMask.classList.add('is-open')
     searchMask.setAttribute('aria-hidden', 'false')
     syncOverlayLock()
@@ -660,10 +671,16 @@
       searchInput.focus()
     }
     updateSearch()
+    if (!prefersReducedMotion()) {
+      searchMask.classList.add('is-entering')
+      searchEnterTimer = setTimeout(stopSearchEntrance, 720)
+    }
   }
   function closeSearch() {
     if (!searchMask || !searchMask.classList.contains('is-open')) return
+    stopSearchEntrance()
     searchMask.classList.remove('is-open')
+    searchMask.inert = true
     searchMask.setAttribute('aria-hidden', 'true')
     if (searchPanel) searchPanel.classList.remove('has-query')
     if (searchInput) searchInput.setAttribute('aria-expanded', 'false')

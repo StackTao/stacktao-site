@@ -24,6 +24,24 @@ for (const dir of process.argv.slice(2).length ? process.argv.slice(2) : ['publi
   const originalSet = w.Storage.prototype.setItem; w.Storage.prototype.setItem = () => { throw Error('blocked') }
   view.querySelector('.bookmark-pin').click(); assert.equal(view.querySelector('.bookmark-pin').getAttribute('aria-pressed'),'true')
   assert.match(view.querySelector('.cabinet-status').textContent,/无法保存/); w.Storage.prototype.setItem = originalSet
+  // Pin feedback follows the successful action, remains interruptible and respects reduced motion.
+  const pinAnimations = []
+  w.HTMLElement.prototype.animate = function (frames, options) {
+    const animation = { target:this, frames, options, cancelled:false, cancel() { this.cancelled = true } }
+    pinAnimations.push(animation); return animation
+  }
+  let reducedMotion = false; w.matchMedia = () => ({ matches:reducedMotion })
+  const animatedPin = view.querySelector('.bookmark-pin'), titleBefore = view.querySelector('.bookmark-title').textContent
+  animatedPin.click(); assert.equal(pinAnimations.length,1); assert.equal(animatedPin.getAttribute('aria-pressed'),'false')
+  assert.equal(pinAnimations[0].target,animatedPin); assert.equal(pinAnimations[0].frames.at(-1).transform,'none')
+  assert(pinAnimations[0].options.duration <= 600,'the response settles instead of looping')
+  animatedPin.click(); assert.equal(pinAnimations.length,2); assert(pinAnimations[0].cancelled,'rapid clicks interrupt the previous snap')
+  assert.equal(view.querySelector('.bookmark-title').textContent,titleBefore,'feedback never changes the linked content')
+  reducedMotion = true; animatedPin.click(); assert.equal(pinAnimations.length,2); assert(pinAnimations[1].cancelled)
+  assert.equal(animatedPin.getAttribute('aria-pressed'),'false','reduced motion still updates the saved state')
+  reducedMotion = false; animatedPin.click(); assert.equal(pinAnimations.length,3)
+  w.Cabinet.destroy(); assert(pinAnimations[2].cancelled,'route cleanup cancels a pending snap')
+  w.matchMedia = () => ({ matches:true })
   mount('/use'); const jump = view.querySelector('.tool-index a[href="#cli"]'); jump.click()
   assert(view.querySelector('#cli').scrolled); assert.equal(d.activeElement.id,'cli')
   const copy = view.querySelector('.tool-command .cabinet-copy'), expected = view.querySelector('.tool-command code').textContent
@@ -87,6 +105,6 @@ for (const dir of process.argv.slice(2).length ? process.argv.slice(2) : ['publi
   w.PAGES['/feed'] = '<main><h1>更新</h1><p>暂时没有更新。</p></main>'; mount('/feed')
   assert.equal(view.querySelectorAll('.feed-entry').length,0); assert.match(view.textContent,/暂时没有更新/)
   w.Cabinet.destroy(); w.Studio.destroy(); w.close()
-  console.log('PASS',dir,': collection content/links, bookmark pin/filter/persistence/storage failure, inventory navigation/copy, programme metadata, real toolchain sections, honest example credits, media/idempotence, generated feed records/year semantics/links/dates and empty feed')
+  console.log('PASS',dir,': collection content/links, bookmark pin/filter/persistence/storage failure/snap cancellation/reduced motion, inventory navigation/copy, programme metadata, real toolchain sections, honest example credits, media/idempotence, generated feed records/year semantics/links/dates and empty feed')
 }
 })().catch(error => { console.error(error); process.exitCode = 1 })

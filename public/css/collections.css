@@ -129,3 +129,31 @@
  #view .studio-photos .photo-album > .prose { gap: 4px; margin-block: 16px 10px; }
  #view .studio-photos .photo-album > .prose p { width: 100%; font-size: 11px; }
 }
+
+/* Objects move; the surrounding reading surface stays in place. */
+.photo-desk-stage { overflow: visible; }
+.photo-print { transition: box-shadow .25s, translate .25s cubic-bezier(.2,.8,.2,1); }
+.photo-desk-stage.is-holding .photo-print.is-front { cursor: grabbing; box-shadow: 0 22px 30px -14px #30281e88; }
+.radio-content { min-height: 0; overflow: hidden; }
+.radio-scale { position: relative; flex-shrink: 0; }
+.radio-scale::after { content: ''; position: absolute; bottom: -2px; left: calc(6px + (100% - 12px) * var(--tuning,0)); width: 14px; height: 3px; border-radius: 2px; background: var(--c-seal); transform: translateX(-50%); transition: left 440ms cubic-bezier(.2,.8,.2,1); }
+.radio-content .radio-photo { margin-top: 14px; }
+.project-record::before { content: ''; position: absolute; top: -1px; left: 0; width: 100%; height: 1px; background: var(--c-seal); transform: scaleX(0); transform-origin: left; transition: transform 520ms cubic-bezier(.2,.8,.2,1); pointer-events: none; }
+.project-record:hover::before, .project-record:focus-within::before { transform: scaleX(1); }
+.project-copy { transition: transform .18s, color .18s; }
+.project-copy:active { transform: translateY(2px) scale(.96); }
+@keyframes journal-unfold { from { opacity: .3; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes heading-rule { from { transform: scaleX(.12); opacity: .3; } to { transform: scaleX(1); opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  #view .journal-home.slide-enter-content { animation: none; }
+  #view .journal-home.slide-enter-content > .journal-intro { animation: journal-unfold 700ms cubic-bezier(.2,.8,.2,1) both; }
+  #view .journal-home.slide-enter-content > .journal-letter { animation: journal-unfold 700ms 90ms cubic-bezier(.2,.8,.2,1) both; }
+  #view .journal-home.slide-enter-content > .journal-objects { animation: journal-unfold 700ms 160ms cubic-bezier(.2,.8,.2,1) both; }
+  #view .folio-page.slide-enter-content > .folio-heading { animation: journal-unfold 600ms cubic-bezier(.2,.8,.2,1) both; }
+  .journal-section-head { position: relative; }
+  .journal-section-head::after { content: ''; height: 1px; position: absolute; inset: auto 0 -1px; background: var(--fg-light); transform-origin: left; animation: heading-rule 900ms cubic-bezier(.2,.8,.2,1) both; }
+  .photo-desk-stage.is-holding .photo-print.is-front { translate: 0 -8px; }
+  .photo-print.is-front:focus-visible { translate: 0 -6px; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) { .photo-print.is-front:hover { translate: 0 -6px; } }
+@media (prefers-reduced-motion: reduce) { .radio-scale::after, .project-record::before, .project-copy { transition: none; } .project-copy:active { transform: none; } }
