@@ -604,3 +604,91 @@ body:has([data-guestbook]) #view { min-height: 100svh; }
 }
 
 .gb-wall-dock [data-wall-tool] svg { display: block; width: 34px; height: 34px; }
+
+/* Continuous village lime plaster; drawing takes place on the wall, never inside a card. */
+body:has([data-guestbook]) { --wall-material: linear-gradient(#f6ead340,#f6ead340),url('../assets/materials/village-wall-v1.jpg'); background: #e4cba5; }
+#view main.guestbook-page { background-size: cover; background-attachment: fixed; background-repeat: no-repeat; }
+#view .guestbook-page .gb-wall[data-wall] { width: calc(100% - 48px); max-width: none; }
+.gb-writing-paper[data-medium='engraving'],.gb-detail [data-detail-note] { background-size: cover; }
+#view .gb-note[data-freeform] { transform: none !important; transition: none; }
+#view .gb-note[data-freeform] .gb-note-content { width: 100%; height: 100%; aspect-ratio: auto; }
+#view .gb-note[data-freeform] .gb-note-content :is(canvas,svg) { display: block; width: 100%; height: 100%; aspect-ratio: auto; }
+#view .gb-note[data-freeform] .gb-note-foot { bottom: -20px; }
+#view .gb-note[data-freeform].gb-just-pinned { animation: gb-finished-cut 1.8s ease both; outline-offset: 8px; }
+@keyframes gb-finished-cut { 0%,65% { outline: 1px dashed #514d3e80; } 100% { outline: 1px dashed transparent; } }
+.gb-free-layer,.gb-wall-presence { position: absolute; z-index: 1000000001; }
+.gb-free-layer > canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: none; outline: none !important; }
+.gb-free-carving { position: absolute; pointer-events: none; }
+.gb-free-carving svg { display: block; width: 100%; height: 100%; }
+.gb-wall-presence { pointer-events: none; z-index: 1000000002; }
+.gb-other-painter { position: absolute; border: 1px dashed #b47c55a0; border-radius: 7px; background: #b98f5b10; color: #66432d; padding: 5px; white-space: nowrap; font: 10px var(--font-ui); }
+.is-free-painting .gb-wall-dock,.is-free-painting .gb-wall-invitation { visibility: hidden; }
+.is-free-painting .gb-exit { z-index: 1000000004; }
+.gb-real-tool { position: fixed; width: 70px; height: 110px; pointer-events: none; z-index: 1000000005; transform: translate(-30px,-11px) rotate(-14deg); transform-origin: 30px 11px; filter: drop-shadow(5px 9px 4px #25221835); }
+.gb-real-tool[data-tool='engraving'] { transform: translate(-10px,-9px) rotate(-8deg); transform-origin: 10px 9px; }
+.gb-real-tool svg { width: 100%; height: 100%; }
+.nozzle-mist { visibility: hidden; }
+.is-working .nozzle-mist { visibility: visible; }
+.gb-real-tool.is-working { filter: drop-shadow(2px 5px 2px #25221830); }
+.gb-real-tool.is-blocked { opacity: .45; }
+.gb-free-panel { position: fixed; bottom: max(20px,env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 18px; width: max-content; max-width: calc(100% - 24px); padding: 17px 22px; color: #eee9dc; background: #292f2bf5; border: 1px solid #fff7dc28; border-radius: 18px; box-shadow: 0 12px 40px #211e1938; z-index: 1000000004; }
+.gb-free-instrument { width: 54px; height: 84px; flex-shrink: 0; transform: rotate(-10deg); animation: gb-pick-tool .6s ease both; }
+.gb-free-instrument svg { width: 100%; height: 100%; }
+@keyframes gb-pick-tool { 0% { transform: translateY(20px) rotate(-25deg); opacity: 0; } 40% { transform: translateY(-6px) rotate(8deg); } 70% { transform: rotate(-18deg); } 100% { transform: rotate(-10deg); opacity: 1; } }
+.gb-free-controls { min-width: 0; }
+.gb-free-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.gb-free-heading strong { font: 17px var(--font-kai); }
+.gb-free-heading span { color: #b9bdaf; font-size: 10px; }
+.gb-free-colors { display: flex; gap: 10px; margin-bottom: 12px; }
+.gb-free-colors button { width: 23px; height: 23px; border: 1px solid #fff8; border-radius: 50%; background: var(--swatch); box-shadow: inset 0 1px 2px #ffffff60; }
+.gb-free-colors button[aria-pressed='true'] { outline: 1px solid #eee9dc; outline-offset: 3px; }
+.gb-free-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.gb-free-panel button,.gb-free-panel select { font: 11px var(--font-ui); }
+.gb-free-actions button { border: 0; background: transparent; color: #dfdfd0; padding: 7px 0; }
+.gb-free-actions label { font-size: 11px; }
+.gb-free-actions select { background: #42493e; color: #f2eedf; border: 0; border-radius: 4px; padding: 4px; }
+.gb-free-actions .gb-free-finish { padding: 8px 12px; border-radius: 7px; background: #e9ecd6; color: #2c332a; }
+.gb-free-panel [data-feedback] { margin: 9px 0 0; min-height: 14px; color: #b8bba9; font-size: 10px; }
+.gb-wall-dock [data-wall-tool] svg { overflow: visible; }
+#view .gb-wall-mark .gb-engraved-text,.gb-live-stage .gb-writing-paper[data-medium='engraving'] textarea { font: 600 20px/1.65 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); letter-spacing: .02em; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: #585448; text-shadow: -.35px -.6px .3px #28281f80,.4px .8px .3px #f6efdb90; }
+.gb-live-stage .gb-writing-paper[data-medium='engraving'] textarea { caret-color: #191d15; }
+@media (max-width:600px) {
+  #view .guestbook-page .gb-wall[data-wall] { width: calc(100% - 20px); }
+  .gb-free-panel { bottom: 10px; padding: 12px; gap: 10px; width: calc(100% - 20px); border-radius: 14px; }
+  .gb-free-instrument { width: 36px; height: 65px; }
+  .gb-free-heading { flex-wrap: wrap; gap: 4px 10px; }
+  .gb-free-actions { gap: 2px 11px; }
+  .gb-free-actions button { min-height: 34px; }
+  .gb-free-colors { gap: 10px; margin-bottom: 7px; }
+  .gb-free-heading span { font-size: 9px; }
+}
+@media (prefers-reduced-motion:reduce) { .gb-free-instrument,#view .gb-note[data-freeform].gb-just-pinned { animation: none; } }
+
+/* A wall inscription, separate from visitors’ marks and writing coordinates. */
+#view main.guestbook-page { padding-top: 242px !important; }
+.gb-wall-header { height: 242px; align-items: flex-start; }
+.gb-wall-header .gb-wall-title { left: auto; right: 8%; top: 48px; transform: rotate(-2deg); display: flex; align-items: flex-start; gap: 10px; color: #403d31; }
+.gb-wall-header .gb-wall-title [data-wall-name] { margin: 0; writing-mode: vertical-rl; font: 500 44px/1.15 'Kaiti SC','STKaiti','KaiTi',var(--font-serif); letter-spacing: .12em; color: inherit; mix-blend-mode: multiply; }
+.gb-wall-title i { margin-top: 103px; padding: 4px 3px; border: 1px solid #994837; writing-mode: vertical-rl; font: normal 11px/1.1 var(--font-serif); letter-spacing: 2px; color: #994837; opacity: .85; transform: rotate(4deg); }
+.gb-wall-title small { writing-mode: vertical-rl; font: 10px var(--font-serif); letter-spacing: 3px; margin-top: 5px; }
+.gb-local-label { position: absolute; top: 38px; right: 32px; opacity: .7; }
+.guestbook-page .gb-wall-picker select { max-width: 170px; font-family: var(--font-ui); }
+@media(max-width:600px) {
+  #view main.guestbook-page { padding-top: 206px !important; }
+  .gb-wall-header { height: 206px; }
+  .gb-wall-header .gb-wall-title { top: 54px; right: 28px; }
+  .gb-wall-header .gb-wall-title [data-wall-name] { font-size: 34px; }
+  .gb-wall-title i { margin-top: 70px; font-size: 10px; }
+  .gb-local-label { top: 29px; right: 20px; font-size: 9px; }
+  .guestbook-page .gb-wall-picker select { width: 94px; font-size: 10px; }
+}
+
+/* Individually mounted dark letters, with a narrow side face and wall shadow. */
+.gb-wall-header .gb-wall-title { right: 22px; flex-direction: row-reverse; gap: 9px; transform: none; }
+.gb-wall-header .gb-wall-title [data-wall-name] { color: #33342c; mix-blend-mode: normal; text-shadow: -.4px -.5px 0 #e9d7b875, .6px .8px 0 #262820, 1.2px 1.6px 0 #35372c, 1.8px 2.4px 0 #454538, 3px 4px 2px #51472e45, 5px 7px 5px #5b4d3330; }
+.gb-wall-title i { width: 34px; height: 34px; margin-top: 106px; padding: 0; border: 0; writing-mode: horizontal-tb; transform: rotate(-4deg); opacity: .87; }
+.gb-wall-title i img { display: block; width: 100%; height: 100%; mix-blend-mode: multiply; }
+@media(max-width:600px) {
+  .gb-wall-header .gb-wall-title { right: 12px; gap: 7px; }
+  .gb-wall-title i { width: 29px; height: 29px; margin-top: 76px; }
+}
