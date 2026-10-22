@@ -1,3 +1,5 @@
+import { createLoginSettings } from './login-settings.mjs'
+import { createOAuth } from './oauth.mjs'
 import { createAccounts, resetMailer } from './accounts.mjs'
 import { createWallStore } from './wall-store.mjs'
 import { createAnalytics } from './analytics.mjs'
@@ -61,8 +63,11 @@ export async function createAdminServer(options={}) {
   let owner=await read(ownerFile)
   if(!owner){owner='sta_owner_'+crypto.randomBytes(32).toString('base64url');await atomic(ownerFile,owner)}
   owner=owner.trim()
-  const mailer=options.sendReset||resetMailer()
+  const loginSettings=await createLoginSettings(state)
+  const mailAvailable=()=>!!(options.sendReset||loginSettings.mail().enabled)
+  const mailer=async(...args)=>{const send=options.sendReset||(loginSettings.mail().enabled?resetMailer(loginSettings.mail()):null);if(send)await send(...args)}
   const accounts=await createAccounts(state,{sendReset:mailer})
+  const oauth=createOAuth(loginSettings,accounts,options.oauth)
   const sessions=new Map(), attempts=new Map(), recoveryAttempts=new Map()
   function limit(map,key,max,windowMs){const now=Date.now();for(const [id,item] of map)if(item.until<now)map.delete(id);const rate=map.get(key)||{count:0,until:now+windowMs};check(map.size<10000||map.has(key),'请求过多，请稍后重试',429);rate.count++;map.set(key,rate);check(rate.count<=max,'尝试过于频繁，请稍后重试',429)}
   let queue=Promise.resolve(), origin=options.origin||process.env.ADMIN_PUBLIC_ORIGIN||'', building=false
@@ -121,11 +126,18 @@ export async function createAdminServer(options={}) {
     const bearer=/^Bearer (.+)$/i.exec(req.headers.authorization||'')?.[1]
     if(bearer){if(!accounts.configured()&&hash(bearer)===hash(owner))return {name:'owner',admin:true,scopes};const tokens=await json(path.join(state,'tokens.json'),[]),token=tokens.find(t=>t.hash===hash(bearer)&&Date.parse(t.expiresAt)>Date.now());if(token)return {...token,admin:false};throw new Problem(401,'访问令牌无效或已过期')}
     const session=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1],entry=sessions.get(session)
-    if(entry?.expires>Date.now()&&entry.version===accounts.version())return {name:accounts.info()?.username||'owner',admin:true,scopes}
+    if(entry?.expires>Date.now()&&entry.version===accounts.version()&&(!entry.provider||entry.revision===loginSettings.revision()))return {name:accounts.info()?.username||'owner',admin:true,scopes}
     throw new Problem(401,'请先登录工作台')
   }
   function can(actor,scope) {check(actor.admin||actor.scopes.includes(scope),'此令牌没有 '+scope+' 权限',403)}
   function admin(actor){check(actor.admin,'该操作仅限站点管理员',403)}
+  function issueSession(res,version,extra={}){
+    const session=crypto.randomBytes(32).toString('base64url')
+    for(const [id,entry] of sessions)if(entry.expires<Date.now())sessions.delete(id)
+    check(sessions.size<1000,'登录会话过多，请稍后重试',429)
+    sessions.set(session,{expires:Date.now()+8*3600000,version,...extra})
+    return `stacktao_admin=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${origin.startsWith('https:')?'; Secure':''}`
+  }
   const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
   async function staticFile(res,file,privateFile=false) {const data=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':privateFile?'no-store':'no-cache'});res.end(data)}
   const wallStore=await createWallStore(state),wallRates=new Map()
@@ -135,6 +147,19 @@ export async function createAdminServer(options={}) {
     try {
       const expected=new URL(origin),url=new URL(req.url,origin),pathname=decodeURIComponent(url.pathname)
       check(req.headers.host===expected.host,'Host 不匹配',403)
+      const callback=/^\/api\/v1\/auth\/oauth\/(github|linuxdo|google)\/callback$/.exec(pathname)
+      if(callback&&req.method==='GET'){
+        const clear=`stacktao_oauth=; HttpOnly; SameSite=Lax; Path=/api/v1/auth/oauth/; Max-Age=0${expected.protocol==='https:'?'; Secure':''}`
+        res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer')
+        try{
+          limit(attempts,clientIP(req)+':oauth',30,60000)
+          const browser=/\bstacktao_oauth=([^;]+)/.exec(req.headers.cookie||'')?.[1]
+          const result=await oauth.finish(callback[1],url.searchParams.get('state'),browser,url.searchParams.get('code'))
+          res.setHeader('Set-Cookie',[clear,issueSession(res,result.version,{provider:result.provider,revision:result.revision})])
+          res.writeHead(303,{Location:result.mode==='link'?'/admin/#login-settings':'/admin/'});return res.end()
+        }catch{res.setHeader('Set-Cookie',clear);res.writeHead(303,{Location:'/admin/#oauth-error'});return res.end()}
+      }
+
       if(pathname.startsWith('/api/wall')){
         const allowed=[origin,...(process.env.WALL_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean)]
         if(['127.0.0.1','localhost'].includes(expected.hostname))allowed.push('http://127.0.0.1:5173','http://localhost:5173')
@@ -168,7 +193,16 @@ export async function createAdminServer(options={}) {
       if(req.headers.origin)check(req.headers.origin===origin,'不允许跨站请求',403)
       const method=req.method, mutation=!['GET','HEAD'].includes(method)
       if(mutation&&!req.headers.authorization)check(req.headers.origin===origin,'写入请求必须来自本站',403)
-      if(pathname==='/api/v1/auth/config'&&method==='GET')return send(res,200,{configured:accounts.configured(),emailRecovery:!!mailer})
+      const oauthStart=/^\/api\/v1\/auth\/oauth\/(github|linuxdo|google)\/start$/.exec(pathname)
+      if(oauthStart&&method==='POST'){
+        limit(attempts,clientIP(req)+':oauth-start',10,60000)
+        const data=await body(req,4096);check(['login','link'].includes(data.mode),'授权模式无效')
+        if(data.mode==='link'){admin(await auth(req));await accounts.verify(data.currentPassword)}
+        const flow=oauth.begin(oauthStart[1],data.mode,origin)
+        res.setHeader('Set-Cookie',`stacktao_oauth=${flow.browser}; HttpOnly; SameSite=Lax; Path=/api/v1/auth/oauth/; Max-Age=300${expected.protocol==='https:'?'; Secure':''}`)
+        return send(res,200,{url:flow.url})
+      }
+      if(pathname==='/api/v1/auth/config'&&method==='GET')return send(res,200,{configured:accounts.configured(),emailRecovery:mailAvailable(),providers:loginSettings.view(origin,accounts).providers.filter(p=>p.enabled&&p.bound).map(({id,name})=>({id,name}))})
       if(pathname==='/api/v1/auth/setup'&&method==='POST'){
         limit(attempts,clientIP(req),10,60000)
         const data=await body(req,4096);check(!accounts.configured(),'管理员账号已经创建',409);check(hash(String(data.token||''))===hash(owner),'初始化凭据不正确',401)
@@ -177,7 +211,7 @@ export async function createAdminServer(options={}) {
       if(pathname==='/api/v1/auth/forgot'&&method==='POST'){
         limit(recoveryAttempts,clientIP(req)+':forgot',5,15*60000)
         const data=await body(req,2048)
-        check(!!mailer,'尚未配置邮件找回，请联系服务器管理员',503)
+        check(mailAvailable(),'尚未配置邮件找回，请联系服务器管理员',503)
         await Promise.all([accounts.forgot(data.email,origin),new Promise(resolve=>setTimeout(resolve,300))])
         return send(res,200,{message:'如果邮箱与管理员账号匹配，会收到重置邮件。请检查收件箱及垃圾邮件。'})
       }
@@ -192,15 +226,26 @@ export async function createAdminServer(options={}) {
         let version
         if(accounts.configured())version=(await accounts.login(data)).version
         else {check(hash(String(data.token||''))===hash(owner),'请先初始化管理员账号',401);version=accounts.version()}
-        const session=crypto.randomBytes(32).toString('base64url')
-        for(const [id,entry] of sessions)if(entry.expires<Date.now())sessions.delete(id)
-        check(sessions.size<1000,'登录会话过多，请稍后重试',429)
-        sessions.set(session,{expires:Date.now()+8*3600000,version})
-        res.setHeader('Set-Cookie',`stacktao_admin=${session}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${expected.protocol==='https:'?'; Secure':''}`);return send(res,200,{ok:true})
+        res.setHeader('Set-Cookie',issueSession(res,version));return send(res,200,{ok:true})
       }
       if(pathname.startsWith('/api/')) {
         const actor=await auth(req)
-        if(pathname==='/api/v1/account'&&method==='GET'){admin(actor);return send(res,200,{account:accounts.info(),emailRecovery:!!mailer})}
+        if(pathname==='/api/v1/login-settings'&&method==='GET'){admin(actor);return send(res,200,loginSettings.view(origin,accounts))}
+        const loginSetting=/^\/api\/v1\/login-settings\/(github|linuxdo|google|mail)$/.exec(pathname)
+        if(loginSetting&&method==='PUT'){
+          admin(actor);limit(attempts,clientIP(req)+':security',10,60000)
+          const data=await body(req,8192);await accounts.verify(data.currentPassword)
+          await loginSettings.save(loginSetting[1],data,req.headers['if-match'])
+          return send(res,200,loginSettings.view(origin,accounts))
+        }
+        const unlink=/^\/api\/v1\/account\/identities\/(github|linuxdo|google)$/.exec(pathname)
+        if(unlink&&method==='DELETE'){
+          admin(actor);limit(attempts,clientIP(req)+':security',10,60000)
+          await accounts.verify((await body(req,4096)).currentPassword);await accounts.unlink(unlink[1]);sessions.clear()
+          return send(res,200,{ok:true})
+        }
+
+        if(pathname==='/api/v1/account'&&method==='GET'){admin(actor);return send(res,200,{account:accounts.info(),emailRecovery:mailAvailable()})}
         if(pathname==='/api/v1/account/password'&&method==='POST'){
           admin(actor);limit(attempts,clientIP(req)+':change',10,60000)
           await accounts.change(await body(req,4096));sessions.clear();return send(res,200,{ok:true})

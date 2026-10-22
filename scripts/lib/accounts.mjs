@@ -23,6 +23,16 @@ export async function createAccounts(state,{sendReset}={}){
  async function save(next){const temp=file+'.'+crypto.randomUUID()+'.tmp';await fs.writeFile(temp,JSON.stringify(next),{mode:0o600});await fs.rename(temp,file);account=next}
  const publicInfo=()=>account?{id:account.id,username:account.username,email:account.email,providers:account.identities.map(i=>i.provider),passwordChangedAt:account.passwordChangedAt}:null
  return {
+  bound:(provider,clientId)=>!!account?.identities.some(i=>i.provider===provider&&i.clientId===clientId),
+  verify:password=>serial(async()=>{fail(account&&await matches(password,account.password),'当前密码不正确',403);return account.version}),
+  identity:(provider,clientId,subject,mode,version)=>serial(async()=>{
+   fail(account&&account.version===version,'账号已更新，请重新授权',409)
+   fail(typeof subject==='string'&&subject.length>0&&subject.length<=255,'身份无效')
+   if(mode==='link')await save({...account,version:crypto.randomUUID(),identities:[...account.identities.filter(i=>i.provider!==provider),{provider,clientId,subject}]})
+   else fail(account.identities.some(i=>i.provider===provider&&i.clientId===clientId&&i.subject===subject),'此第三方账号未绑定管理员',403)
+   return account.version
+  }),
+  unlink:provider=>serial(async()=>{fail(account,'请先初始化账号',409);await save({...account,version:crypto.randomUUID(),identities:account.identities.filter(i=>i.provider!==provider)})}),
   configured:()=>!!account,
   version:()=>account?.version||'bootstrap',
   info:publicInfo,
@@ -54,14 +64,14 @@ export async function createAccounts(state,{sendReset}={}){
   }),
   reset:data=>serial(async()=>{
    fail(account?.reset&&account.reset.expires>Date.now()&&typeof data.token==='string'&&digest(data.token)===account.reset.hash,'重置链接无效或已过期，请重新申请',400)
-   await save({...account,password:await hashPassword(data.password),version:crypto.randomUUID(),reset:null,passwordChangedAt:new Date().toISOString()})
+   await save({...account,password:await hashPassword(data.password),version:crypto.randomUUID(),identities:[],reset:null,passwordChangedAt:new Date().toISOString()})
   })
  }
 }
-export function resetMailer(){
- if(!process.env.RESEND_API_KEY||!process.env.MAIL_FROM)return null
+export function resetMailer(config={apiKey:process.env.RESEND_API_KEY,from:process.env.MAIL_FROM}){
+ if(!config.apiKey||!config.from)return null
  return async(email,url)=>{
-  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.MAIL_FROM,to:[email],subject:'重置 StackTao 后台密码',text:`请打开以下链接设置新密码（15 分钟内有效，仅可使用一次）：\n\n${url}\n\n如果不是你本人申请，请忽略此邮件。`}),signal:AbortSignal.timeout(10000)})
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${config.apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({from:config.from,to:[email],subject:'重置 StackTao 后台密码',text:`请打开以下链接设置新密码（15 分钟内有效，仅可使用一次）：\n\n${url}\n\n如果不是你本人申请，请忽略此邮件。`}),signal:AbortSignal.timeout(10000)})
   if(!response.ok)throw new Error('Mail delivery failed')
  }
 }

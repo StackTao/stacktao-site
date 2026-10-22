@@ -2295,6 +2295,330 @@
           }
         }
       }
+    },
+    "/api/v1/login-settings": {
+      "get": {
+        "summary": "管理员读取第三方登录和邮件设置，不返回密钥",
+        "responses": {
+          "200": {
+            "description": "成功；密钥不回显"
+          },
+          "400": {
+            "description": "配置或授权无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "管理员或当前密码验证失败"
+          },
+          "409": {
+            "description": "配置版本冲突"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        }
+      }
+    },
+    "/api/v1/login-settings/{provider}": {
+      "put": {
+        "summary": "保存私有登录配置，需当前密码及 If-Match",
+        "responses": {
+          "200": {
+            "description": "成功；密钥不回显"
+          },
+          "400": {
+            "description": "配置或授权无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "管理员或当前密码验证失败"
+          },
+          "409": {
+            "description": "配置版本冲突"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "clientId": {
+                    "type": "string"
+                  },
+                  "clientSecret": {
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "clearSecret": {
+                    "type": "boolean"
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "github",
+                "linuxdo",
+                "google"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/login-settings/mail": {
+      "put": {
+        "summary": "保存 Resend 邮件找回配置，覆盖环境变量",
+        "responses": {
+          "200": {
+            "description": "成功；密钥不回显"
+          },
+          "400": {
+            "description": "配置或授权无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "管理员或当前密码验证失败"
+          },
+          "409": {
+            "description": "配置版本冲突"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "writeOnly": true
+                  },
+                  "clearSecret": {
+                    "type": "boolean"
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/{provider}/start": {
+      "post": {
+        "summary": "开始第三方授权；mode=link 要求管理员会话和当前密码，mode=login 只允许已绑定方式",
+        "responses": {
+          "200": {
+            "description": "成功；密钥不回显"
+          },
+          "400": {
+            "description": "配置或授权无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "管理员或当前密码验证失败"
+          },
+          "409": {
+            "description": "配置版本冲突"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string"
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "github",
+                "linuxdo",
+                "google"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/{provider}/callback": {
+      "get": {
+        "summary": "固定平台回调；验证 state、浏览器 Cookie、签名/平台身份后跳转",
+        "responses": {
+          "303": {
+            "description": "跳转到工作台或统一授权错误页"
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "github",
+                "linuxdo",
+                "google"
+              ]
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/account/identities/{provider}": {
+      "delete": {
+        "summary": "验证当前密码，解除第三方绑定并退出所有设备",
+        "responses": {
+          "200": {
+            "description": "成功；密钥不回显"
+          },
+          "400": {
+            "description": "配置或授权无效"
+          },
+          "401": {
+            "description": "未登录"
+          },
+          "403": {
+            "description": "管理员或当前密码验证失败"
+          },
+          "409": {
+            "description": "配置版本冲突"
+          },
+          "429": {
+            "description": "请求限流"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "writeOnly": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "github",
+                "linuxdo",
+                "google"
+              ]
+            }
+          }
+        ]
+      }
     }
   },
   "components": {

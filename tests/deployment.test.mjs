@@ -8,7 +8,7 @@ test('backup restores content, media, credentials, drafts, wall and statistics w
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'stacktao-backup-'))
  try{
   const data=path.join(root,'data'),backup=path.join(root,'backup'),target=path.join(root,'restored')
-  const entries={'content/content.config.json':'{}','content/posts/test.md':'# hello','content/media/test.png':'binary image fixture','state/owner-token':'test secret','state/wall.json':'{"notes":[1]}','state/drafts/test.json':'{}','state/analytics/day.json':'{"pv":2}','state/tokens.json':'[]','state/account.json':'{"id":"stable-account-id","password":{"hash":"fixture"}}'}
+  const entries={'content/content.config.json':'{}','content/posts/test.md':'# hello','content/media/test.png':'binary image fixture','state/owner-token':'test secret','state/wall.json':'{"notes":[1]}','state/drafts/test.json':'{}','state/analytics/day.json':'{"pv":2}','state/tokens.json':'[]','state/login-settings.json':'{"providers":{"github":{"clientSecret":"fixture-secret"}}}','state/account.json':'{"id":"stable-account-id","password":{"hash":"fixture"}}'}
   for(const [name,value] of Object.entries(entries)){await fs.mkdir(path.dirname(path.join(data,name)),{recursive:true});await fs.writeFile(path.join(data,name),value)}
   await fs.writeFile(path.join(data,'state/wall-writer.lock'),'123')
   await assert.rejects(snapshot(data,backup),/Stop the app/)
