@@ -45,12 +45,14 @@ test('editor saves edits and repeated items with revision protection without alt
   main.querySelector('[data-add-entry="0"]').click()
   assert(dirty)
   assert.equal(main.querySelector('[name=name]').value,'苏 · 已修改')
+  main.querySelector('[name=case-problem]').value='真实的问题'
   main.querySelector('#resume-draft').value='false'
   await main.querySelector('#save-resume').onclick()
   assert.equal(errors.length,0);assert.equal(saved[0].headers['If-Match'],'r1')
   assert.equal(saved[0].body.site.name,'Keep me');assert.equal(saved[0].body.guestbook.endpoint,'/api/wall')
   assert.equal(saved[0].body.resume.name,'苏 · 已修改')
   assert.equal(saved[0].body.resume.draft,false)
+  assert.equal(saved[0].body.resume.sections[0].items[0].caseStudy.problem,'真实的问题')
   assert.equal(saved[0].body.resume.sections[0].items.length,3)
   assert.deepEqual(saved[0].body.resume.sections[0].items[0].points,['第一项真实成果','第二项真实成果'])
   await main.querySelector('#save-resume').onclick()
@@ -62,43 +64,57 @@ test('editor saves edits and repeated items with revision protection without alt
 
 async function interactiveResume(options = {}) {
   const dom = new JSDOM(renderResume(options.content || sample), {runScripts:'outside-only',pretendToBeVisual:true})
-  const w = dom.window, frames = new Map(), scrolled = []; let next = 0
+  const w = dom.window, scrolled = []
   w.matchMedia = () => ({matches:!!options.reduced,addEventListener(){}})
-  w.requestAnimationFrame = callback => {frames.set(++next, callback);return next}
-  w.cancelAnimationFrame = id => frames.delete(id)
   w.scrollTo = value => scrolled.push(value)
   w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this) }
   Object.defineProperty(w.navigator,'clipboard',{value:{writeText:options.copy || (async()=>{})}})
   w.eval(await readFile(new URL('../public/js/resume.js',import.meta.url),'utf8'))
   w.Resume.mount(w.document)
-  return {w,doc:w.document,frames,scrolled}
+  return {w,doc:w.document,scrolled}
 }
 
-test('interactive craft responds to input and cancels animation on user control, remount and exit', async () => {
-  const {w,doc,frames}=await interactiveResume()
-  const range=doc.querySelector('input[type=range]'),replay=doc.querySelector('[data-craft-replay]')
-  range.value='40';range.dispatchEvent(new w.Event('input'))
-  assert.equal(range.getAttribute('aria-valuetext'),'结构')
-  assert.equal(doc.querySelector('[data-craft-stage]').style.getPropertyValue('--craft'),'0.4')
-  replay.click();assert.equal(frames.size,1);assert.equal(range.value,'0')
-  range.dispatchEvent(new w.Event('keydown'));assert.equal(frames.size,0)
-  replay.click();w.Resume.mount(doc);assert.equal(frames.size,0)
-  replay.click();assert.equal(frames.size,1)
-  w.Resume.destroy();assert.equal(frames.size,0)
-  replay.click();assert.equal(frames.size,0)
+test('project notes support click and arrow navigation, target their own experience, and clean up on exit', async () => {
+  const {w,doc,scrolled}=await interactiveResume()
+  const tabs=Array.from(doc.querySelectorAll('[data-case-tab]'))
+  assert.equal(tabs.length,3)
+  tabs[1].click()
+  assert.equal(tabs[1].getAttribute('aria-selected'),'true')
+  assert.equal(doc.querySelectorAll('[role=tabpanel]:not([hidden])').length,1)
+  assert.match(doc.querySelector('[role=tabpanel]:not([hidden])').textContent,/整幅草稿/)
+  tabs[1].dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}))
+  assert.equal(doc.activeElement,tabs[2])
+  assert.equal(tabs[2].tabIndex,0);assert.equal(tabs[1].tabIndex,-1)
+  doc.querySelector('.resume-case [data-resume-entry-target]').click()
+  assert.equal(scrolled.at(-1),doc.querySelector('[data-resume-entry="1-0"]'))
+  w.Resume.destroy();tabs[0].click()
+  assert.equal(tabs[2].getAttribute('aria-selected'),'true')
   w.close()
 })
 
-test('paper preview preserves content and reduced motion skips replay; duplicate periods locate the correct entry', async () => {
+test('optional project notes escape input and omit unsafe links without changing print content', () => {
+  const data=structuredClone(sample),entry=data.sections[1].items[0]
+  entry.caseStudy={problem:'<img onerror=bad>',url:'javascript:alert(1)'}
+  const doc=new JSDOM(renderResume(data)).window.document
+  assert.equal(doc.querySelector('.resume-case img'),null)
+  assert.equal(doc.querySelector('.resume-case a'),null)
+  assert.match(doc.querySelector('.resume-case-panel').textContent,/<img onerror=bad>/)
+  assert.equal(doc.querySelectorAll('[data-case-tab]').length,1)
+  delete entry.caseStudy
+  assert(!new JSDOM(renderResume(data)).window.document.querySelector('.resume-project-notes'))
+})
+
+test('paper preview preserves content; duplicate periods locate the correct entry', async () => {
   const content=structuredClone(sample)
   content.sections[0].items[1].period=content.sections[0].items[0].period
-  const {w,doc,frames,scrolled}=await interactiveResume({reduced:true,content})
+  const {w,doc,scrolled}=await interactiveResume({reduced:true,content})
+  let animated=0
+  doc.querySelectorAll('[role=tabpanel]').forEach(panel=>panel.animate=()=>animated++)
+  doc.querySelectorAll('[data-case-tab]')[1].click();assert.equal(animated,0)
   const body=doc.querySelector('.resume-entries').textContent,toggle=doc.querySelector('[data-resume-view]')
   toggle.click();assert(doc.querySelector('.is-paper-preview'));assert.equal(toggle.textContent,'返回网页版')
   toggle.click();assert(!doc.querySelector('.is-paper-preview'));assert.equal(toggle.getAttribute('aria-pressed'),'false')
   assert.equal(doc.querySelector('.resume-entries').textContent,body)
-  doc.querySelector('[data-craft-replay]').click();assert.equal(frames.size,0)
-  assert.equal(doc.querySelector('input[type=range]').value,'100')
   doc.querySelector('[data-resume-entry-target="0-1"]').click()
   assert.equal(scrolled.at(-1),doc.querySelector('[data-resume-entry="0-1"]'))
   assert.equal(doc.activeElement,doc.querySelector('[data-resume-entry="0-1"] h3'))

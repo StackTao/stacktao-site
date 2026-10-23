@@ -7,44 +7,33 @@
       var page = view.querySelector('.resume-page')
       var button = view.querySelector('[data-resume-print]')
       if (!page || !button) return
-      var controller = new AbortController(), signal = controller.signal, frame = 0, observer = null, savedScroll = 0
+      var controller = new AbortController(), signal = controller.signal, observer = null, savedScroll = 0
       var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)')
-      var stage = page.querySelector('[data-craft-stage]'), range = page.querySelector('#resume-craft-range'), output = page.querySelector('[data-craft-output]')
-      function stop() { if (frame) cancelAnimationFrame(frame); frame = 0 }
-      function paint(value) {
-        value = Math.max(0, Math.min(100, Number(value)))
-        var index = Math.min(3, Math.floor(value / 26)), labels = ['线框', '结构', '细节', '成品']
-        range.value = value
-        stage.style.setProperty('--craft', value / 100)
-        stage.style.setProperty('--craft-percent', value + '%')
-        range.style.setProperty('--range-progress', value + '%')
-        range.setAttribute('aria-valuetext', labels[index])
-        output.textContent = '0' + (index + 1) + ' / ' + labels[index]
-      }
-      if (range) {
-        paint(range.value)
-        range.addEventListener('input', function () { stop(); paint(range.value) }, { signal: signal })
-        ;['pointerdown', 'keydown'].forEach(function (event) { range.addEventListener(event, stop, { signal: signal }) })
-        page.querySelector('[data-craft-replay]').addEventListener('click', function () {
-          stop()
-          if (reduced && reduced.matches) { paint(100); return }
-          paint(0)
-          var started = performance.now()
-          function tick(time) {
-            var progress = Math.min(1, (time - started) / 1600)
-            paint(Math.round((1 - Math.pow(1 - progress, 3)) * 100))
-            frame = progress < 1 ? requestAnimationFrame(tick) : 0
-          }
-          frame = requestAnimationFrame(tick)
-        }, { signal: signal })
-        document.addEventListener('visibilitychange', function () { if (document.hidden) stop() }, { signal: signal })
-        if (reduced && reduced.addEventListener) reduced.addEventListener('change', function () { if (reduced.matches) stop() }, { signal: signal })
-      }
+      page.querySelectorAll('.resume-case-tabs').forEach(function (tablist) {
+        var tabs = Array.from(tablist.querySelectorAll('[data-case-tab]'))
+        function activate(tab) {
+          tabs.forEach(function (item) {
+            var active = item === tab
+            item.setAttribute('aria-selected', String(active))
+            item.tabIndex = active ? 0 : -1
+            var panel = document.getElementById(item.getAttribute('aria-controls'))
+            panel.hidden = !active
+            if (active && panel.animate && !(reduced && reduced.matches)) panel.animate([{ opacity: .3, transform: 'translateY(5px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 180, easing: 'ease-out' })
+          })
+        }
+        tabs.forEach(function (tab, i) {
+          tab.addEventListener('click', function () { activate(tab) }, { signal: signal })
+          tab.addEventListener('keydown', function (event) {
+            var next = event.key === 'ArrowRight' ? (i + 1) % tabs.length : event.key === 'ArrowLeft' ? (i + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1
+            if (next < 0) return
+            event.preventDefault(); activate(tabs[next]); tabs[next].focus()
+          }, { signal: signal })
+        })
+      })
       var toggle = page.querySelector('[data-resume-view]')
       toggle.addEventListener('click', function () {
         var paper = !page.classList.contains('is-paper-preview')
         if (paper) savedScroll = window.scrollY
-        stop()
         page.classList.toggle('is-paper-preview', paper)
         toggle.setAttribute('aria-pressed', String(paper))
         toggle.textContent = paper ? '返回网页版' : '纸面预览'
@@ -81,7 +70,6 @@
       }, { signal: signal })
       button.onclick = async function () {
         var status = view.querySelector('[data-resume-status]')
-        stop()
         button.disabled = true
         status.textContent = '正在准备字体…'
         try {
@@ -92,7 +80,7 @@
         } catch (error) { status.textContent = '未能打开打印窗口，请使用浏览器菜单中的「打印」。' }
         finally { button.disabled = false }
       }
-      dispose = function () { stop(); controller.abort(); if (observer) observer.disconnect(); button.onclick = null }
+      dispose = function () { controller.abort(); if (observer) observer.disconnect(); button.onclick = null }
     }
   }
 })()

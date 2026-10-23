@@ -22,13 +22,14 @@ export async function resumeEditor({ api, main, run, toast, changed, busy }) {
       section.caption = row.querySelector('[name=caption]').value
       row.querySelectorAll('[data-entry]').forEach((entry,j) => {
         for (const name of ['title','subtitle','period','url']) section.items[j][name] = entry.querySelector(`[name=${name}]`).value
+        section.items[j].caseStudy = Object.fromEntries(['problem','decision','result','url'].map(key => [key, entry.querySelector(`[name=case-${key}]`).value]))
         section.items[j].points = entry.querySelector('[name=points]').value.split('\n').map(s => s.trim()).filter(Boolean)
       })
     })
   }
   function render() {
     q('#resume-contacts').innerHTML = data.contacts.map((item,i) => `<div class="form-row" data-contact>${field('显示文字','label',item.label)}${field('链接（可留空）','url',item.url)}<button data-remove-contact="${i}" aria-label="移除联系方式 ${i+1}">×</button></div>`).join('')
-    q('#resume-sections').innerHTML = data.sections.map((section,i) => `<section class="section-card" data-section><div class="form-grid">${field('栏目名称','section-title',section.title)}${field('英文小标题','caption',section.caption)}</div>${(section.items || []).map((entry,j) => `<div class="section-card" data-entry><div class="form-grid">${field('标题 / 公司 / 项目','title',entry.title)}${field('时间','period',entry.period)}${field('职位 / 技术 / 补充说明','subtitle',entry.subtitle)}${field('作品链接（可留空）','url',entry.url)}<label class="full">经历与成果（每行一条）<textarea name="points" rows="4">${escape((entry.points || []).join('\n'))}</textarea></label></div><button class="quiet" data-remove-entry="${i}:${j}">移除这条经历</button></div>`).join('')}<div class="actions"><button data-add-entry="${i}">＋ 添加经历</button><button class="quiet" data-remove-section="${i}">移除栏目</button></div></section>`).join('')
+    q('#resume-sections').innerHTML = data.sections.map((section,i) => `<section class="section-card" data-section><div class="form-grid">${field('栏目名称','section-title',section.title)}${field('英文小标题','caption',section.caption)}</div>${(section.items || []).map((entry,j) => `<div class="section-card" data-entry><div class="form-grid">${field('标题 / 公司 / 项目','title',entry.title)}${field('时间','period',entry.period)}${field('职位 / 技术 / 补充说明','subtitle',entry.subtitle)}${field('作品链接（可留空）','url',entry.url)}<label class="full">经历与成果（每行一条）<textarea name="points" rows="4">${escape((entry.points || []).join('\n'))}</textarea></label></div><details class="resume-case-editor"><summary>网页项目旁注（可选，不进入 PDF）</summary><p class="hint">填写后会出现在简历开场，读者可查看这段经历背后的问题、取舍与验证。留空则不展示。</p><div class="form-grid">${[['problem','遇到的问题'],['decision','做过的取舍'],['result','结果与验证']].map(([key,label]) => `<label class="full">${label}<textarea name="case-${key}" rows="3">${escape(entry.caseStudy?.[key])}</textarea></label>`).join('')}${field('打开作品的链接（可留空）','case-url',entry.caseStudy?.url)}</div></details><button class="quiet" data-remove-entry="${i}:${j}">移除这条经历</button></div>`).join('')}<div class="actions"><button data-add-entry="${i}">＋ 添加经历</button><button class="quiet" data-remove-section="${i}">移除栏目</button></div></section>`).join('')
     const bind = (attribute, action) => main.querySelectorAll(`[${attribute}]`).forEach(button => button.onclick = () => { sync(); action(button.getAttribute(attribute)); changed(true); render() })
     bind('data-remove-contact', i => data.contacts.splice(+i,1))
     bind('data-remove-section', i => data.sections.splice(+i,1))
@@ -42,7 +43,7 @@ export async function resumeEditor({ api, main, run, toast, changed, busy }) {
   q('#save-resume').onclick = run(async () => {
     sync()
     if (!data.name.trim()) throw new Error('请填写姓名或称呼')
-    for (const item of [...data.contacts,...data.sections.flatMap(section => section.items || [])]) {
+    for (const item of [...data.contacts,...data.sections.flatMap(section => (section.items || []).flatMap(item => [item,item.caseStudy || {}]))]) {
       if (item.url && !/^(https?:\/\/|mailto:)/i.test(item.url.trim())) throw new Error('链接请使用完整的 https:// 地址，邮箱链接使用 mailto:')
     }
     const button = q('#save-resume'); busy(true); button.disabled = true

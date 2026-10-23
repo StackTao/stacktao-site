@@ -133,39 +133,29 @@ html.dark body:has(.resume-page) { background: #232623 !important; }
   .resume-page:not(.is-paper-preview) .resume-paper-footer > span:first-child { font: 21px var(--font-kai); }
   .resume-page:not(.is-paper-preview) .resume-print-note { display: none; }
   .resume-page :is(button,input):focus-visible { outline: 2px solid var(--resume-accent); outline-offset: 5px; }
-  .resume-craft-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--resume-muted); letter-spacing: .08em; margin-bottom: 14px; }
-  .resume-craft-label > span:last-child { font: 20px var(--font-hand); color: var(--resume-accent); }
-  .resume-craft-stage { position: relative; height: 300px; background-image: radial-gradient(#929d813c .7px, transparent .7px); background-size: 15px 15px; border: 1px solid var(--rule); border-radius: 4px; display: grid; place-items: center; perspective: 800px; }
-  html.dark .resume-craft-stage { background-color: #d6d9cb; }
-  html.dark .resume-craft-stage :is(.resume-craft-coordinate,.resume-craft-cross) { color: #69715e; }
-  .resume-craft-cross { position: absolute; color: var(--resume-muted); font: 16px var(--font-mono); }
-  .cross-one { top: 10px; left: 12px; }.cross-two { bottom: 10px; right: 12px; }
-  .resume-craft-coordinate { position: absolute; bottom: 13px; left: 16px; font: 8px var(--font-mono); color: var(--resume-muted); letter-spacing: .04em; }
-  .resume-craft-window { position: relative; width: 252px; height: 227px; background: color-mix(in srgb, #fffdf7 var(--craft-percent), transparent); border: 1px solid #818b7d; border-radius: calc(2px + var(--craft) * 9px); color: #34473c; box-shadow: 0 calc(var(--craft) * 12px) calc(var(--craft) * 26px) #363e3324; transform: rotate(calc(-8deg + var(--craft) * 8deg)) translateY(calc(7px - var(--craft) * 7px)); transition: transform .08s linear, box-shadow .08s linear, background .08s linear; }
-  .resume-craft-window::before { content: ''; position: absolute; inset: -9px; border: 1px dashed #768771; opacity: calc(1 - var(--craft)); pointer-events: none; }
-  .craft-window-bar { height: 28px; display: flex; gap: 4px; align-items: center; border-bottom: 1px solid #818b7d44; padding: 0 11px; }
-  .craft-window-bar i { width: 4px; height: 4px; border: 1px solid #899582; border-radius: 100%; }
-  .craft-window-bar span { margin-left: auto; font: 8px var(--font-mono); color: #677360; }
-  .craft-window-content { padding: 17px 23px; }
-  .craft-small { font: 7px var(--font-mono); letter-spacing: .04em; opacity: calc(.5 + var(--craft) * .5); }
-  .craft-window-content strong { display: block; margin: 8px 0 11px; font: 39px/.83 var(--font-serif); letter-spacing: -.05em; }
-  .craft-window-content em { color: color-mix(in srgb, #9f5b3f var(--craft-percent), #6d806e); font-weight: 400; }
-  .craft-window-line { width: 83%; height: 3px; background: #a1ab9b; margin: 5px 0; opacity: .45; }
-  .craft-window-line.short { width: 56%; }
-  .craft-window-cta { display: flex; width: 110px; justify-content: space-between; border: 1px solid #34473c; border-radius: calc(var(--craft) * 4px); background: color-mix(in srgb, #34473c var(--craft-percent), transparent); color: color-mix(in srgb, #fffdf7 var(--craft-percent), #34473c); font-size: 9px; padding: 6px 9px; margin-top: 13px; }
-  .craft-window-cta b { font-weight: 400; }
-  .craft-pointer { position: absolute; width: 24px; height: 30px; right: calc(25px - var(--craft) * 4px); bottom: calc(26px - var(--craft) * 6px); stroke: #f7f5ef; stroke-width: 2; fill: #a55c3f; filter: drop-shadow(0 2px 1px #34473c20); }
-  .resume-craft-control { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; padding-top: 18px; font-size: 11px; }
-  .resume-craft-control output { color: var(--resume-accent); font-family: var(--font-mono); }
-  .resume-craft-control input { grid-column: 1 / -1; width: 100%; height: 30px; padding: 0; margin: 0; appearance: none; background: transparent; cursor: ew-resize; touch-action: pan-y; }
-  .resume-craft-control input::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(to right, var(--resume-accent) var(--range-progress,100%), var(--rule-strong) var(--range-progress,100%)); }
-  .resume-craft-control input::-webkit-slider-thumb { appearance: none; width: 23px; height: 23px; border: 6px solid #f7f5ef; border-radius: 50%; background: var(--resume-accent); box-shadow: 0 0 0 1px #9ba18d, 0 2px 3px #0002; margin-top: -10px; }
-  .resume-craft-control input::-moz-range-track { height: 3px; background: var(--rule-strong); }
-  .resume-craft-control input::-moz-range-progress { height: 3px; background: var(--resume-accent); }
-  .resume-craft-control input::-moz-range-thumb { width: 12px; height: 12px; border: 6px solid #f7f5ef; border-radius: 50%; background: var(--resume-accent); box-shadow: 0 0 0 1px #9ba18d; }
-  .resume-craft-scale { grid-column: 1 / -1; display: flex; justify-content: space-between; color: var(--resume-muted); font: 9px var(--font-mono); margin-top: -9px; }
-  .resume-craft-caption { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; color: var(--resume-muted); font-size: 10px; }
-  .resume-craft-caption button { background: none; border: 0; padding: 5px 0; color: var(--resume-accent); font: inherit; cursor: pointer; }
+  .resume-opening:not(:has(.resume-project-notes)) { grid-template-columns: 1fr !important; }
+  .resume-notes-heading { display: flex; justify-content: space-between; margin-bottom: 14px; color: var(--resume-muted); font: 10px var(--font-mono); letter-spacing: .05em; }
+  .resume-notes-heading > span:last-child { color: var(--resume-accent); font: 22px var(--font-hand); }
+  .resume-case { position: relative; padding: 26px 28px 18px; border: 1px solid var(--rule-strong); border-top: 3px solid var(--resume-accent); background: #fffdf7; box-shadow: 4px 5px 0 #e8e4da; }
+  html.dark .resume-case { background: #292e26; box-shadow: 4px 5px 0 #161c17; }
+  .resume-case + .resume-case { margin-top: 24px; }
+  .resume-case-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--resume-muted); font: 10px var(--font-mono); letter-spacing: .06em; }
+  .resume-paper .resume-case h2 { margin: 20px 0 24px; color: var(--resume-ink); font: 25px/1.5 var(--font-heading); }
+  .resume-case-tabs { display: flex; border-bottom: 1px solid var(--rule); gap: 26px; }
+  .resume-case-tabs button { position: relative; display: flex; gap: 8px; align-items: baseline; background: none; border: 0; padding: 8px 0 12px; color: var(--resume-muted); font: 13px var(--font-ui); cursor: pointer; }
+  .resume-case-tabs button span { font: 9px var(--font-mono); opacity: .6; }
+  .resume-case-tabs button::after { content: ''; position: absolute; height: 2px; background: var(--resume-accent); bottom: -1px; left: 0; right: 0; transform: scaleX(0); transform-origin: left; transition: transform .18s ease; }
+  .resume-case-tabs button[aria-selected=true] { color: var(--resume-accent); }
+  .resume-case-tabs button[aria-selected=true]::after { transform: scaleX(1); }
+  .resume-case-panel { padding: 22px 0 26px; min-height: 202px; box-sizing: border-box; }
+  .resume-case-panel[hidden] { display: none; }
+  .resume-case-marker { display: block; margin-bottom: 13px; color: var(--resume-accent); font: 10px var(--font-mono); }
+  .resume-paper .resume-case-panel p { font-size: 14px; line-height: 1.9; white-space: pre-line; }
+  .resume-case-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 12px; }
+  .resume-case-links button { display: inline-flex; gap: 16px; border: 0; padding: 0; color: var(--resume-accent); background: none; font: inherit; cursor: pointer; }
+  .resume-case-links button span { transition: transform .18s; }
+  .resume-case-links button:hover span { transform: translateY(3px); }
+  .resume-paper .resume-notes-foot { margin-top: 18px; color: var(--resume-muted); font: 17px var(--font-kai); }
   @media (max-width: 900px) {
     .resume-page:not(.is-paper-preview) .resume-opening { grid-template-columns: 1fr 350px; gap: 32px; }
     .resume-page:not(.is-paper-preview) .resume-section { grid-template-columns: 150px minmax(0,1fr); gap: 30px; }
