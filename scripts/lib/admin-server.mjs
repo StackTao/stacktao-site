@@ -20,7 +20,7 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const uid = () => crypto.randomUUID()
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const scopes = ['content:read', 'drafts:write', 'media:write', 'publish', 'albums:write', 'projects:write', 'settings:write', 'deploy']
-const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css', '.js':'text/javascript', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.avif':'image/avif', '.gif':'image/gif', '.svg':'image/svg+xml', '.woff2':'font/woff2' }
+const mime = { '.xml':'application/rss+xml; charset=utf-8', '.html':'text/html; charset=utf-8', '.css':'text/css', '.js':'text/javascript', '.json':'application/json', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.avif':'image/avif', '.gif':'image/gif', '.svg':'image/svg+xml', '.woff2':'font/woff2' }
 class Problem extends Error { constructor(status, message) { super(message); this.status = status } }
 function check(ok, message, status=400) { if (!ok) throw new Problem(status,message) }
 async function read(file, fallback=null) { try { return await fs.readFile(file,'utf8') } catch(e) { if(e.code==='ENOENT')return fallback;throw e } }
@@ -253,7 +253,7 @@ export async function createAdminServer(options={}) {
         if(pathname==='/api/v1/session'&&method==='DELETE'){const cookie=/\bstacktao_admin=([^;]+)/.exec(req.headers.cookie||'')?.[1];sessions.delete(cookie);res.setHeader('Set-Cookie','stacktao_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');return send(res,200,{ok:true})}
         if(method==='GET') {
           can(actor,'content:read')
-          if(pathname==='/api/v1/wall'){admin(actor);const page=Number(url.searchParams.get('page')||1);check(Number.isInteger(page)&&page>0,'页码无效');return send(res,200,wallStore.list({page,type:url.searchParams.get('type')||''}))}
+          if(pathname==='/api/v1/wall'){admin(actor);const page=Number(url.searchParams.get('page')||1);check(Number.isInteger(page)&&page>0,'页码无效');return send(res,200,wallStore.list({page,type:url.searchParams.get('type')||'',deleted:url.searchParams.get('deleted')==='1'}))}
           if(pathname==='/api/v1/analytics'){const days=Number(url.searchParams.get('days')||30);check([7,30,90].includes(days),'统计范围应为 7、30 或 90 天');return send(res,200,{...await analytics.report(days),wall:{mode:'shared',...wallStore.stats()},collectionEnabled:!!process.env.ANALYTICS_ORIGINS})}
           if(pathname==='/api/v1/status')return send(res,200,{name:actor.name,admin:actor.admin,building,mode:'local-build',source:path.basename(source),preview:'/site/',scopes:actor.scopes,gitDeploy:process.env.ADMIN_GIT_PUBLISH==='1'})
           if(pathname==='/api/v1/posts'){const ids=new Set((await originals()).keys());for(const name of await fs.readdir(path.join(state,'drafts')).catch(()=>[]))if(name.endsWith('.json'))ids.add(name.slice(0,-5));const all=await Promise.all([...ids].map(post));return send(res,200,all.sort((a,b)=>b.date.localeCompare(a.date)))}
@@ -273,6 +273,7 @@ export async function createAdminServer(options={}) {
           return send(res,200,{html})
         }
         const payload=await body(req,pathname==='/api/v1/media'?12*1024*1024:1000000,pathname==='/api/v1/media')
+        const restoreWall=/^\/api\/v1\/wall\/([a-zA-Z0-9-]+)\/restore$/.exec(pathname);if(restoreWall&&method==='POST'){admin(actor);return send(res,200,await wallStore.restore(restoreWall[1],'',true,payload.revision))}
         const deleteWall=/^\/api\/v1\/wall\/([a-zA-Z0-9-]+)$/.exec(pathname);if(deleteWall&&method==='DELETE'){admin(actor);return send(res,200,await wallStore.remove(deleteWall[1],'',payload.revision,true))}
         return await serial(async()=>{
           if(pathname==='/api/v1/deploy'&&method==='POST'){

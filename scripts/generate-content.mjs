@@ -377,6 +377,7 @@ function createPrototypePages(articles, config, projects) {
   pages['/feed'] = `<main class="page prose slide-enter-content">
     <h1>最近更新</h1>
     <p class="op50">最近写下的文字，按时间收在这里。</p>
+    ${/^https?:\/\//.test(config.site?.website || '') ? '<p><a href="content/feed.xml">订阅 RSS ↗</a> · 将此链接添加到你的 RSS 阅读器</p>' : '<p>站点地址配置后可生成 RSS 订阅。</p>'}
     ${groups}
   </main>`
   titles['/feed'] = '最近更新 - StackTao'
@@ -548,6 +549,18 @@ async function main() {
     path.join(outputDir, 'posts', `${article.slug}.json`),
     `${JSON.stringify(article, null, 2)}\n`,
   )))
+
+  if (/^https?:\/\//.test(config.site?.website || '')) {
+    const base = new URL(config.site.website)
+    base.hash = ''; base.search = ''
+    if (!base.pathname.endsWith('/')) base.pathname += '/'
+    const xml = value => escapeHtml(value).replaceAll('&#039;', '&apos;')
+    const items = articles.map(article => {
+      const url = new URL('#' + article.route, base).href
+      return `<item><title>${xml(article.title)}</title><link>${xml(url)}</link><guid isPermaLink="true">${xml(url)}</guid><pubDate>${new Date(article.date + 'T00:00:00Z').toUTCString()}</pubDate><description>${xml(article.summary || cheerio.load(article.html).text().slice(0,240))}</description></item>`
+    }).join('\n')
+    await fs.writeFile(path.join(outputDir, 'feed.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel><title>${xml(config.site.name || 'Blog')}</title><link>${xml(base.href)}</link><description>${xml(config.site.description || '最近更新')}</description>${items}</channel></rss>\n`)
+  }
 
   const summaries = articles.map(({ html, outline, draft, ...article }) => article)
   const manifest = {

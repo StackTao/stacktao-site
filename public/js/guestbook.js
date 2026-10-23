@@ -44,7 +44,7 @@
       <div class="gb-book-current"><div><span>正在看的墙</span><strong data-book-title></strong></div><div class="gb-book-space"><span data-book-capacity></span><meter data-book-meter min="0" max="24" value="0" aria-label="当前墙面已用留言数"></meter></div></div>
       <p class="gb-book-explanation">每次完成算一处，每面最多 24 处。可以随时开新墙，旧痕迹留在原处。</p>
       <nav class="gb-book-walls" aria-label="墙面目录" data-book-walls></nav>
-      <section class="gb-book-notes"><div class="gb-book-section-head"><h3>本面留下的痕迹</h3><span data-book-note-count></span></div><p class="gb-book-local">只在当前浏览器保存。点一条，回到它在墙上的位置。</p><ol data-book-notes></ol></section>
+      <section class="gb-book-notes"><div class="gb-book-section-head"><h3>本面留下的痕迹</h3><span data-book-note-count></span></div><p class="gb-book-local">点一条，回到它在墙上的位置。</p><ol data-book-notes></ol></section>
       <p class="gb-book-status" data-book-status role="status"></p>
       <footer class="gb-book-foot"><span data-book-total></span><button data-gb="book-new-wall">开一面新墙 <span aria-hidden="true">↗</span></button></footer>
     </dialog>
@@ -473,7 +473,13 @@
       layoutMode = width < 600 ? 'narrow' : 'wide'
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
-      cards.forEach(function (el) { var n=notes.find(function(n){return n.id===el.dataset.note});el.style.width = (n && (n.frame||n.worldBox) ? (n.frame||n.worldBox).width*width/1000 : Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32))) + 'px';el.style.setProperty('--letter-min-height',parseFloat(el.style.width)*.6+'px');if(n&&(n.frame||n.worldBox)){el.style.height=(n.frame||n.worldBox).height*width/1000+'px';if(n.worldBox){el.style.overflow='hidden';el.style.setProperty('--letter-size',(n.worldFontSize||24)*width/1000+'px')}} })
+      cards.forEach(function (el) { var n=notes.find(function(n){return n.id===el.dataset.note});el.style.width = (n && (n.frame||n.worldBox) ? (n.frame||n.worldBox).width*width/1000 : Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32))) + 'px';el.style.setProperty('--letter-min-height',parseFloat(el.style.width)*.6+'px');if(n&&(n.frame||n.worldBox)){el.style.height=(n.frame||n.worldBox).height*width/1000+'px';if(n.worldBox){
+          el.dataset.worldSized='true';el.style.overflow='hidden'
+          var fontSize=(n.worldFontSize||24)*width/1000,scale=fontSize/(n.fontSize||24)
+          el.style.setProperty('--note-scale',scale)
+          el.style.setProperty('--letter-size',fontSize+'px')
+          var lettering=el.querySelector('.gb-lettering');if(lettering)lettering.style.setProperty('--letter-size',fontSize+'px')
+        }} })
       var reserved=wallControls();var occupied = reserved.concat(cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240, medium:el.dataset.medium } : null }).filter(Boolean))
       cards.forEach(function (el,index) {
         var p = positionOf(el), height = el.offsetHeight || 240, ownWidth = parseFloat(el.style.width), maxX = Math.max(0, width - ownWidth - 32)

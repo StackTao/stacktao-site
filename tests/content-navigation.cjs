@@ -14,7 +14,7 @@ function json(file, value) { write(file, JSON.stringify(value)) }
 try {
   const source = path.join(temporary, 'source'), output = path.join(temporary, 'content'), script = path.join(temporary, 'generated.js')
   json(path.join(source, 'content.config.json'), {
-    site: { name: 'StackTao' },
+    site: { name: 'StackTao & friends', website: 'https://example.test/blog/', description: '文字与 <生活>' },
     navigation: [{ label: '自定文字', route: '/posts', key: 'writing' }, { label: '旧演讲', route: '/talks', key: 'talks' }, { label: '旧详情', route: '/talks/legacy' }],
     footerNavigation: [{ label: '支持', route: '/sponsors' }, { label: '旧资料', route: '/giving-talks' }],
   })
@@ -25,6 +25,11 @@ try {
   write(path.join(source, 'albums/local/images/pixel.png'), 'test asset')
   write(path.join(source, 'talks/talks.json'), 'legacy malformed data is intentionally ignored')
   execFileSync(process.execPath, ['scripts/generate-content.mjs', '--source=' + source, '--out=' + output, '--script=' + script], { cwd: project })
+  const feed = new JSDOM(fs.readFileSync(path.join(output, 'feed.xml'), 'utf8'), { contentType: 'text/xml' }).window.document
+  assert.equal(feed.querySelector('channel > title').textContent, 'StackTao & friends')
+  assert.equal(feed.querySelector('channel > description').textContent, '文字与 <生活>')
+  assert.equal(feed.querySelectorAll('item').length, 1)
+  assert.equal(feed.querySelector('item > link').textContent, 'https://example.test/blog/#/posts/example')
   const generated = fs.readFileSync(script, 'utf8')
   const manifest = JSON.parse(fs.readFileSync(path.join(output, 'manifest.json')))
   assert(!('talks' in manifest), 'the manifest no longer publishes a talks module')

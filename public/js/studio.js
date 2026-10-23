@@ -217,7 +217,7 @@
     letterText.append(node('p', '', '互联网很大，能在这里遇见，已经是一件有意思的事。'), node('p', '', '不必有什么特别的见解。一句问候，一幅涂鸦，或者只是写下今天的心情。'))
     var invitation = link('#/guestbook', '在墙上留一点痕迹 ↗', 'journal-inline-link')
     invitation.tabIndex = -1
-    letterText.append(invitation, node('small', '', '目前只保存在你的浏览器里。'))
+    letterText.append(invitation, node('small', '', '在共享墙上，和路过的人留下一点痕迹。'))
     letterInner.appendChild(letterText)
     letterBody.appendChild(letterInner)
     letterButton.addEventListener('click', function () {

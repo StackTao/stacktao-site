@@ -106,3 +106,13 @@ node scripts/data-snapshot.mjs restore /srv/stacktao/backups/某次快照 /srv/s
 ## 验证范围
 
 `node --test tests/deployment.test.mjs` 检查备份、恢复、校验失败、禁止覆盖。`npm run test:admin` 检查登录、权限、发布、并发留言和重启持久化。真实证书签发、服务器网络和异地备份仍需在你的域名及服务器上验收。
+
+## 上线前由站点所有者配置
+
+1. 服务器与域名：`deploy/.env` 的 `DOMAIN`、`DATA_DIR`、`BACKUP_DIR`、`APP_VERSION`；DNS 指向服务器，开放 80/443，保持 Node 管理端口在反向代理后。
+2. 初始化管理员：用私有 `state/owner-token` 创建账号、独特长密码和找回邮箱。后台“站点设置”填写正式网站地址，RSS 将使用此地址。
+3. 邮件：后台“登录与找回”填写 Resend API Key 和已经完成域名验证的发件邮箱；上线后实际走一次忘记密码。可选环境变量 `RESEND_API_KEY`/`MAIL_FROM`。
+4. 第三方登录（可选）：分别创建 GitHub、Linux DO、Google OAuth 应用，填写 Client ID/Secret；把后台展示的 HTTPS 回调地址原样填入对应平台，保存后绑定本人账号。不能仅填密钥就认为绑定完成。
+5. 统计（可选）：配置 `ANALYTICS_ORIGINS` 和后台 HTTPS 采集地址。共享留言同域默认 `/api/wall`；跨域时另配 `WALL_ORIGINS` 和服务地址。
+6. 备份：选择备份保留策略，安装定时任务并配置异地存储及加密凭据；手动备份、恢复演练成功后再启用定时执行。
+7. 内容：替换示例照片/节目/随手记，检查外链和版权；若走 GitHub Pages，再配置内容仓库写入权限与 Actions。推荐的 Docker 同域部署不需要 Git 推送才能发布。

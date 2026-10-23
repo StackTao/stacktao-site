@@ -32,6 +32,17 @@ test('shared wall: two visitors, atomic collisions, ownership, revisions, leases
  assert.equal((await req('/api/v1/wall/'+created.id,'DELETE',{revision:updated.data.revision},owner)).status,200)
  assert.equal((await req('/api/wall/notes/'+created.id+'/restore','POST',{},winner)).status,403)
  assert.equal((await req('/api/wall/notes','POST',{note:created,revision:created.revision},winner)).status,409)
+ const archive=(await req('/api/v1/wall?deleted=1&page=99','GET',null,owner)).data
+ assert.equal(archive.page,1);assert.equal(archive.total,1);assert.equal(archive.notes[0].id,created.id)
+ assert.equal((await req('/api/v1/wall/'+created.id+'/restore','POST',{revision:updated.data.revision},a)).status,401)
+ assert.equal((await req('/api/v1/wall/'+created.id+'/restore','POST',{revision:'stale'},owner)).status,409)
+ const blocker=(await req('/api/wall/notes','POST',{note:note('restore-blocker')},loser)).data
+ assert.equal((await req('/api/v1/wall/'+created.id+'/restore','POST',{revision:updated.data.revision},owner)).status,409)
+ await req('/api/wall/notes/restore-blocker','DELETE',{revision:blocker.revision},loser)
+ const restored=await req('/api/v1/wall/'+created.id+'/restore','POST',{revision:updated.data.revision},owner)
+ assert.equal(restored.status,200);assert.notEqual(restored.data.revision,updated.data.revision)
+ assert.equal((await req('/api/wall/notes','POST',{note:created,revision:updated.data.revision},winner)).status,409)
+ await req('/api/v1/wall/'+created.id,'DELETE',{revision:restored.data.revision},owner)
  const deleted=await req('/api/wall/notes/drawing','DELETE',{revision:(await req('/api/wall','GET',null,a)).data.notes[0].revision},a);assert.equal(deleted.status,200)
  assert.equal((await req('/api/wall/notes/drawing/restore','POST',{},a)).status,200)
  for(let i=0;i<23;i++){const n={...note('capacity-'+i,10+i%8*110),worldBox:{x:10+i%8*110,y:1000+Math.floor(i/8)*100,width:50,height:40},medium:['paper','sticker','engraving'][i%3],sticker:'spark'};assert.equal((await req('/api/wall/notes','POST',{note:n},a)).status,200)}

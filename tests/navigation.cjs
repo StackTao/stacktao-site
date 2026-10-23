@@ -9,6 +9,7 @@ async function check(directory, reduced) {
     <div class="app-shell"><nav class="nav-right"><button data-search>搜索</button><a href="#/posts" data-nav="blog">文章</a><a id="custom-home" href="#/" data-nav="home" data-route="/">自定首页</a><a id="custom-posts" href="#/posts" data-nav="writing" data-route="/posts">自定文章</a><a id="custom-override" href="#/projects" data-nav="blog" data-route="/projects">自定造物</a></nav><div id="view" tabindex="-1"></div></div>
     <div class="search-mask" role="dialog" aria-modal="true" aria-hidden="true"><div class="search-panel"><div class="search-field"><input aria-controls="search-results"></div><div id="search-results" class="search-hits"></div></div></div>
     <div class="lightbox" role="dialog" aria-hidden="true"><button class="lightbox-close">关闭</button><img><div class="lightbox-cap"></div></div>
+    <footer class="footer"></footer><button data-back-to-top aria-label="返回顶部">返回顶部</button>
   </body></html>`, { url: 'https://blog.test/#/posts', runScripts: 'outside-only', pretendToBeVisual: true })
   const w = dom.window, d = w.document, q = selector => d.querySelector(selector)
   let y = 0, lastScrolled = null, guestbookMounts = 0, dirty = false, allowLeave = false, leavePrompts = 0
@@ -175,6 +176,17 @@ async function check(directory, reduced) {
   for (const route of ['/talks', '/talks/legacy', '/giving-talks']) {
     await navigate('#' + route)
     assert.equal(q('#view h1').textContent, '404', 'retired module cannot render even if stale content is loaded')
+  }
+  const footer = q('.footer'), topButton = q('[data-back-to-top]')
+  assert(footer && topButton)
+  {
+    y = 600
+    footer.getBoundingClientRect = () => ({ top: w.innerHeight - 40 })
+    w.dispatchEvent(new w.Event('scroll')); await settle()
+    assert(!topButton.classList.contains('is-visible'), 'back-to-top must not cover footer navigation')
+    footer.getBoundingClientRect = () => ({ top: w.innerHeight + 400 })
+    w.dispatchEvent(new w.Event('scroll')); await settle()
+    assert(topButton.classList.contains('is-visible'), 'back-to-top remains available above the footer')
   }
   open()
   assert.equal(q('.search-mask').classList.contains('is-entering'), !reduced, 'reopening starts a fresh, optional reveal')

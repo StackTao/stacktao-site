@@ -2006,6 +2006,18 @@
                 "sticker"
               ]
             }
+          },
+          {
+            "name": "deleted",
+            "in": "query",
+            "description": "1 查看删除档案；省略时查看墙上留言",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            }
           }
         ],
         "responses": {
@@ -2618,6 +2630,50 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/wall/{id}/restore": {
+      "post": {
+        "summary": "管理员恢复删除档案；原位置冲突或墙面已满返回 409",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revision"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "恢复成功，返回新版本留言"
+          },
+          "403": {
+            "description": "仅管理员可操作"
+          },
+          "409": {
+            "description": "版本或位置冲突"
+          }
+        }
       }
     }
   },

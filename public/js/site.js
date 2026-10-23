@@ -788,7 +788,9 @@
 
   function updateBackToTop() {
     scrollFrame = 0
-    if (backToTop) backToTop.classList.toggle('is-visible', window.scrollY > 320)
+    var footer = document.querySelector('.footer')
+    var footerVisible = footer && footer.getBoundingClientRect().top < window.innerHeight
+    if (backToTop) backToTop.classList.toggle('is-visible', window.scrollY > 320 && !footerVisible)
   }
 
   if (backToTop) {
