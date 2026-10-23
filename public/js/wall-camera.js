@@ -7,8 +7,24 @@
     ;[wall,o.stage,o.ghost].forEach(function(el){scene.append(el)})
     var titleHost=document.createElement('div');titleHost.className='gb-wall-header';titleHost.append(root.querySelector('.gb-wall-title'));scene.append(titleHost)
     var controls=document.createElement('nav');controls.className='gb-camera-controls';controls.setAttribute('aria-label','墙面视野')
-    controls.innerHTML='<div><button data-camera="out" aria-label="缩小墙面">−</button><button data-camera="reset" aria-label="还原墙面视野" title="还原视野">100%</button><button data-camera="in" aria-label="放大墙面">＋</button><button data-camera="hand" aria-label="拖动墙面" aria-pressed="false">✥</button></div><small>双指缩放、平移 · 单指落笔</small>'
+    controls.innerHTML='<button data-camera="toggle" aria-label="视野设置" aria-expanded="false" aria-controls="gb-camera-options"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span data-camera-label>视野</span></button><div id="gb-camera-options" class="gb-camera-options" hidden><div><button data-camera="out" aria-label="缩小墙面">−</button><button data-camera="reset" aria-label="还原墙面视野" title="还原视野">100%</button><button data-camera="in" aria-label="放大墙面">＋</button><button data-camera="hand" aria-label="拖动墙面" aria-pressed="false">✥</button></div><small>双指缩放、平移 · 单指落笔</small></div>'
     root.append(controls)
+    var toggle=controls.querySelector('[data-camera="toggle"]'),options=controls.querySelector('.gb-camera-options'),positionFrame=0,observedPanels=new Set()
+    function disclose(open){options.hidden=!open;toggle.setAttribute('aria-expanded',String(open))}
+    function positionControls(){
+      positionFrame=0
+      var panel=(innerWidth<=900&&root.querySelector('[data-composer][open]'))||root.querySelector('.gb-free-panel:not([hidden])')||root.querySelector('[data-placement-hint]:not([hidden])')||root.querySelector('.gb-wall-dock')
+      if(!panel)return
+      var bottom=Math.max(16,innerHeight-panel.getBoundingClientRect().top+10)
+      controls.style.bottom=bottom+'px';root.style.setProperty('--camera-bottom',bottom+'px');options.style.maxHeight=Math.max(44,innerHeight-bottom-64)+'px'
+    }
+    function queuePosition(){if(!positionFrame)positionFrame=requestAnimationFrame(positionControls)}
+    var panelResize=window.ResizeObserver?new ResizeObserver(queuePosition):null
+    var panelChanges=new MutationObserver(function(){watchPanels();queuePosition()})
+    function watchPanels(){root.querySelectorAll('.gb-wall-dock,.gb-free-panel,[data-composer],[data-placement-hint]').forEach(function(panel){if(observedPanels.has(panel))return;observedPanels.add(panel);if(panelResize)panelResize.observe(panel);panelChanges.observe(panel,{attributes:true,attributeFilter:['hidden','open']})})}
+    panelChanges.observe(root,{childList:true,attributes:true,attributeFilter:['class']});watchPanels();queuePosition()
+    root.addEventListener('pointerdown',function(e){if(!controls.contains(e.target))disclose(false)},{capture:true,signal:signal})
+    controls.addEventListener('keydown',function(e){if(e.key==='Escape'&&!options.hidden){e.preventDefault();e.stopPropagation();disclose(false);toggle.focus({preventScroll:true})}},{signal:signal})
     var zoom=1,x=0,y=0,hand=false,points=new Map(),gesture=null,blocked=false,suppressClick=false,lastView={width:viewport.clientWidth,height:viewport.clientHeight,wall:wall.clientWidth,left:wall.offsetLeft,top:wall.offsetTop}
     var clamp=function(value,low,high){return Math.max(low,Math.min(high,value))}
     function apply(){
@@ -17,6 +33,8 @@
       scene.style.setProperty('--wall-view-zoom',zoom)
       scene.style.transform='translate('+x+'px,'+y+'px) scale('+zoom+')'
       controls.querySelector('[data-camera="reset"]').textContent=Math.round(zoom*100)+'%'
+      controls.querySelector('[data-camera-label]').textContent=hand?'移墙':zoom===1?'视野':Math.round(zoom*100)+'%'
+      toggle.classList.toggle('is-hand',hand)
       controls.querySelector('[data-camera="out"]').disabled=zoom<=1
       controls.querySelector('[data-camera="in"]').disabled=zoom>=4
       scene.classList.toggle('is-panning',!!gesture||hand)
@@ -68,6 +86,7 @@
     function zoomAt(value,p){o.cancel();var next=clamp(value,1,4);x=p.x-(p.x-x)*next/zoom;y=p.y-(p.y-y)*next/zoom;zoom=next;apply();changed()}
     controls.addEventListener('click',function(e){
       var b=e.target.closest('button');if(!b)return
+      if(b.dataset.camera==='toggle'){disclose(options.hidden);return}
       if(b.dataset.camera==='hand'){o.cancel();hand=!hand;b.setAttribute('aria-pressed',String(hand));apply();return}
       if(b.dataset.camera==='reset'){o.cancel();zoom=1;x=y=0;apply();changed();return}
       zoomAt(zoom*(b.dataset.camera==='in'?1.5:1/1.5),{x:viewport.clientWidth/2,y:viewport.clientHeight*.4})
@@ -87,14 +106,14 @@
       }
       lastView=next;apply();changed()
     }
-    window.addEventListener('resize',function(){points.clear();gesture=null;blocked=false;o.cancel();refresh();changed()},{signal:signal})
+    window.addEventListener('resize',function(){points.clear();gesture=null;blocked=false;o.cancel();refresh();changed();queuePosition()},{signal:signal})
     window.addEventListener('blur',function(){points.clear();gesture=null;blocked=false;apply()},{signal:signal})
     apply()
     return {
       zoom:function(){return zoom},refresh:refresh,
       reset:function(){zoom=1;x=y=0;apply();changed()},
       focus:function(el){var r=el.getBoundingClientRect(),v=viewport.getBoundingClientRect();x+=v.left+v.width/2-(r.left+r.width/2);y+=v.top+v.height*.4-(r.top+r.height/2);apply();changed()},
-      destroy:function(){controller.abort();controls.remove();root.querySelector(':scope > .gb-wall-header').append(titleHost.firstChild);titleHost.remove();while(scene.firstChild)viewport.insertBefore(scene.firstChild,scene);scene.remove();viewport.classList.remove('has-wall-camera')}
+      destroy:function(){controller.abort();panelChanges.disconnect();if(panelResize)panelResize.disconnect();cancelAnimationFrame(positionFrame);root.style.removeProperty('--camera-bottom');controls.remove();root.querySelector(':scope > .gb-wall-header').append(titleHost.firstChild);titleHost.remove();while(scene.firstChild)viewport.insertBefore(scene.firstChild,scene);scene.remove();viewport.classList.remove('has-wall-camera')}
     }
   }
   window.WallCamera={mount:mount}

@@ -2,12 +2,16 @@
 #view .guestbook-page .gb-wall-section.has-wall-camera { height: 100dvh; overflow: clip; touch-action: none; overscroll-behavior: none; }
 .gb-wall-scene { position: relative; width: 100%; min-height: 100%; transform-origin: 0 0; background-color: #e4cba5; background-image: var(--wall-material); background-size: cover; }
 .gb-wall-scene.is-panning, .gb-wall-scene.is-panning * { cursor: grabbing !important; user-select: none; }
-.gb-camera-controls { position: fixed; left: max(16px,env(safe-area-inset-left)); top: 88px; z-index: 1000000002; color: #494c40; }
-.gb-camera-controls > div { display: flex; width: max-content; padding: 3px; border: 1px solid #6f604c30; border-radius: 24px; background: #faf6eae8; box-shadow: 0 2px 12px #634f2d12; }
-.gb-camera-controls button { min-width: 40px; height: 40px; padding: 0 9px; border: 0; border-radius: 20px; color: inherit; background: transparent; font: 13px var(--font-ui); touch-action: manipulation; }
+.gb-camera-controls { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1000000005; color: #494c40; }
+.gb-camera-controls button { min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 22px; color: inherit; background: transparent; font: 12px var(--font-ui); touch-action: manipulation; }
+.gb-camera-controls [data-camera='toggle'] { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 82px; background: #faf6eae8; border: 1px solid #6f604c25; box-shadow: 0 2px 8px #634f2d12; }
+.gb-camera-options { position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); padding: 5px; border: 1px solid #6f604c30; border-radius: 18px; background: #faf6eaf5; box-shadow: 0 5px 24px #634f2d20; overflow-y: auto; overscroll-behavior: contain; }
+.gb-camera-options > div { display: flex; }
 .gb-camera-controls [data-camera='in'], .gb-camera-controls [data-camera='out'] { font-size: 20px; }
-.gb-camera-controls [aria-pressed='true'] { background: #454b3f; color: #fff9e9; }
-.gb-camera-controls small { display: block; padding: 7px 5px; font: 10px/1.5 var(--font-ui); text-shadow: 0 1px 3px #fff6de; }
-@media(max-width:600px) { .gb-camera-controls { left: 12px; top: 76px; } .gb-camera-controls button { min-width: 44px; height: 44px; } }
+.gb-camera-controls [aria-pressed='true'], .gb-camera-controls [data-camera='toggle'].is-hand { background: #454b3f; color: #fff9e9; }
+.gb-camera-controls small { display: block; padding: 3px 8px 7px; font: 10px/1.5 var(--font-ui); white-space: nowrap; }
 
 #view .guestbook-page .gb-wall-scene .gb-stage-handle { top: calc(-34px / var(--wall-view-zoom, 1)); transform: scale(calc(1 / var(--wall-view-zoom, 1))); transform-origin: left bottom; }
+
+#view .guestbook-page:has(.gb-camera-controls) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 54px); }
+#view .guestbook-page:has(.gb-camera-options:not([hidden])) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 150px); }
