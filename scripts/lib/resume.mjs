@@ -1,10 +1,12 @@
+import { renderResumeLab } from './resume-lab.mjs'
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
 const list = value => Array.isArray(value) ? value : []
 const text = value => typeof value === 'string' ? value : ''
 const href = value => /^(https?:\/\/|mailto:)/i.test(text(value).trim()) ? escape(value.trim()) : ''
 
-export function renderResume(resume) {
+export function renderResume(resume, projects) {
   if (!resume || !text(resume.name).trim()) return ''
+  const lab = renderResumeLab(projects)
   const sections = list(resume.sections).filter(section => section && text(section.title))
   const contacts = list(resume.contacts).filter(item => item && text(item.label)).map(item => {
     const url = href(item.url)
@@ -26,10 +28,10 @@ export function renderResume(resume) {
         <p class="resume-role">${escape(resume.role)}</p>
         <div class="resume-contacts">${contacts}${email ? `<button type="button" class="resume-copy resume-web-only" data-resume-copy="${escape(text(email.url).slice(7).split('?')[0])}">复制邮箱</button>` : ''}</div><span class="resume-copy-status resume-web-only" data-resume-copy-status role="status"></span>
       </header>
-      ${notes}</div>
+      ${lab || notes}</div>
       ${text(resume.summary) ? `<p class="resume-summary">${escape(resume.summary)}</p>` : ''}
       <nav class="resume-index resume-web-only" aria-label="简历章节">${sections.map((section, i) => `<button type="button" data-resume-jump="${i}"><span>${String(i + 1).padStart(2, '0')}</span>${escape(section.title)}<b aria-hidden="true">↗</b></button>`).join('')}</nav>
-      ${sections.map((section, i) => `<section class="resume-section" data-resume-section="${i}" aria-labelledby="resume-section-${i}"><div class="resume-section-label"><span aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><h2 id="resume-section-${i}">${escape(section.title)}</h2><small>${escape(section.caption)}</small><div class="resume-time-index resume-web-only">${list(section.items).filter(Boolean).map((item, j) => text(item.period) ? `<button type="button" data-resume-entry-target="${i}-${j}">${escape(item.period)}<span aria-hidden="true">→</span></button>` : '').join('')}</div></div><div class="resume-entries">${list(section.items).filter(Boolean).map((item, j) => `<div class="resume-entry" data-resume-entry="${i}-${j}"><div class="resume-entry-heading"><h3>${href(item.url) ? `<a href="${href(item.url)}" target="_blank" rel="noreferrer">${escape(item.title)} <span aria-hidden="true">↗</span></a>` : escape(item.title)}</h3>${text(item.period) ? `<span class="resume-period">${escape(item.period)}</span>` : ''}</div>${text(item.subtitle) ? `<p class="resume-subtitle">${escape(item.subtitle)}</p>` : ''}${list(item.points).length ? `<ul>${item.points.map(point => `<li>${escape(point)}</li>`).join('')}</ul>` : ''}</div>`).join('')}</div></section>`).join('')}
+      ${sections.map((section, i) => `<section class="resume-section" data-resume-section="${i}" aria-labelledby="resume-section-${i}"><div class="resume-section-label"><span aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><h2 id="resume-section-${i}">${escape(section.title)}</h2><small>${escape(section.caption)}</small><div class="resume-time-index resume-web-only">${list(section.items).filter(Boolean).map((item, j) => text(item.period) ? `<button type="button" data-resume-entry-target="${i}-${j}">${escape(item.period)}<span aria-hidden="true">→</span></button>` : '').join('')}</div></div><div class="resume-entries">${list(section.items).filter(Boolean).map((item, j) => `<div class="resume-entry" data-resume-entry="${i}-${j}"><div class="resume-entry-heading"><h3>${href(item.url) ? `<a href="${href(item.url)}" target="_blank" rel="noreferrer">${escape(item.title)} <span aria-hidden="true">↗</span></a>` : escape(item.title)}</h3>${text(item.period) ? `<span class="resume-period">${escape(item.period)}</span>` : ''}</div>${text(item.subtitle) ? `<p class="resume-subtitle">${escape(item.subtitle)}</p>` : ''}${list(item.points).length ? `<ul>${item.points.map(point => `<li>${escape(point)}</li>`).join('')}</ul>` : ''}${lab && item.caseStudy && ['problem','decision','result'].some(key => text(item.caseStudy[key]).trim()) ? `<details class="resume-inline-notes resume-web-only"><summary>这个项目背后的取舍</summary>${[['problem','遇到的问题'],['decision','做过的取舍'],['result','结果与验证']].filter(([key]) => text(item.caseStudy[key]).trim()).map(([key,label])=>`<h4>${label}</h4><p>${escape(item.caseStudy[key])}</p>`).join('')}</details>` : ''}</div>`).join('')}</div></section>`).join('')}
       <footer class="resume-paper-footer"><span>${escape(resume.footer || '保持好奇，把事情做好。')}</span><span>${escape(resume.name)} · ${resume.draft !== false ? '示例简历' : 'RÉSUMÉ'}</span></footer>
     </article>
     <p class="resume-print-note">导出建议：A4 纸张、缩放 100%、关闭页眉和页脚。文字与链接会保留。</p>

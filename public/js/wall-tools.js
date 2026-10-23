@@ -241,5 +241,5 @@
     window.addEventListener('pagehide',function(){saveDraft();release()},{signal:signal});showPresence()
     return {cancelGesture:cancelGesture,viewportChanged:function(){refreshBoxes(protectedIgnore);cursor.hidden=true;warning.hidden=true},extent:function(){return active&&bounds?(bounds.y+bounds.height+120)*scale():0},start:start,canPlace:canPlace,dirty:dirty,active:function(){return active},busy:function(){return !!held||!!moveDrag||!!pending.length||!!inflight},presence:showPresence,resize:function(){panel.querySelector('[data-capacity]').textContent=o.capacity?o.capacity():'';if(active){fit();hideOriginal();moveOutline()}else {refreshBoxes();showPresence();showRecovery()}},destroy:function(){end();clearInterval(sprayTimer);clearTimeout(warningTimer);clearTimeout(presenceTimer);if(audio)audio.close();controller.abort();layer.remove();presence.remove();panel.remove();cursor.remove();warning.remove();resume.remove();discard.remove();clearTimeout(draftTimer)}}
   }
-  window.WallTools={draftStore:draftStore,mount:mount,paintArt:paintArt,toolArt:toolArt}
+  window.WallTools={draftStore:draftStore,mount:mount,paintArt:paintArt,paintStroke:paintStroke,toolArt:toolArt}
 })()

@@ -8,6 +8,7 @@
       var button = view.querySelector('[data-resume-print]')
       if (!page || !button) return
       var controller = new AbortController(), signal = controller.signal, observer = null, savedScroll = 0
+      if (window.ResumeLab) window.ResumeLab.mount(page, signal)
       var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)')
       page.querySelectorAll('.resume-case-tabs').forEach(function (tablist) {
         var tabs = Array.from(tablist.querySelectorAll('[data-case-tab]'))

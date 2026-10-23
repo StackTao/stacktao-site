@@ -396,7 +396,7 @@ function createPrototypeContentScript(articles, config, projects, albums) {
   const structured = createStructuredPages(projects, albums)
   Object.assign(generated.pages, structured.pages)
   Object.assign(generated.titles, structured.titles)
-  const resume = renderResume(config.resume)
+  const resume = renderResume(config.resume, projects)
   if (resume) { generated.pages['/resume'] = resume; generated.titles['/resume'] = `${config.resume.name} · 简历` }
   const navigation = normalizeNavigation(config.navigation, true)
   const footerNavigation = normalizeNavigation(config.footerNavigation)

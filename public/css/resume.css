@@ -182,3 +182,43 @@ html.dark body:has(.resume-page) { background: #232623 !important; }
   }
   @media (prefers-reduced-motion: reduce) { .resume-page *, .resume-page *::before { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 }
+
+@media screen {
+  .rl-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule-strong); }
+  .rl-tabs button { flex: 1; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--resume-muted); font: 12px var(--font-ui); padding: 14px 4px; cursor: pointer; white-space: nowrap; }
+  .rl-tabs button span { margin-right: 7px; font: 9px var(--font-mono); opacity: .6; }
+  .rl-tabs button[aria-selected=true] { color: var(--resume-accent); border-bottom-color: currentColor; }
+  .rl-panel { padding: 24px 22px 18px; border: 1px solid var(--rule); border-top: 0; background: #fffdf7; }
+  .rl-panel[hidden], .resume-paper .rl-results a[hidden] { display: none; }
+  html.dark .rl-panel { background: #292e26; }
+  .rl-project-name { color: var(--resume-muted); font: 10px var(--font-mono); letter-spacing: .05em; }
+  .resume-paper .rl-panel h2 { margin: 10px 0 22px; font: 23px/1.5 var(--font-heading); color: var(--resume-ink); }
+  .rl-panel label { display: block; margin-bottom: 8px; font-size: 11px; color: var(--resume-muted); }
+  .rl-panel :is(textarea,input) { box-sizing: border-box; width: 100%; padding: 12px; color: var(--resume-ink); background: transparent; border: 1px solid var(--rule-strong); border-radius: 3px; font: 12px/1.7 var(--font-mono); }
+  .rl-panel textarea { height: 180px; resize: vertical; }
+  .rl-panel textarea[aria-invalid=true] { border-color: #b05240; }
+  .rl-panel input { font-family: var(--font-ui); font-size: 13px; }
+  .rl-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .rl-actions button, .rl-search-hints button { border: 1px solid var(--rule-strong); border-radius: 3px; padding: 8px 13px; background: transparent; color: var(--resume-ink); cursor: pointer; font: 12px var(--font-ui); min-height: 36px; }
+  .rl-actions button:hover, .rl-search-hints button:hover { border-color: var(--resume-accent); color: var(--resume-accent); }
+  .rl-actions button:disabled { opacity: .4; cursor: default; }
+  .resume-paper .rl-feedback { margin: 12px 0; min-height: 34px; font-size: 11px; line-height: 1.6; color: var(--resume-accent); }
+  .resume-paper .rl-footnote { color: var(--resume-muted); font-size: 10px; line-height: 1.7; }
+  .resume-paper .rl-project-link { display: block; border-top: 1px solid var(--rule); padding-top: 13px; margin-top: 17px; font-size: 12px; text-align: right; }
+  .rl-search-hints { display: flex; gap: 8px; margin-top: 8px; }
+  .rl-search-hints button { border: 0; padding: 4px 8px; font-size: 10px; min-height: 30px; color: var(--resume-accent); }
+  .rl-results { max-height: 205px; overflow-y: auto; overscroll-behavior: contain; min-height: 150px; }
+  .resume-paper .rl-results a { display: block; padding: 12px 0; border-bottom: 1px solid var(--rule); text-decoration: none; }
+  .rl-results strong { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; }
+  .rl-results a > span { display: block; margin-top: 5px; font-size: 11px; line-height: 1.7; color: var(--resume-muted); }
+  .rl-canvas { display: block; width: 100%; height: auto; aspect-ratio: 20/11; background: #f1d3a5 url('../assets/materials/village-wall-v1.jpg') center / 650px; border-radius: 3px; cursor: crosshair; touch-action: none; }
+  .rl-paints { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+  .rl-paints button { border: 5px solid #fffdf7; width: 30px; height: 30px; padding: 0; border-radius: 100%; background: var(--ink); box-shadow: 0 0 0 1px var(--rule); cursor: pointer; }
+  .rl-paints button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--resume-accent); }
+  .rl-paints span { margin-left: auto; color: var(--resume-muted); font-size: 10px; }
+  .resume-paper .resume-inline-notes { margin-top: 18px; padding: 12px 0; border-top: 1px dashed var(--rule-strong); font-size: 12px; }
+  .resume-inline-notes summary { cursor: pointer; color: var(--resume-accent); }
+  .resume-inline-notes h4 { font-size: 12px; font-weight: 500; margin: 16px 0 5px; }
+  .resume-paper .resume-inline-notes p { font-size: 13px; line-height: 1.8; white-space: pre-line; color: var(--resume-muted); }
+  @media(max-width:700px) { .rl-panel { padding: 20px 16px 16px; }.resume-paper .rl-panel h2 { font-size: 21px; } }
+}
