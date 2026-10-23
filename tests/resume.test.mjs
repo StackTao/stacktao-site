@@ -59,3 +59,61 @@ test('editor saves edits and repeated items with revision protection without alt
   await main.querySelector('#save-resume').onclick()
   assert.equal(saved.length,2);assert.match(errors[0].message,/链接/)
 })
+
+async function interactiveResume(options = {}) {
+  const dom = new JSDOM(renderResume(options.content || sample), {runScripts:'outside-only',pretendToBeVisual:true})
+  const w = dom.window, frames = new Map(), scrolled = []; let next = 0
+  w.matchMedia = () => ({matches:!!options.reduced,addEventListener(){}})
+  w.requestAnimationFrame = callback => {frames.set(++next, callback);return next}
+  w.cancelAnimationFrame = id => frames.delete(id)
+  w.scrollTo = value => scrolled.push(value)
+  w.HTMLElement.prototype.scrollIntoView = function () { scrolled.push(this) }
+  Object.defineProperty(w.navigator,'clipboard',{value:{writeText:options.copy || (async()=>{})}})
+  w.eval(await readFile(new URL('../public/js/resume.js',import.meta.url),'utf8'))
+  w.Resume.mount(w.document)
+  return {w,doc:w.document,frames,scrolled}
+}
+
+test('interactive craft responds to input and cancels animation on user control, remount and exit', async () => {
+  const {w,doc,frames}=await interactiveResume()
+  const range=doc.querySelector('input[type=range]'),replay=doc.querySelector('[data-craft-replay]')
+  range.value='40';range.dispatchEvent(new w.Event('input'))
+  assert.equal(range.getAttribute('aria-valuetext'),'结构')
+  assert.equal(doc.querySelector('[data-craft-stage]').style.getPropertyValue('--craft'),'0.4')
+  replay.click();assert.equal(frames.size,1);assert.equal(range.value,'0')
+  range.dispatchEvent(new w.Event('keydown'));assert.equal(frames.size,0)
+  replay.click();w.Resume.mount(doc);assert.equal(frames.size,0)
+  replay.click();assert.equal(frames.size,1)
+  w.Resume.destroy();assert.equal(frames.size,0)
+  replay.click();assert.equal(frames.size,0)
+  w.close()
+})
+
+test('paper preview preserves content and reduced motion skips replay; duplicate periods locate the correct entry', async () => {
+  const content=structuredClone(sample)
+  content.sections[0].items[1].period=content.sections[0].items[0].period
+  const {w,doc,frames,scrolled}=await interactiveResume({reduced:true,content})
+  const body=doc.querySelector('.resume-entries').textContent,toggle=doc.querySelector('[data-resume-view]')
+  toggle.click();assert(doc.querySelector('.is-paper-preview'));assert.equal(toggle.textContent,'返回网页版')
+  toggle.click();assert(!doc.querySelector('.is-paper-preview'));assert.equal(toggle.getAttribute('aria-pressed'),'false')
+  assert.equal(doc.querySelector('.resume-entries').textContent,body)
+  doc.querySelector('[data-craft-replay]').click();assert.equal(frames.size,0)
+  assert.equal(doc.querySelector('input[type=range]').value,'100')
+  doc.querySelector('[data-resume-entry-target="0-1"]').click()
+  assert.equal(scrolled.at(-1),doc.querySelector('[data-resume-entry="0-1"]'))
+  assert.equal(doc.activeElement,doc.querySelector('[data-resume-entry="0-1"] h3'))
+  doc.querySelector('[data-resume-jump="2"]').click()
+  assert.equal(doc.activeElement,doc.querySelector('#resume-section-2'))
+  w.close()
+})
+
+test('email copy reports success or a usable fallback', async () => {
+  for (const fail of [false,true]) {
+    let copied
+    const {w,doc}=await interactiveResume({copy:async value=>{if(fail)throw Error('denied');copied=value}})
+    doc.querySelector('[data-resume-copy]').click();await new Promise(resolve=>setImmediate(resolve))
+    assert.match(doc.querySelector('[data-resume-copy-status]').textContent,fail?/直接选中/:/已复制/)
+    if(!fail)assert.equal(copied,'hello@example.com')
+    w.close()
+  }
+})

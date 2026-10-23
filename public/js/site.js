@@ -416,6 +416,7 @@
     var pageRoute = retiredRoute(route) ? '/404' : route
     var html = pages[pageRoute] || pages['/404'] || '<main class="page prose"><h1>404</h1></main>'
     closeSearch()
+    if (window.Resume) window.Resume.destroy()
     if (window.Guestbook) window.Guestbook.destroy()
     if (window.Studio) window.Studio.destroy()
     view.innerHTML = html
