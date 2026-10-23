@@ -287,7 +287,7 @@
     function capacityText(){var count=wallNotes().length;return '本面 '+count+' / '+WALL_SIZE+' · '+(count>=WALL_SIZE?'已满，请开新墙':'还可留 '+(WALL_SIZE-count)+' 处')}
     function roomForNote(){if(wallNotes().length<WALL_SIZE)return true;status('这面墙已满（24 / 24）。点击「开新墙」继续，现有留言会留在原墙。');return false}
     function textScale(){return draft.mode==='text'&&draft.medium!=='sticker'?wall.clientWidth/1000*(editingText?(editingText.worldFontSize||editingText.fontSize||24)/(editingText.fontSize||24):1):1}
-    function draftWidth(){if(draft.mode==='text'&&draft.medium!=='sticker')return editingText&&editingText.worldBox?editingText.worldBox.width*wall.clientWidth/1000:markWidths[draft.size]*textScale();return Math.min(draft.medium==='sticker'?{small:100,medium:148,large:200}[draft.size]:markWidths[draft.size],Math.max(160,wall.clientWidth-32))}
+    function draftWidth(){if(draft.mode==='text'&&draft.medium!=='sticker')return editingText&&editingText.worldBox?editingText.worldBox.width*wall.clientWidth/1000:markWidths[draft.size]*textScale();return (draft.medium==='sticker'?{small:100,medium:148,large:200}[draft.size]:markWidths[draft.size])*wall.clientWidth/1000}
     function anchorAt(x,y){var r=wall.getBoundingClientRect(),w=draftWidth(),h=draft.medium==='sticker'?w:w*.6;return {mode:layoutMode,x:Math.max(0,Math.min(1,(x-r.left-w/2-16)/Math.max(1,wall.clientWidth-w-32))),y:Math.max(16,y-r.top-h/2)}}
     function choosePlace(medium) {
       var recoverable=textRecovery.read();if(recoverable&&!composer.open&&!draft.text.trim()&&!draft.strokes.length){recoverText.click();return}
@@ -309,7 +309,7 @@
       if(draft.mode==='text'&&draft.medium!=='sticker'){var ts=textScale(),authoredWidth=width/ts;writing.style.width=authoredWidth+'px';writing.style.transformOrigin='0 0';writing.style.transform='scale('+ts+')';textStyle(writing,draft);var input=$('[data-message]');input.style.height='0px';var h=Math.max(authoredWidth*.6,input.scrollHeight);input.style.height=h+'px';writing.style.height=h+'px';stage.style.height=h*ts+'px'}else {writing.style.height='';$('[data-message]').style.height=''}
       if(composer.open){validatePlacement();var b=stage.getBoundingClientRect();composer.style.left=innerWidth>900&&b.right>innerWidth-330?'24px':'';composer.style.right=composer.style.left?'auto':''}
     }
-    function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:Math.max(writing.offsetHeight*textScale(),width*.6);if(draft.medium==='paper')h+=36*textScale();return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
+    function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:draft.mode==='draw'?width*.6:Math.max(writing.offsetHeight*textScale(),width*.6);if(draft.medium==='paper')h+=36*(draft.mode==='text'?textScale():wall.clientWidth/1000);return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
     function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok||publishingText;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
     wall.addEventListener('pointermove',function(e){if(!choosing)return;var a=anchorAt(e.clientX,e.clientY),w=draftWidth();placementGhost.hidden=false;Object.assign(placementGhost.style,{left:wall.offsetLeft+16+a.x*Math.max(0,wall.clientWidth-w-32)+'px',top:wall.offsetTop+a.y+'px',width:w+'px',height:(draft.medium==='sticker'?w:w*.6)+'px'});placementGhost.textContent={ink:'喷漆文字',engraving:'刻字',paper:'纸条',sticker:'贴纸'}[draft.medium]},{signal:signal})
     moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
@@ -407,7 +407,7 @@
       if(shared){try{
         var deleted=notes.filter(function(n){return !next.some(function(x){return x.id===n.id})}),changed=next.filter(function(n){return !notes.some(function(x){return x.id===n.id&&JSON.stringify(x)===JSON.stringify(n)})})
         for(var n of deleted)await shared.remove(n)
-        for(var n of changed){if(removed&&removed.id===n.id){await shared.restore(n);continue}if(!n.frame){var box=placementRect(),scale=wall.clientWidth/1000;n.worldBox={x:box.x/scale,y:box.y/scale,width:box.width/scale,height:box.height/scale};n.worldFontSize=(draft.fontSize||24)*textScale()/scale}await reserveText();await shared.put(n,textLease)}
+        for(var n of changed){if(removed&&removed.id===n.id){await shared.restore(n);continue}if(!n.frame){var box=placementRect(),scale=wall.clientWidth/1000;n.worldBox={x:box.x/scale,y:box.y/scale,width:box.width/scale,height:box.height/scale};n.worldFontSize=(draft.fontSize||24)*(draft.mode==='text'&&draft.medium!=='sticker'?textScale()/scale:1)}await reserveText();await shared.put(n,textLease)}
         notes=readNotes();return true
       }catch(e){error(e.message+'；草稿仍保留。');status(e.message);return false}}
 
