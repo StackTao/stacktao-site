@@ -14,8 +14,8 @@ import { marked } from 'marked'
 import sanitizeHtml from 'sanitize-html'
 
 const exec = promisify(execFile)
-// Only enable behind the private Caddy network; Caddy overwrites this header.
-const clientIP = req => process.env.TRUST_PROXY==='caddy' && typeof req.headers['x-stacktao-client-ip']==='string' ? req.headers['x-stacktao-client-ip'] : req.socket.remoteAddress
+// Only enable behind a trusted proxy that overwrites this header; never expose the backend port.
+const clientIP = req => ['caddy','nginx'].includes(process.env.TRUST_PROXY) && typeof req.headers['x-stacktao-client-ip']==='string' ? req.headers['x-stacktao-client-ip'] : req.socket.remoteAddress
 const hash = value => crypto.createHash('sha256').update(value).digest('hex')
 const uid = () => crypto.randomUUID()
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/

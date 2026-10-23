@@ -6,3 +6,5 @@ dist.previous
 .env
 artifacts
 *.log
+
+**/.env

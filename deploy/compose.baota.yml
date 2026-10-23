@@ -1,0 +1,26 @@
+name: stacktao
+services:
+  app:
+    image: stacktao:${APP_VERSION:-local}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: '1000:1000'
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - '127.0.0.1:15174:5174'
+    environment:
+      CONTENT_DIR: /data/content
+      ADMIN_STATE_DIR: /data/state
+      ADMIN_OUTPUT_DIR: /data/site/dist
+      ADMIN_HOST: 0.0.0.0
+      ADMIN_PORT: 5174
+      ADMIN_PUBLIC_ORIGIN: https://${DOMAIN:?Set DOMAIN}
+      ANALYTICS_ORIGINS: https://${DOMAIN}
+      TRUST_PROXY: nginx
+    volumes:
+      - ${DATA_DIR:-/srv/stacktao/data}:/data

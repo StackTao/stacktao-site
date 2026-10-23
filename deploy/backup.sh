@@ -5,6 +5,8 @@ cd "$(dirname "$0")"
 set -a
 . ./.env
 set +a
+# BaoTa uses compose.baota.yml; standalone deployment keeps compose.yml.
+export COMPOSE_FILE="${COMPOSE_FILE:-compose.yml}"
 : "${DATA_DIR:?}" "${BACKUP_DIR:?}"
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
