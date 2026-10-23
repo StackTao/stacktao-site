@@ -275,7 +275,7 @@
     root.addEventListener('input',function(){clearTimeout(textDraftTimer);textDraftTimer=setTimeout(backupText,300)},{signal:signal})
     root.addEventListener('change',function(){clearTimeout(textDraftTimer);textDraftTimer=setTimeout(backupText,300)},{signal:signal})
     window.addEventListener('pagehide',backupText,{signal:signal})
-    recoverText.addEventListener('click',function(){var saved=textRecovery.read();if(!saved||saved.section!==currentWall)return;draft=saved.draft;editingText=saved.editing;writeAnchor=saved.anchor;if(writeAnchor)writeAnchor.y*=wall.clientWidth/saved.wallWidth;openComposer(recoverText);recoverText.hidden=true},{signal:signal})
+    recoverText.addEventListener('click',function(){var saved=textRecovery.read();if(!saved||saved.section!==currentWall)return;draft=saved.draft;editingText=saved.editing;writeAnchor=saved.anchor;if(writeAnchor)rescaleAnchor(saved.wallWidth,wall.clientWidth);openComposer(recoverText);recoverText.hidden=true},{signal:signal})
     function draftSignature(){return JSON.stringify([draft.mode,draft.medium,draft.text,draft.strokes,draft.name,draft.paper,draft.ink,draft.size,draft.sticker,draft.font,draft.fontSize])}
     unsaved=function(){
       if(freeTools&&freeTools.dirty())return true
@@ -288,6 +288,14 @@
     function roomForNote(){if(wallNotes().length<WALL_SIZE)return true;status('这面墙已满（24 / 24）。点击「开新墙」继续，现有留言会留在原墙。');return false}
     function textScale(){return draft.mode==='text'&&draft.medium!=='sticker'?wall.clientWidth/1000*(editingText?(editingText.worldFontSize||editingText.fontSize||24)/(editingText.fontSize||24):1):1}
     function draftWidth(){if(draft.mode==='text'&&draft.medium!=='sticker')return editingText&&editingText.worldBox?editingText.worldBox.width*wall.clientWidth/1000:markWidths[draft.size]*textScale();return (draft.medium==='sticker'?{small:100,medium:148,large:200}[draft.size]:markWidths[draft.size])*wall.clientWidth/1000}
+    // Draft anchors use screen pixels vertically; keep their wall position on rotation.
+    function rescaleAnchor(from,to){
+      if(!writeAnchor||!from||from===to)return
+      var clean=editingText&&JSON.stringify(writeAnchor)===editAnchorBaseline,ratio=to/from,width=draftWidth()
+      writeAnchor.x=((16+writeAnchor.x*Math.max(0,from-width/ratio-32))*ratio-16)/Math.max(1,to-width-32)
+      writeAnchor.y*=ratio
+      if(clean)editAnchorBaseline=JSON.stringify(writeAnchor)
+    }
     function anchorAt(x,y){var r=wall.getBoundingClientRect(),w=draftWidth(),h=draft.medium==='sticker'?w:w*.6;return {mode:layoutMode,x:Math.max(0,Math.min(1,(x-r.left-w/2-16)/Math.max(1,wall.clientWidth-w-32))),y:Math.max(16,y-r.top-h/2)}}
     function choosePlace(medium) {
       var recoverable=textRecovery.read();if(recoverable&&!composer.open&&!draft.text.trim()&&!draft.strokes.length){recoverText.click();return}
@@ -312,9 +320,9 @@
     function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:draft.mode==='draw'?width*.6:Math.max(writing.offsetHeight*textScale(),width*.6);if(draft.medium==='paper')h+=36*(draft.mode==='text'?textScale():wall.clientWidth/1000);return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
     function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok||publishingText;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
     wall.addEventListener('pointermove',function(e){if(!choosing)return;var a=anchorAt(e.clientX,e.clientY),w=draftWidth();placementGhost.hidden=false;Object.assign(placementGhost.style,{left:wall.offsetLeft+16+a.x*Math.max(0,wall.clientWidth-w-32)+'px',top:wall.offsetTop+a.y+'px',width:w+'px',height:(draft.medium==='sticker'?w:w*.6)+'px'});placementGhost.textContent={ink:'喷漆文字',engraving:'刻字',paper:'纸条',sticker:'贴纸'}[draft.medium]},{signal:signal})
-    moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
+    moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0||!e.isPrimary||stageDrag)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
     moveHandle.addEventListener('pointermove',function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;writeAnchor={mode:layoutMode,x:Math.max(0,Math.min(1,stageDrag.anchor.x+(e.clientX-stageDrag.x)/Math.max(1,wall.clientWidth-draftWidth()-32))),y:Math.max(16,stageDrag.anchor.y+e.clientY-stageDrag.y)};stage.style.left=wall.offsetLeft+16+writeAnchor.x*Math.max(0,wall.clientWidth-draftWidth()-32)+'px';stage.style.top=wall.offsetTop+writeAnchor.y+'px';if(!placeFrame)placeFrame=requestAnimationFrame(function(){placeFrame=0;validatePlacement()})},{signal:signal})
-    ;['pointerup','pointercancel','lostpointercapture'].forEach(function(type){moveHandle.addEventListener(type,function(){stageDrag=null;positionStage()},{signal:signal})})
+    ;['pointerup','pointercancel','lostpointercapture'].forEach(function(type){moveHandle.addEventListener(type,function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;stageDrag=null;positionStage()},{signal:signal})})
     moveHandle.addEventListener('keydown',function(e){var d={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];if(!d)return;e.preventDefault();writeAnchor.x=Math.max(0,Math.min(1,writeAnchor.x+d[0]/Math.max(1,wall.clientWidth-draftWidth()-32)));writeAnchor.y=Math.max(16,writeAnchor.y+d[1]);positionStage()},{signal:signal})
     function readNotes(){var items=load();items.slice().reverse().forEach(function(n,i){if(n.section==null)n.section=Math.floor(i/WALL_SIZE)});return items}
     var notes = readNotes(), previewNote = null, selected = null, removed = null, restoreFocus = null, writeAnchor = null, statusTimer = 0
@@ -425,6 +433,7 @@
       try { return navigator.locks ? await navigator.locks.request(KEY+'-mutation',write) : write() }
       catch (err) { error((/正在创作|另一窗口|这面墙已满|新的痕迹/.test(err.message)) ? err.message : '浏览器空间不足或无法保存。草稿仍在，请不要关闭页面；原有留言没有改变。'); status(/正在创作|另一窗口|这面墙已满|新的痕迹/.test(err.message)?err.message:'保存未完成，草稿和原有留言都还在。'); return false }
     }
+    var layoutWidth=wall.clientWidth
     var layoutKey = KEY + '-positions-organic-v1', layouts = { wide: {}, narrow: {} }, layoutMode = '', drag = null, suppressNoteClick = false
     var arrange = $('[data-arrange]'), touchArrange = false, wallObserver = null, visibilityObserver = null
     try {
@@ -438,7 +447,7 @@
     } catch (_) {}
     window.addEventListener('storage',function(e){if(e.key===layoutKey && e.newValue){try{var next=JSON.parse(e.newValue);if(next.wide&&next.narrow){layouts=next;wallLayout()}}catch(_){}}},{signal:signal})
     function positionOf(el) {
-      if(shared){var n=notes.find(function(n){return n.id===el.dataset.note});if(n&&n.worldBox){var f=n.worldBox,s=wall.clientWidth/1000;return {x:Math.max(0,(f.x*s-16)/Math.max(1,wall.clientWidth-f.width*s-32)),y:f.y*s,z:notes.indexOf(n)+1}}}
+      if(shared){var n=notes.find(function(n){return n.id===el.dataset.note});if(n&&n.worldBox){var f=n.worldBox,s=wall.clientWidth/1000;return {x:(f.x*s-16)/Math.max(1,wall.clientWidth-f.width*s-32),y:f.y*s,z:notes.indexOf(n)+1}}}
 
       var freeNote=notes.find(function(n){return n.id===el.dataset.note && n.frame});if(freeNote){var f=freeNote.frame,scale=wall.clientWidth/1000;return {x:Math.max(0,(f.x*scale-16)/Math.max(1,wall.clientWidth-f.width*scale-32)),y:f.y*scale,z:notes.indexOf(freeNote)+1}}
       if (Object.prototype.hasOwnProperty.call(layouts[layoutMode], el.dataset.note)) return layouts[layoutMode][el.dataset.note]
@@ -482,6 +491,7 @@
       if(recoverText)showTextRecovery()
       finishPaper(true)
       var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32))
+      if(width!==layoutWidth){rescaleAnchor(layoutWidth,width);layoutWidth=width;stop();stageDrag=null}
       layoutMode = width < 600 ? 'narrow' : 'wide'
       wall.style.setProperty('--wall-paper-width', paperWidth + 'px')
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
@@ -546,7 +556,7 @@
             var fresh=JSON.parse(localStorage.getItem(layoutKey)||'{}');fresh.wide=fresh.wide||{};fresh.narrow=fresh.narrow||{};fresh[layoutMode][el.dataset.note]=placed
             localStorage.setItem(layoutKey,JSON.stringify(fresh));layouts=fresh;p=placed
           }
-          if(shared){var original=notes.find(function(n){return n.id===el.dataset.note}),scale=wall.clientWidth/1000;await shared.put(Object.assign({},original,{worldBox:{x:held.x/scale,y:held.y/scale,width:el.offsetWidth/scale,height:el.offsetHeight/scale}}));notes=readNotes();layouts[layoutMode][el.dataset.note]=placed;p=placed}else if(navigator.locks)await navigator.locks.request(KEY+'-mutation',commitMove);else commitMove()
+          if(shared){var original=notes.find(function(n){return n.id===el.dataset.note}),scale=wall.clientWidth/1000;await shared.put(Object.assign({},original,{worldBox:Object.assign({},original.worldBox,{x:held.x/scale,y:held.y/scale})}));notes=readNotes();layouts[layoutMode][el.dataset.note]=placed;p=placed}else if(navigator.locks)await navigator.locks.request(KEY+'-mutation',commitMove);else commitMove()
           status(shared?'位置已保存到共享墙。':'贴好了，位置已保存在这个浏览器。')
         }
         catch (err) { cancelled = true; status(err.message==='occupied'?'这里会覆盖已有痕迹，已放回原处。请换一个空白位置。':'位置保存失败，已放回原处；原有留言没有改变。') }
@@ -691,10 +701,10 @@
       ;(draft.mode === 'text' ? $('[data-message]') : $('[data-mode="draw"]')).focus({preventScroll:true})
     }
     function makeNote() {
-      return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', font:fonts[draft.font]?draft.font:'wenkai',fontSize:draft.fontSize||24,ink:draft.ink,size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
+      return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', font:fonts[draft.font]?draft.font:'wenkai',fontSize:draft.fontSize||24,ink:draft.ink,size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:shared?null:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
     }
     function point(e) { var r = canvas.getBoundingClientRect(); return [Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)), e.pressure || 0.5].map(function (n) { return Math.round(n * 10000) / 10000 }) }
-    function stop() { activeStroke = null; pointer = null }
+    function stop() { var hadStroke=pointer!==null;activeStroke = null; pointer = null;if(hadStroke)backupText() }
     canvas.addEventListener('pointerdown', function (e) {
       if (!e.isPrimary || e.button !== 0 || draft.mode !== 'draw' || pointer !== null) return
       if (draft.strokes.length >= 150 || draft.strokes.reduce(function (n,s) { return n+s.points.length },0) >= 6000) { error('纸上笔迹已经很多了，撤回一些笔画，或先把这张贴上墙。'); return }
@@ -708,7 +718,13 @@
       if (draft.strokes.reduce(function(n,s){return n+s.points.length},0)>=6000) {stop();error('已达到这张纸的笔迹上限，可以预览后贴到墙上。');return}
       activeStroke.points.push(p);redraw()
     }, {signal:signal})
-    ;['pointerup','pointercancel','lostpointercapture'].forEach(function (event) {canvas.addEventListener(event,stop,{signal:signal})})
+    canvas.addEventListener('pointerup',function(e){
+      if(pointer!==e.pointerId||!activeStroke)return
+      var p=point(e),last=activeStroke.points[activeStroke.points.length-1]
+      if((p[0]!==last[0]||p[1]!==last[1])&&draft.strokes.reduce(function(n,s){return n+s.points.length},0)<6000){activeStroke.points.push(p);redraw()}
+      stop()
+    },{signal:signal})
+    ;['pointercancel','lostpointercapture'].forEach(function (event) {canvas.addEventListener(event,function(e){if(pointer===e.pointerId)stop()},{signal:signal})})
     $('[data-message]').addEventListener('input',function(e){draft.text=e.target.value; $('[data-text-count]').textContent=draft.text.length+' / 180';redraw();positionStage();loadTypedFont()},{signal:signal})
     $('[data-font]').addEventListener('change',function(e){draft.font=e.target.value;syncEditor()},{signal:signal})
     $('[data-font-size]').addEventListener('change',function(e){draft.fontSize=Number(e.target.value);syncEditor()},{signal:signal})
@@ -801,7 +817,7 @@
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(dialog===detail&&restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     composer.addEventListener('close',function () {
-      if(draft.text.trim()||draft.strokes.length){try{textRecovery.write({section:currentWall,draft:draft,anchor:writeAnchor,wallWidth:wall.clientWidth,editing:editingText})}catch(_){}}showTextRecovery()
+      if(draft.text.trim()||draft.strokes.length||(draft.medium==='sticker'&&writeAnchor)){try{textRecovery.write({section:currentWall,draft:draft,anchor:writeAnchor,wallWidth:wall.clientWidth,editing:editingText})}catch(_){}}showTextRecovery()
       if(shared){clearTimeout(textLeaseTimer);shared.ignoreLease=null;shared.release(textLease).catch(function(){})}
       if(editingText&&!closingForMove){editingText=null;wall.querySelectorAll('.gb-editing-original').forEach(function(el){el.classList.remove('gb-editing-original')})}
       stage.hidden=true; root.classList.remove('is-writing'); writingHome.insertBefore(writing,$('[data-pen-tools]')); stage.replaceChildren(); wallLayout()

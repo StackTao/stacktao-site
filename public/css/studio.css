@@ -736,5 +736,5 @@ body:has([data-guestbook]) { overflow-anchor: none; }
 .gb-free-layer.is-moving canvas:active { cursor:grabbing; }
 .gb-draft-resume { position:fixed; left:24px; bottom:110px; z-index:80; padding:12px 18px; border:1px solid #8c7d5e55; border-radius:24px; background:#faf6eb; color:#464333; box-shadow:0 3px 18px #39321f20; }
 #view .gb-wall > .gb-note[data-world-sized][data-typed] .gb-lettering { flex:none; }
-#view .gb-wall > .gb-note[data-world-sized][data-typed] .gb-note-content { height:100%; min-height:0; }
+#view .gb-wall > .gb-note[data-world-sized][data-typed] .gb-note-content { height:100%; min-height:0; justify-content:flex-start; }
 #view .gb-wall > .gb-note[data-world-sized][data-typed][data-medium='paper'] .gb-note-content { height:calc(100% - 36px * var(--note-scale)); }

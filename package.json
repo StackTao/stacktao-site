@@ -8,7 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run content && node scripts/build-site.mjs",
     "preview": "vite preview",
-    "test:guestbook": "node tests/wall-client.cjs && node tests/wall-sizing.cjs && node tests/wall-collision.cjs && node tests/wall-performance.cjs && node tests/guestbook-flow.cjs",
+    "test:guestbook": "node tests/wall-client.cjs && node tests/wall-sizing.cjs && node tests/wall-cross-device.cjs && node tests/wall-collision.cjs && node tests/wall-performance.cjs && node tests/guestbook-flow.cjs",
     "test:site": "npm run content && node tests/content-navigation.cjs && node tests/navigation.cjs public && node tests/journal-flow.cjs public && node tests/collections.cjs public && node tests/cabinet.cjs public && npm run test:guestbook",
     "admin": "node scripts/admin.mjs",
     "test:admin": "node --test tests/admin.test.mjs tests/shared-wall.test.mjs tests/accounts.test.mjs tests/oauth.test.mjs && node tests/analytics-client.cjs",
