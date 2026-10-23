@@ -1024,7 +1024,7 @@
     var main = view.querySelector('main')
     var article = view.querySelector('article.article-prose')
     if (article) { articleTrail(article, route); readingType(article, route) }
-    if (!main || route === '/' || route === '/guestbook') return
+    if (!main || route === '/' || route === '/guestbook' || route === '/resume') return
     main.classList.add('folio-page')
     main.dataset.folio = route.slice(1).split('/')[0]
     var labels = {

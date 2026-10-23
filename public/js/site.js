@@ -335,6 +335,7 @@
   }
 
   function bindPage() {
+    if (window.Resume) window.Resume.mount(view)
     if (window.Guestbook) window.Guestbook.mount(view)
     photoNodes = Array.prototype.slice.call(document.querySelectorAll('.photo-grid img'))
     photoNodes.forEach(function (img, i) {

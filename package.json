@@ -13,7 +13,8 @@
     "admin": "node scripts/admin.mjs",
     "test:admin": "node --test tests/admin.test.mjs tests/shared-wall.test.mjs tests/accounts.test.mjs tests/oauth.test.mjs && node tests/analytics-client.cjs",
     "publish:article": "node scripts/publish-article.mjs",
-    "test:deployment": "node --test tests/deployment.test.mjs"
+    "test:deployment": "node --test tests/deployment.test.mjs",
+    "test:resume": "node --test tests/resume.test.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

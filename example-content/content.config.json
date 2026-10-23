@@ -57,5 +57,98 @@
       "label": "聊聊",
       "route": "/chat-zh"
     }
-  ]
+  ],
+  "resume": {
+    "draft": true,
+    "name": "苏",
+    "monogram": "SU",
+    "role": "产品工程师 / 前端开发",
+    "summary": "把复杂的问题，做成清楚、好用的产品。关注设计与工程的交汇处，喜欢从真实需求出发，把想法推进到可以持续使用的作品。",
+    "contacts": [
+      {
+        "label": "城市 · 待填写"
+      },
+      {
+        "label": "hello@example.com",
+        "url": "mailto:hello@example.com"
+      },
+      {
+        "label": "stacktao.cn",
+        "url": "https://stacktao.cn"
+      }
+    ],
+    "sections": [
+      {
+        "title": "工作经历",
+        "caption": "EXPERIENCE",
+        "items": [
+          {
+            "title": "某科技公司 · 产品工程师",
+            "subtitle": "产品研发 / 设计协作 / 前端工程",
+            "period": "2023 — 至今",
+            "points": [
+              "参与协作产品从原型到上线的完整过程，将复杂业务流程整理为清晰的界面与可复用组件。",
+              "推动设计与研发共用组件规范，统一交互状态、键盘操作与移动端体验。"
+            ]
+          },
+          {
+            "title": "某数字工作室 · 前端开发",
+            "subtitle": "网站体验 / 内容系统",
+            "period": "2021 — 2023",
+            "points": [
+              "负责内容型网站的页面开发与维护，完善响应式布局、阅读体验和发布工作流。"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "精选项目",
+        "caption": "SELECTED WORK",
+        "items": [
+          {
+            "title": "个人博客与互动留言墙",
+            "subtitle": "独立项目 · JavaScript / Node.js / CSS",
+            "period": "2025 — 2026",
+            "points": [
+              "设计集文章、影像和互动留言于一体的个人网站，用可探索的小交互表达个人风格。",
+              "围绕手写、涂鸦与贴纸设计跨设备交互，并完善内容管理与数据备份。"
+            ]
+          },
+          {
+            "title": "轻量知识工作台",
+            "subtitle": "示例项目 · React / TypeScript",
+            "period": "2024",
+            "points": [
+              "将分散的资料整理为可检索的知识空间，设计快捷录入、标签整理与引用回溯流程。"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "能力与工具",
+        "caption": "TOOLKIT",
+        "items": [
+          {
+            "title": "界面工程 × 产品思考",
+            "points": [
+              "JavaScript、TypeScript、React、Node.js；语义化 HTML、CSS、响应式布局。",
+              "交互原型、组件设计、可访问性、性能分析；Git、Figma、自动化测试。"
+            ]
+          }
+        ]
+      },
+      {
+        "title": "教育背景",
+        "caption": "EDUCATION",
+        "items": [
+          {
+            "title": "某某大学 · 计算机相关专业",
+            "subtitle": "本科 · 学校、专业与时间待替换",
+            "period": "2017 — 2021"
+          }
+        ]
+      }
+    ],
+    "footer": "保持好奇，把事情做好。"
+  }
 }

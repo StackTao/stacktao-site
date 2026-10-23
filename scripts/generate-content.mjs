@@ -5,6 +5,7 @@ import matter from 'gray-matter'
 import { marked } from 'marked'
 import * as cheerio from 'cheerio'
 import sanitizeHtml from 'sanitize-html'
+import { renderResume } from './lib/resume.mjs'
 
 const projectRoot = path.resolve(import.meta.dirname, '..')
 const args = Object.fromEntries(process.argv.slice(2).map((value) => {
@@ -395,13 +396,16 @@ function createPrototypeContentScript(articles, config, projects, albums) {
   const structured = createStructuredPages(projects, albums)
   Object.assign(generated.pages, structured.pages)
   Object.assign(generated.titles, structured.titles)
+  const resume = renderResume(config.resume)
+  if (resume) { generated.pages['/resume'] = resume; generated.titles['/resume'] = `${config.resume.name} · 简历` }
   const navigation = normalizeNavigation(config.navigation, true)
   const footerNavigation = normalizeNavigation(config.footerNavigation)
+  if (resume && !footerNavigation.some(item => item.route === '/resume')) footerNavigation.push({ label: '简历', route: '/resume' })
   const search = articles.map((article) => ({
     title: article.title,
     kind: '文章',
     href: `#${article.route}`,
-  })).concat(createStructuredSearch(projects, albums))
+  })).concat(createStructuredSearch(projects, albums), resume ? [{ title: '个人简历', kind: '页面', href: '#/resume' }] : [])
   return `(function () {
   var pages = window.PAGES || {}
   var titles = window.PAGE_TITLES || {}
