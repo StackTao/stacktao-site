@@ -49,11 +49,56 @@ test('shared wall: two visitors, atomic collisions, ownership, revisions, leases
  assert.equal((await req('/api/wall/notes/drawing/restore','POST',{},a)).status,200)
  for(let i=0;i<23;i++){const n={...note('capacity-'+i,10+i%8*110),worldBox:{x:10+i%8*110,y:1000+Math.floor(i/8)*100,width:50,height:40},medium:['paper','sticker','engraving'][i%3],sticker:'spark'};assert.equal((await req('/api/wall/notes','POST',{note:n},a)).status,200)}
  assert.equal((await req('/api/wall/notes','POST',{note:{...note('full'),worldBox:{x:20,y:2500,width:50,height:40}}},a)).status,409)
- const newWalls=await Promise.all([req('/api/wall/walls','POST',{},a),req('/api/wall/walls','POST',{},b)]);assert.equal(newWalls[0].data.id,1);assert.equal(newWalls[1].data.id,1)
+ const newWalls=await Promise.all([req('/api/wall/walls','POST',{},a),req('/api/wall/walls','POST',{},b)]);assert.equal(newWalls[0].data.id,1);assert.equal(newWalls[1].data.id,2)
  const before=(await req('/api/v1/wall','GET',null,owner)).data.stats
  await app.close();app=await createAdminServer({root,source,state,output:path.join(temp,'dist')});base=await app.listen(0)
  assert.deepEqual((await req('/api/v1/wall','GET',null,owner)).data.stats,before)
  assert.equal((await req('/api/wall','GET',null,a)).data.notes.filter(n=>n.owned).length,24)
  assert.deepEqual((await req('/api/wall','GET',null,a)).data.leases,{})
  }finally{await app.close();await fs.rm(temp,{recursive:true,force:true})}
+})
+
+test('whole walls: admin permission, stale revision, active creators, archive/restore, realtime and non-reused IDs',async()=>{
+ const temp=await fs.mkdtemp(path.join(os.tmpdir(),'wall-management-')),source=path.join(temp,'content'),state=path.join(temp,'state')
+ await fs.mkdir(source);await fs.writeFile(path.join(source,'content.config.json'),'{}')
+ let app=await createAdminServer({root,source,state,output:path.join(temp,'dist')}),base=await app.listen(0)
+ const owner=(await fs.readFile(app.ownerFile,'utf8')).trim()
+ const req=async(route,method='GET',data,token=owner)=>{const r=await fetch(base+route,{method,headers:{Origin:base,'Content-Type':'application/json',Authorization:'Bearer '+token},...(data?{body:JSON.stringify(data)}:{})});return {status:r.status,data:await r.json()}}
+ try{
+  const visitor=(await req('/api/wall/session','POST',{})).data.token
+  const before=(await req('/api/v1/wall')).data.walls[0]
+  assert.equal((await req('/api/wall/notes','POST',{note:note('retained')},visitor)).status,200)
+  assert.equal((await req('/api/v1/wall/walls/0','DELETE',{revision:before.revision},visitor)).status,401)
+  assert.equal((await req('/api/v1/wall/walls/0','DELETE',{revision:before.revision})).status,409)
+  const wall=(await req('/api/v1/wall')).data.walls[0]
+  await req('/api/wall/leases','POST',{id:'active-artist',wall:0,cells:[]},visitor)
+  assert.equal((await req('/api/v1/wall/walls/0','DELETE',{revision:wall.revision})).status,409)
+  await req('/api/wall/leases/active-artist','DELETE',{},visitor)
+  const abort=new AbortController(),stream=await fetch(base+'/api/wall/events',{signal:abort.signal}),reader=stream.body.getReader();await reader.read();const event=reader.read()
+  assert.equal((await req('/api/v1/wall/walls/0','DELETE',{revision:wall.revision})).status,200)
+  assert.match(new TextDecoder().decode((await event).value),/data: changed/);abort.abort();await reader.cancel().catch(()=>{})
+  let d=(await req('/api/v1/wall?deleted=1')).data
+  assert.equal(d.notes[0].id,'retained');assert.equal(d.deletedWalls[0].name,wall.name);assert.equal(d.walls[0].id,1,'deleting the last wall leaves a fresh empty wall')
+  assert.equal((await req('/api/v1/wall/retained/restore','POST',{revision:d.notes[0].revision})).status,409,'cannot restore a note to a deleted wall')
+  assert.equal((await req('/api/wall/notes','POST',{note:note('stale-draft')},visitor)).status,404)
+  assert.equal((await req('/api/wall/walls','POST',{},visitor)).data.id,2,'explicit creation does not reuse an empty wall')
+  d=(await req('/api/v1/wall')).data
+  const highest=d.walls.find(w=>w.id===2)
+  await req('/api/v1/wall/walls/2','DELETE',{revision:highest.revision})
+  await app.close();app=await createAdminServer({root,source,state,output:path.join(temp,'dist')});base=await app.listen(0)
+  assert.equal((await req('/api/wall/walls','POST',{},visitor)).data.id,3,'deleted highest ID is not reused after restart')
+  assert.equal((await req('/api/v1/wall/walls/0/restore','POST',{})).status,200)
+  d=(await req('/api/v1/wall')).data;assert.equal(d.notes[0].id,'retained');assert.equal(d.walls.find(w=>w.id===0).name,wall.name)
+  assert.equal((await req('/api/v1/wall/walls/0/restore','POST',{})).status,404)
+ }finally{await app.close();await fs.rm(temp,{recursive:true,force:true})}
+})
+
+test('wall titles are stable and distinct across 100,000 walls',async()=>{
+ const {wallName}=await import('../scripts/lib/wall-names.mjs')
+ for(const seed of [0,73,255]){
+  const names=Array.from({length:100000},(_,id)=>wallName(id,seed))
+  assert.equal(new Set(names).size,names.length)
+  assert.notEqual(names[0],names[256]);assert.equal(wallName(1000,seed),names[1000])
+ }
+ assert.equal(wallName(0,255),'听松里','existing title stays unchanged')
 })

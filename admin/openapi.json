@@ -2022,7 +2022,7 @@
         ],
         "responses": {
           "200": {
-            "description": "分页留言、墙面总数与分类统计"
+            "description": "分页留言、类型统计，以及含名称、数量、revision 的 walls 和 deletedWalls 目录"
           },
           "403": {
             "description": "仅管理员可用"
@@ -2672,6 +2672,81 @@
           },
           "409": {
             "description": "版本或位置冲突"
+          }
+        }
+      }
+    },
+    "/api/v1/wall/walls/{id}": {
+      "delete": {
+        "summary": "管理员删除整面墙及其留言，可从档案恢复；最后一面墙会替换为空墙",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "revision"
+                ],
+                "properties": {
+                  "revision": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已归档整墙"
+          },
+          "403": {
+            "description": "仅管理员可操作"
+          },
+          "404": {
+            "description": "墙面不存在"
+          },
+          "409": {
+            "description": "留言版本变化或有人正在创作"
+          }
+        }
+      }
+    },
+    "/api/v1/wall/walls/{id}/restore": {
+      "post": {
+        "summary": "管理员按原编号、原名称和位置恢复整面墙及随墙移除的留言",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已恢复整墙"
+          },
+          "403": {
+            "description": "仅管理员可操作"
+          },
+          "404": {
+            "description": "档案不存在"
           }
         }
       }

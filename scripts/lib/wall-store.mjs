@@ -2,6 +2,7 @@ import {promises as fs} from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import os from 'node:os'
+import {wallName} from './wall-names.mjs'
 const processStart=async pid=>{try{return (await fs.readFile(`/proc/${pid}/stat`,'utf8')).split(') ')[1].split(' ')[19]}catch{return null}}
 const hash=s=>crypto.createHash('sha256').update(s).digest('hex')
 const fail=(ok,message,status=400)=>{if(!ok){const e=new Error(message);e.status=status;throw e}}
@@ -35,6 +36,8 @@ export async function createWallStore(state){
  await fs.writeFile(lock,JSON.stringify({pid:process.pid,host:os.hostname(),start:await processStart(process.pid)}),{flag:'wx',mode:0o600})
  const file=path.join(state,'wall.json'),leases=new Map();let data
  try{data=JSON.parse(await fs.readFile(file,'utf8'))}catch(e){if(e.code!=='ENOENT')throw e;data={version:1,seed:crypto.randomInt(256),walls:[0],notes:[],deleted:[]};await fs.writeFile(file,JSON.stringify(data),{mode:0o600})}
+ data.deletedWalls ||= []
+ data.nextWall ??= Math.max(data.walls.reduce((max,id)=>Math.max(max,id),-1),data.deletedWalls.reduce((max,w)=>Math.max(max,w.id),-1),data.deleted.reduce((max,n)=>Math.max(max,n.section),-1))+1
  const listeners=new Set()
  let queue=Promise.resolve()
  const serial=fn=>{const next=queue.then(fn);queue=next.catch(()=>{});return next}
@@ -42,7 +45,9 @@ export async function createWallStore(state){
  const publicNote=(n,owner)=>{const {ownerHash,cells,...rest}=n;return {...rest,owned:ownerHash===owner}}
  function prune(){for(const [id,l] of leases)if(l.expires<Date.now())leases.delete(id)}
  const stats=()=>({total:data.notes.length,deleted:data.deleted.length,walls:data.walls.length,types:Object.fromEntries(['ink','engraving','paper','sticker'].map(t=>[t,data.notes.filter(n=>n.medium===t).length]))})
- function snapshot(section,owner){prune();return {seed:data.seed,section,walls:data.walls.map(id=>({id,count:data.notes.filter(n=>n.section===id).length})),notes:data.notes.filter(n=>n.section===section).map(n=>publicNote(n,owner)),leases:Object.fromEntries([...leases].filter(([,l])=>l.wall===section).map(([id,{ownerHash,...l}])=>[id,l])),stats:stats()}}
+ const wallRevision=id=>hash(JSON.stringify(data.notes.filter(n=>n.section===id).map(n=>[n.id,n.revision]).sort()))
+ const catalog=()=>data.walls.map(id=>({id,name:wallName(id,data.seed),count:data.notes.filter(n=>n.section===id).length,revision:wallRevision(id)}))
+ function snapshot(section,owner){prune();return {seed:data.seed,section,walls:catalog(),notes:data.notes.filter(n=>n.section===section).map(n=>publicNote(n,owner)),leases:Object.fromEntries([...leases].filter(([,l])=>l.wall===section).map(([id,{ownerHash,...l}])=>[id,l])),stats:stats()}}
  function collision(section,cells,ignore,lease,owner){const set=new Set(cells);fail(!data.notes.some(n=>n.section===section&&n.id!==ignore&&n.cells.some(c=>set.has(c))),'这里已有留言，请调整位置后重试',409);prune();fail(![...leases].some(([id,l])=>id!==lease&&l.wall===section&&(l.note===ignore&&ignore||l.cells.some(c=>set.has(c)))),'另一位访客正在这里创作，请稍后或换个位置',409)}
  async function reserve(owner,p){return serial(async()=>{fail(idOK(p.id)&&data.walls.includes(p.wall),'占位参数无效');fail(Array.isArray(p.cells)&&p.cells.length<=30000&&p.cells.every(c=>Number.isInteger(c)&&c>=0&&c<160000),'占位范围无效');const old=leases.get(p.id);fail(!old||old.ownerHash===owner,'不能修改他人的占位',403);if(p.note){const n=data.notes.find(n=>n.id===p.note);fail(n&&n.ownerHash===owner,'只能编辑自己留下的痕迹',403)}collision(p.wall,p.cells,p.note,p.id,owner);fail(leases.size<500||old,'当前创作者较多，请稍后重试',429);leases.set(p.id,{ownerHash:owner,wall:p.wall,cells:[...new Set(p.cells)],note:p.note||null,expires:Date.now()+15000});return snapshot(p.wall,owner)})}
  async function put(owner,p){return serial(async()=>{const n=clean(p.note),old=data.notes.find(x=>x.id===n.id),deleted=data.deleted.find(x=>x.id===n.id);fail(!deleted,'该留言已删除，请重新创作',409);fail(data.walls.includes(n.section),'墙面不存在',404);if(old){fail(old.ownerHash===owner,'只能修改自己的留言',403);fail(p.revision===old.revision,'留言已更新，请重新打开再编辑',409)}else fail(data.notes.filter(x=>x.section===n.section).length<24,'这面墙已满，请打开新墙',409)
@@ -50,5 +55,21 @@ export async function createWallStore(state){
  if(n.frame){const l=leases.get(p.lease);fail(l&&l.ownerHash===owner&&l.expires>Date.now()&&l.wall===n.section,'占位过期，请重新确认后提交',409)}
  const entry={...n,ownerHash:owner,cells,revision:crypto.randomUUID(),createdAt:old?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString(),date:old?.date||new Date().toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai'})};await save({...data,notes:[entry,...data.notes.filter(x=>x.id!==n.id)]});if(p.lease)leases.delete(p.lease);return publicNote(entry,owner)})}
  async function remove(id,owner,revision,admin=false){return serial(async()=>{const n=data.notes.find(n=>n.id===id);fail(n,'留言不存在',404);fail(admin||n.ownerHash===owner,'只能删除自己的留言',403);fail(revision===n.revision,'留言已更新，请刷新后重试',409);await save({...data,notes:data.notes.filter(x=>x.id!==id),deleted:[{...n,deletedAt:new Date().toISOString(),moderated:admin},...data.deleted]});for(const [key,l]of leases)if(l.note===id)leases.delete(key);return {ok:true}})}
- return {subscribe:fn=>{listeners.add(fn);return ()=>listeners.delete(fn)},close:async()=>{await queue;await fs.unlink(lock).catch(()=>{})},snapshot,stats,reserve,put,remove,owner:token=>hash(token),release:async(owner,id)=>serial(async()=>{if(leases.get(id)?.ownerHash===owner)leases.delete(id);return {ok:true}}),newWall:async()=>serial(async()=>{const empty=data.walls.find(id=>!data.notes.some(n=>n.section===id));if(empty!==undefined)return {id:empty};fail(data.walls.length<100000,'墙面数量已达上限');const id=Math.max(...data.walls)+1;await save({...data,walls:[...data.walls,id]});return {id}}),list:({page=1,type='',section,deleted=false}={})=>{const notes=(deleted?data.deleted:data.notes).filter(n=>(!type||n.medium===type)&&(section===undefined||n.section===section));page=Math.min(page,Math.max(1,Math.ceil(notes.length/20)));return {stats:stats(),total:notes.length,page,notes:notes.slice((page-1)*20,page*20).map(n=>publicNote(n,''))}},restore:async(id,owner,admin=false,revision)=>serial(async()=>{const n=data.deleted.find(n=>n.id===id);fail(n&&(admin||!n.moderated&&n.ownerHash===owner),'这处痕迹无法恢复',403);if(admin)fail(revision===n.revision,'留言档案已更新，请刷新后重试',409);fail(data.notes.filter(x=>x.section===n.section).length<24,'墙面已满',409);collision(n.section,n.cells,n.id,null,owner);const {deletedAt,moderated,...rest}=n;rest.revision=crypto.randomUUID();await save({...data,notes:[rest,...data.notes],deleted:data.deleted.filter(x=>x.id!==id)});return publicNote(rest,owner)})}
+ async function removeWall(id,revision){return serial(async()=>{
+  fail(data.walls.includes(id),'墙面不存在',404)
+  fail(revision===wallRevision(id),'这面墙的留言已变化，请刷新后重新确认',409)
+  prune();fail(![...leases.values()].some(l=>l.wall===id),'这面墙有人正在创作，请稍后再删除',409)
+  const deletedAt=new Date().toISOString(),removed=data.notes.filter(n=>n.section===id),walls=data.walls.filter(w=>w!==id)
+  if(!walls.length)walls.push(data.nextWall)
+  await save({...data,walls,nextWall:Math.max(data.nextWall,Math.max(...walls)+1),notes:data.notes.filter(n=>n.section!==id),deleted:[...removed.map(n=>({...n,deletedAt,moderated:true,removedWithWall:id})),...data.deleted],deletedWalls:[{id,deletedAt},...data.deletedWalls]})
+  return {ok:true,count:removed.length}
+ })}
+ async function restoreWall(id){return serial(async()=>{
+  fail(data.deletedWalls.some(w=>w.id===id),'墙面档案不存在',404)
+  fail(data.walls.length<100000,'墙面数量已达上限',409)
+  const restored=data.deleted.filter(n=>n.removedWithWall===id).map(n=>{const {deletedAt,moderated,removedWithWall,...rest}=n;return {...rest,revision:crypto.randomUUID()}})
+  await save({...data,walls:[...data.walls,id].sort((a,b)=>a-b),notes:[...restored,...data.notes],deleted:data.deleted.filter(n=>n.removedWithWall!==id),deletedWalls:data.deletedWalls.filter(w=>w.id!==id)})
+  return {ok:true,count:restored.length}
+ })}
+ return {subscribe:fn=>{listeners.add(fn);return ()=>listeners.delete(fn)},close:async()=>{await queue;await fs.unlink(lock).catch(()=>{})},snapshot,stats,reserve,put,remove,removeWall,restoreWall,owner:token=>hash(token),release:async(owner,id)=>serial(async()=>{if(leases.get(id)?.ownerHash===owner)leases.delete(id);return {ok:true}}),newWall:async()=>serial(async()=>{fail(data.walls.length<100000,'墙面数量已达上限');const id=data.nextWall;await save({...data,nextWall:id+1,walls:[...data.walls,id]});return {id}}),list:({page=1,type='',section,deleted=false}={})=>{const notes=(deleted?data.deleted:data.notes).filter(n=>(!type||n.medium===type)&&(section===undefined||n.section===section));page=Math.min(page,Math.max(1,Math.ceil(notes.length/20)));return {walls:catalog(),deletedWalls:data.deletedWalls.map(w=>({...w,name:wallName(w.id,data.seed),count:data.deleted.filter(n=>n.removedWithWall===w.id).length})),stats:stats(),total:notes.length,page,notes:notes.slice((page-1)*20,page*20).map(n=>publicNote(n,''))}},restore:async(id,owner,admin=false,revision)=>serial(async()=>{const n=data.deleted.find(n=>n.id===id);fail(n&&(admin||!n.moderated&&n.ownerHash===owner),'这处痕迹无法恢复',403);fail(data.walls.includes(n.section),'所属墙面已删除，请先在后台恢复整面墙',409);if(admin)fail(revision===n.revision,'留言档案已更新，请刷新后重试',409);fail(data.notes.filter(x=>x.section===n.section).length<24,'墙面已满',409);collision(n.section,n.cells,n.id,null,owner);const {deletedAt,moderated,...rest}=n;rest.revision=crypto.randomUUID();await save({...data,notes:[rest,...data.notes],deleted:data.deleted.filter(x=>x.id!==id)});return publicNote(rest,owner)})}
 }

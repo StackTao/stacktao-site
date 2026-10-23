@@ -279,6 +279,8 @@ export async function createAdminServer(options={}) {
           return send(res,200,{html})
         }
         const payload=await body(req,pathname==='/api/v1/media'?12*1024*1024:1000000,pathname==='/api/v1/media')
+        const wallSection=/^\/api\/v1\/wall\/walls\/(\d+)(\/restore)?$/.exec(pathname)
+        if(wallSection){admin(actor);const id=Number(wallSection[1]);check(Number.isSafeInteger(id),'墙面无效');if(method==='DELETE'&&!wallSection[2])return send(res,200,await wallStore.removeWall(id,payload.revision));if(method==='POST'&&wallSection[2])return send(res,200,await wallStore.restoreWall(id))}
         const restoreWall=/^\/api\/v1\/wall\/([a-zA-Z0-9-]+)\/restore$/.exec(pathname);if(restoreWall&&method==='POST'){admin(actor);return send(res,200,await wallStore.restore(restoreWall[1],'',true,payload.revision))}
         const deleteWall=/^\/api\/v1\/wall\/([a-zA-Z0-9-]+)$/.exec(pathname);if(deleteWall&&method==='DELETE'){admin(actor);return send(res,200,await wallStore.remove(deleteWall[1],'',payload.revision,true))}
         return await serial(async()=>{

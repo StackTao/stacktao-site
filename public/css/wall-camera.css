@@ -2,16 +2,25 @@
 #view .guestbook-page .gb-wall-section.has-wall-camera { height: 100dvh; overflow: clip; touch-action: none; overscroll-behavior: none; }
 .gb-wall-scene { position: relative; width: 100%; min-height: 100%; transform-origin: 0 0; background-color: #e4cba5; background-image: var(--wall-material); background-size: cover; }
 .gb-wall-scene.is-panning, .gb-wall-scene.is-panning * { cursor: grabbing !important; user-select: none; }
-.gb-camera-controls { position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1000000005; color: #494c40; }
-.gb-camera-controls button { min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 22px; color: inherit; background: transparent; font: 12px var(--font-ui); touch-action: manipulation; }
-.gb-camera-controls [data-camera='toggle'] { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 82px; background: #faf6eae8; border: 1px solid #6f604c25; box-shadow: 0 2px 8px #634f2d12; }
-.gb-camera-options { position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); padding: 5px; border: 1px solid #6f604c30; border-radius: 18px; background: #faf6eaf5; box-shadow: 0 5px 24px #634f2d20; overflow-y: auto; overscroll-behavior: contain; }
-.gb-camera-options > div { display: flex; }
-.gb-camera-controls [data-camera='in'], .gb-camera-controls [data-camera='out'] { font-size: 20px; }
-.gb-camera-controls [aria-pressed='true'], .gb-camera-controls [data-camera='toggle'].is-hand { background: #454b3f; color: #fff9e9; }
-.gb-camera-controls small { display: block; padding: 3px 8px 7px; font: 10px/1.5 var(--font-ui); white-space: nowrap; }
+.gb-camera-controls { flex-shrink: 0; color: inherit; }
+.gb-camera-controls button, .gb-camera-options button { min-width: 44px; height: 44px; padding: 0 8px; border: 0; border-radius: 12px; color: inherit; background: transparent; font: 12px var(--font-ui); touch-action: manipulation; }
+.guestbook-page .gb-wall-dock .gb-camera-controls [data-camera='toggle'] { display: flex; flex-direction: column; gap: 4px; width: 48px; height: 58px; padding: 0; font-size: 10px; }
+.gb-camera-controls [data-camera='toggle'] { display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.gb-camera-controls svg { width: 22px; height: 22px; }
+.gb-camera-options { position: fixed; z-index: 1000000006; width: 236px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid #6f604c30; border-radius: 16px; background: #faf6eaf5; color: #494c40; box-shadow: 0 5px 24px #634f2d20; overflow-y: auto; overscroll-behavior: contain; }
+.gb-camera-options > div { display: flex; justify-content: space-between; }
+.gb-camera-options [data-camera='in'], .gb-camera-options [data-camera='out'] { font-size: 20px; }
+.gb-camera-options [aria-pressed='true'], .gb-camera-controls [data-camera='toggle'].is-hand { background: #e9ecd6; color: #354036; }
+.gb-camera-options button:disabled { opacity: .3; }
+.gb-camera-options small { display: block; padding: 3px 4px 6px; font: 10px/1.5 var(--font-ui); text-align: center; white-space: nowrap; }
+.gb-dialog-head .gb-camera-controls { order: 1; margin-left: auto; }
+.gb-dialog-head .gb-close { order: 2; }
+@media (max-width: 360px) {
+ .guestbook-page .gb-wall-dock [data-wall-tool] { width: 40px; min-width: 40px !important; }
+ .guestbook-page .gb-wall-dock .gb-camera-controls [data-camera='toggle'] { width: 44px; }
+}
 
 #view .guestbook-page .gb-wall-scene .gb-stage-handle { top: calc(-34px / var(--wall-view-zoom, 1)); transform: scale(calc(1 / var(--wall-view-zoom, 1))); transform-origin: left bottom; }
 
-#view .guestbook-page:has(.gb-camera-controls) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 54px); }
-#view .guestbook-page:has(.gb-camera-options:not([hidden])) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 150px); }
+#view .guestbook-page:has(.gb-camera-controls) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 12px); }
+#view .guestbook-page:has(.gb-camera-options:not([hidden])) .gb-status { bottom: calc(var(--camera-bottom, 100px) + 106px); }

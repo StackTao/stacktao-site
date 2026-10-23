@@ -21,6 +21,8 @@
     nameSeed = Number(storedSeed) % 256 || 0
   } catch (_) {}
   function wallName(id) {
+    var named=shared&&shared.walls().find(function(w){return w.id===id})
+    if(named&&named.name)return {title:named.name,volume:0,full:named.name}
     var index = ((id % 256) * 73 + nameSeed) % 256
     var title = wallImages[Math.floor(index / 8)] + wallPlaces[index % 8]
     var volume = Math.floor(id / 256)
@@ -229,7 +231,7 @@
     if (!root) return
     if(shared){
       var cancelled=false;cleanup=function(){cancelled=true};root.querySelectorAll('button,select').forEach(function(b){b.disabled=true})
-      try{await shared.init();var lastWall=Number(localStorage.getItem(KEY+'-current-wall'));if(Number.isInteger(lastWall)&&lastWall!==shared.section()&&shared.walls().some(function(w){return w.id===lastWall}))await shared.load(lastWall);if(cancelled||!root.isConnected)return;nameSeed=shared.seed;root.querySelectorAll('button,select').forEach(function(b){b.disabled=false});root.querySelector('.gb-local-label').firstChild.textContent='共享留言 · '}
+      try{await shared.init();if(!shared.walls().some(function(w){return w.id===shared.section()}))await shared.load(shared.walls()[0].id);var lastWall=Number(localStorage.getItem(KEY+'-current-wall'));if(Number.isInteger(lastWall)&&lastWall!==shared.section()&&shared.walls().some(function(w){return w.id===lastWall}))await shared.load(lastWall);if(cancelled||!root.isConnected)return;nameSeed=shared.seed;root.querySelectorAll('button,select').forEach(function(b){b.disabled=false});root.querySelector('.gb-local-label').firstChild.textContent='共享留言 · '}
       catch(e){if(cancelled)return;var message=document.createElement('p');message.className='gb-status is-visible';message.textContent='共享墙连接失败：'+e.message+'。本机旧留言仍保留，未自动上传。';var retry=document.createElement('button');retry.textContent='重新连接';retry.onclick=function(){message.remove();retry.remove();mount(view)};root.append(message,retry);return}
     }
     var controller = new AbortController(), signal = controller.signal
@@ -840,7 +842,7 @@
     freeTools=window.WallTools.mount({root:root,wall:wall,zoom:viewZoom,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,capacity:capacityText,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;choosePlace(medium)},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('痕迹已保存。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))}})
     renderWall()
     var liveRefreshTimer=0
-    function refreshShared(){if(signal.aborted)return;if((drag&&drag.active)||(freeTools&&freeTools.busy())||stageDrag){clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(refreshShared,80);return}notes=readNotes();renderWall();if(editingText){var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===editingText.id});if(original)original.classList.add('gb-editing-original')}if(book.open)renderBook()}
+    function refreshShared(){if(signal.aborted)return;if(!shared.walls().some(function(w){return w.id===currentWall})){if(composer.open||choosing||(freeTools&&freeTools.active())){status('这面墙已由管理员移除，草稿仍保留。恢复墙面后可继续提交。');return}changeWall(shared.walls()[0].id);status('原墙已移入删除档案，已为你打开另一面墙。');return}if((drag&&drag.active)||(freeTools&&freeTools.busy())||stageDrag){clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(refreshShared,80);return}notes=readNotes();renderWall();if(editingText){var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===editingText.id});if(original)original.classList.add('gb-editing-original')}if(book.open)renderBook()}
     var unsubscribe=shared?shared.subscribe(function(contentChanged){if(contentChanged===false){if(freeTools)freeTools.presence();return}refreshShared()}):function(){}
     showTextRecovery();
     cleanup=function(){clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();if(camera)camera.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}

@@ -6,6 +6,14 @@ async function stroke(t,a,b){const c=t.q('.gb-free-layer canvas');gesture(t,c,'p
 async function pinch(t,el){gesture(t,el,'pointerdown',[100,300]);gesture(t,el,'pointerdown',[200,300],2);gesture(t,el,'pointermove',[250,300],2);gesture(t,el,'pointerup',[250,300],2);gesture(t,el,'pointerup',[100,300]);await t.settle()}
 async function saveDrawing(width,zoom,medium){const t=await setup(width,true);try{for(let i=0;i<zoom;i++)await t.click('[data-camera=in]');await t.click('[data-wall-tool='+medium+']');await stroke(t,[450,600],[550,660]);await t.click('[data-action=finish]');assert.equal(t.notes().length,1);return t.notes()[0]}finally{t.close()}}
 const cases={
+ async 'camera follows the current toolbar and Escape only closes its menu'(){const t=await setup(370,true);try{
+  assert(t.q('.gb-camera-controls').closest('.gb-wall-dock'))
+  await t.click('[data-wall-tool=ink]');assert(t.q('.gb-camera-controls').closest('.gb-free-actions'))
+  await t.click('[data-action=cancel]');await t.place('paper');assert(t.q('.gb-camera-controls').closest('.gb-dialog-head'))
+  await t.click('[data-camera=toggle]');assert.equal(t.q('.gb-camera-options').hidden,false)
+  t.q('[data-camera=toggle]').dispatchEvent(new t.w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));await t.settle()
+  assert.equal(t.q('.gb-camera-options').hidden,true);assert(t.q('[data-composer]').open,'Escape preserves the paper editor')
+ }finally{t.close()}},
  async 'pinch anchors the midpoint and ignores the remaining finger'(){const t=await setup(370,true);try{
   const wall=t.q('[data-wall]');gesture(t,wall,'pointerdown',[100,300]);gesture(t,wall,'pointerdown',[200,300],2);gesture(t,wall,'pointermove',[250,300],2)
   let p=transform(t);near(p.z,1.5,'pinch zoom');near((175-p.x)/p.z,150,'midpoint anchor x');near((300-p.y)/p.z,300,'midpoint anchor y')
