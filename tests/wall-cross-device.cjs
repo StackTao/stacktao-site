@@ -2,7 +2,7 @@
 const {JSDOM}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path')
 const dir=process.argv[2]||path.join(__dirname,'../public')
 const near=(a,b,message)=>assert(Math.abs(a-b)<1e-6,message+': '+a+' != '+b)
-async function setup(initialWidth=370){
+async function setup(initialWidth=370,withCamera=false){
  const dom=new JSDOM('<div id="view"></div>',{url:'https://gesture.test',runScripts:'outside-only',pretendToBeVisual:true}),w=dom.window,d=w.document
  w.matchMedia=()=>({matches:true});w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=()=>{}
  w.HTMLDialogElement.prototype.show=function(){this.open=true};w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false;this.dispatchEvent(new w.Event('close'))}
@@ -10,10 +10,22 @@ async function setup(initialWidth=370){
  w.HTMLElement.prototype.setPointerCapture=function(id){this.capture=id};w.HTMLElement.prototype.hasPointerCapture=function(id){return this.capture===id};w.HTMLElement.prototype.releasePointerCapture=function(){this.capture=null}
  let width=initialWidth,notes=[],version=0
  const dimension=(el,key)=>parseFloat(el.style[key])||(key==='height'?180:260)
- Object.defineProperties(w.HTMLElement.prototype,{clientWidth:{get(){return this.matches('[data-wall]')?width:dimension(this,'width')}},clientHeight:{get(){return this.matches('[data-wall]')?5000:dimension(this,'height')}},offsetWidth:{get(){return Math.round(dimension(this,'width'))}},offsetHeight:{get(){return Math.round(dimension(this,'height'))}}})
+ Object.defineProperties(w.HTMLElement.prototype,{clientWidth:{configurable:true,get(){return this.matches('[data-wall]')?width:dimension(this,'width')}},clientHeight:{configurable:true,get(){return this.matches('[data-wall]')?5000:dimension(this,'height')}},offsetWidth:{get(){return Math.round(dimension(this,'width'))}},offsetHeight:{get(){return Math.round(dimension(this,'height'))}}})
  w.HTMLElement.prototype.getBoundingClientRect=function(){if(this.matches('.gb-wall-title,.gb-exit'))return {left:-200,top:-200,width:1,height:1,right:-199,bottom:-199};const x=parseFloat(this.style.left)||0,y=parseFloat(this.style.top)||0,a=this.clientWidth,b=dimension(this,'height');return {left:x,top:y,width:a,height:b,right:x+a,bottom:y+b}}
  w.SharedWall={seed:1,stats:{},init:async()=>{},read:()=>notes,section:()=>0,walls:()=>[{id:0,count:notes.length}],leases:()=>({}),version:()=>version,subscribe:()=>()=>{},reserve:async()=>true,release:async()=>{},put:async note=>{const saved=JSON.parse(JSON.stringify({...note,owned:true}));notes=notes.filter(n=>n.id!==note.id).concat(saved);version++;return saved}}
- for(const file of ['wall-tools','guestbook'])w.eval(fs.readFileSync(dir+'/js/'+file+'.js','utf8'))
+ if(withCamera){
+  const originalRect=w.HTMLElement.prototype.getBoundingClientRect
+  Object.defineProperty(w.HTMLElement.prototype,'scrollHeight',{configurable:true,get(){return this.matches('.gb-wall-scene')?5000:180}})
+  Object.defineProperty(w.HTMLElement.prototype,'clientWidth',{configurable:true,get(){return this.matches('[data-wall],.gb-wall-scene,.gb-wall-section')?width:dimension(this,'width')}})
+  Object.defineProperty(w.HTMLElement.prototype,'clientHeight',{configurable:true,get(){return this.matches('.gb-wall-section')?800:this.matches('[data-wall],.gb-wall-scene')?5000:dimension(this,'height')}})
+  w.HTMLElement.prototype.getBoundingClientRect=function(){
+   const r=originalRect.call(this),scene=this.closest('.gb-wall-scene');if(!scene)return r
+   const m=scene.style.transform.match(/translate\(([-.\d]+)px,([-.\d]+)px\) scale\(([-.\d]+)\)/),z=m?Number(m[3]):1,dx=m?Number(m[1]):0,dy=m?Number(m[2]):0
+   let x=r.left,y=r.top;for(let el=this.parentElement;el&&el!==scene;el=el.parentElement){x+=parseFloat(el.style.left)||0;y+=parseFloat(el.style.top)||0}
+   return {left:dx+x*z,top:dy+y*z,width:r.width*z,height:r.height*z,right:dx+(x+r.width)*z,bottom:dy+(y+r.height)*z}
+  }
+ }
+ for(const file of (withCamera?['wall-camera','wall-tools','guestbook']:['wall-tools','guestbook']))w.eval(fs.readFileSync(dir+'/js/'+file+'.js','utf8'))
  const q=s=>d.querySelector(s),settle=(ms=40)=>new Promise(r=>setTimeout(r,ms)),click=async s=>{q(s).click();await settle()}
  const event=(el,type,x,y,extra={})=>{const e=new w.Event(type,{bubbles:true,cancelable:true});Object.assign(e,{pointerId:1,button:0,isPrimary:true,clientX:x,clientY:y,pointerType:'touch',pressure:.5},extra);el.dispatchEvent(e)}
  const mount=async()=>{w.Guestbook.destroy();q('#view').innerHTML=w.PAGES['/guestbook'];await w.Guestbook.mount(q('#view'));await settle()}
@@ -89,4 +101,5 @@ const cases={
   }finally{t.close()}
  }
 }
-;(async()=>{let failed=0;for(const [name,test] of Object.entries(cases)){try{await test();console.log('PASS',name)}catch(e){failed++;console.error('FAIL',name,e.message)}}if(failed)process.exitCode=1})()
+module.exports={setup,near}
+if(require.main===module)(async()=>{let failed=0;for(const [name,test] of Object.entries(cases)){try{await test();console.log('PASS',name)}catch(e){failed++;console.error('FAIL',name,e.message)}}if(failed)process.exitCode=1})()

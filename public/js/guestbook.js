@@ -237,7 +237,7 @@
     var textLease=shared?crypto.randomUUID():null,textLeaseTimer=0,textLeaseBeat=0
     async function reserveText(){if(!shared||!composer.open||!writeAnchor)return;var b=placementRect(),scale=wall.clientWidth/1000,cells=[];for(var x=Math.floor(b.x/scale/8);x<=Math.min(124,Math.floor((b.x+b.width)/scale/8));x++)for(var y=Math.floor(b.y/scale/8);y<=Math.floor((b.y+b.height)/scale/8);y++)cells.push(y*128+x);shared.ignoreLease=textLease;await shared.reserve(textLease,currentWall,cells,editingText&&editingText.id)}
     if(shared)textLeaseBeat=setInterval(function(){reserveText().catch(function(e){error(e.message)})},4000)
-    var freeTools = null, editingText = null, draftBaseline = null, editAnchorBaseline = null, stickerCategory=stickerGroup(draft.sticker)
+    var camera = null, freeTools = null, editingText = null, draftBaseline = null, editAnchorBaseline = null, stickerCategory=stickerGroup(draft.sticker)
     var wall = $('[data-wall]'), composer = $('[data-composer]'), detail = $('[data-detail]'), book = $('[data-wall-book]')
     var bookFocus = null, locateAfterClose = null, locatedNote = null, locatedTimer = 0
     var canvas = $('[data-drawing]'), ctx = canvas.getContext('2d'), activeStroke = null, pointer = null
@@ -296,7 +296,8 @@
       writeAnchor.y*=ratio
       if(clean)editAnchorBaseline=JSON.stringify(writeAnchor)
     }
-    function anchorAt(x,y){var r=wall.getBoundingClientRect(),w=draftWidth(),h=draft.medium==='sticker'?w:w*.6;return {mode:layoutMode,x:Math.max(0,Math.min(1,(x-r.left-w/2-16)/Math.max(1,wall.clientWidth-w-32))),y:Math.max(16,y-r.top-h/2)}}
+    function viewZoom(){return camera?camera.zoom():1}
+    function anchorAt(x,y){var r=wall.getBoundingClientRect(),z=viewZoom();x=(x-r.left)/z;y=(y-r.top)/z;var w=draftWidth(),h=draft.medium==='sticker'?w:w*.6;return {mode:layoutMode,x:Math.max(0,Math.min(1,(x-w/2-16)/Math.max(1,wall.clientWidth-w-32))),y:Math.max(16,y-h/2)}}
     function choosePlace(medium) {
       var recoverable=textRecovery.read();if(recoverable&&!composer.open&&!draft.text.trim()&&!draft.strokes.length){recoverText.click();return}
       if(!editingText&&!roomForNote())return
@@ -321,7 +322,7 @@
     function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok||publishingText;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
     wall.addEventListener('pointermove',function(e){if(!choosing)return;var a=anchorAt(e.clientX,e.clientY),w=draftWidth();placementGhost.hidden=false;Object.assign(placementGhost.style,{left:wall.offsetLeft+16+a.x*Math.max(0,wall.clientWidth-w-32)+'px',top:wall.offsetTop+a.y+'px',width:w+'px',height:(draft.medium==='sticker'?w:w*.6)+'px'});placementGhost.textContent={ink:'喷漆文字',engraving:'刻字',paper:'纸条',sticker:'贴纸'}[draft.medium]},{signal:signal})
     moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0||!e.isPrimary||stageDrag)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
-    moveHandle.addEventListener('pointermove',function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;writeAnchor={mode:layoutMode,x:Math.max(0,Math.min(1,stageDrag.anchor.x+(e.clientX-stageDrag.x)/Math.max(1,wall.clientWidth-draftWidth()-32))),y:Math.max(16,stageDrag.anchor.y+e.clientY-stageDrag.y)};stage.style.left=wall.offsetLeft+16+writeAnchor.x*Math.max(0,wall.clientWidth-draftWidth()-32)+'px';stage.style.top=wall.offsetTop+writeAnchor.y+'px';if(!placeFrame)placeFrame=requestAnimationFrame(function(){placeFrame=0;validatePlacement()})},{signal:signal})
+    moveHandle.addEventListener('pointermove',function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;writeAnchor={mode:layoutMode,x:Math.max(0,Math.min(1,stageDrag.anchor.x+(e.clientX-stageDrag.x)/viewZoom()/Math.max(1,wall.clientWidth-draftWidth()-32))),y:Math.max(16,stageDrag.anchor.y+(e.clientY-stageDrag.y)/viewZoom())};stage.style.left=wall.offsetLeft+16+writeAnchor.x*Math.max(0,wall.clientWidth-draftWidth()-32)+'px';stage.style.top=wall.offsetTop+writeAnchor.y+'px';if(!placeFrame)placeFrame=requestAnimationFrame(function(){placeFrame=0;validatePlacement()})},{signal:signal})
     ;['pointerup','pointercancel','lostpointercapture'].forEach(function(type){moveHandle.addEventListener(type,function(e){if(!stageDrag||stageDrag.id!==e.pointerId)return;stageDrag=null;positionStage()},{signal:signal})})
     moveHandle.addEventListener('keydown',function(e){var d={ArrowLeft:[-10,0],ArrowRight:[10,0],ArrowUp:[0,-10],ArrowDown:[0,10]}[e.key];if(!d)return;e.preventDefault();writeAnchor.x=Math.max(0,Math.min(1,writeAnchor.x+d[0]/Math.max(1,wall.clientWidth-draftWidth()-32)));writeAnchor.y=Math.max(16,writeAnchor.y+d[1]);positionStage()},{signal:signal})
     function readNotes(){var items=load();items.slice().reverse().forEach(function(n,i){if(n.section==null)n.section=Math.floor(i/WALL_SIZE)});return items}
@@ -343,8 +344,8 @@
     }
     function changeWall(section) {
       if (!canNavigateWall()) return false
-      if(shared){shared.load(section).then(function(){if(signal.aborted)return;notes=readNotes();currentWall=section;try{localStorage.setItem(wallPreference,String(section))}catch(_){}renderWall();if(book.open)renderBook()}).catch(function(e){status(e.message)});return true}
-      abandonPlacement();currentWall = section; writeAnchor = null; renderWall()
+      if(shared){shared.load(section).then(function(){if(signal.aborted)return;notes=readNotes();currentWall=section;if(camera)camera.reset();try{localStorage.setItem(wallPreference,String(section))}catch(_){}renderWall();if(book.open)renderBook()}).catch(function(e){status(e.message)});return true}
+      abandonPlacement();currentWall = section;if(camera)camera.reset(); writeAnchor = null; renderWall()
       try { localStorage.setItem(wallPreference, String(currentWall)) } catch (_) {}
       window.scrollTo({top:0,behavior:'auto'})
       status('第 ' + String(currentWall + 1).padStart(2,'0') + ' 面墙 · ' + wallNotes().length + ' 处痕迹')
@@ -352,7 +353,7 @@
     }
     function newWall() {
       if (!canNavigateWall()) return false
-      if(shared){shared.newWall().then(function(id){if(signal.aborted)return;notes=readNotes();currentWall=id;renderWall();status('已打开共享墙「'+wallName(id).full+'」')}).catch(function(e){status(e.message)});return true}
+      if(shared){shared.newWall().then(function(id){if(signal.aborted)return;notes=readNotes();currentWall=id;if(camera)camera.reset();renderWall();status('已打开共享墙「'+wallName(id).full+'」')}).catch(function(e){status(e.message)});return true}
       var next = Math.max.apply(null,wallIds()) + 1
       try { localStorage.setItem(KEY+'-walls',JSON.stringify(wallCatalog.concat([next]))) }
       catch (_) { var message='新墙暂时无法保存，请释放浏览器空间后重试。现有留言没有改变。';status(message);$('[data-book-status]').textContent=message;return false }
@@ -397,7 +398,7 @@
       var el=Array.from(wall.querySelectorAll('[data-note]')).find(function(n){return n.dataset.note===id});if(!el)return
       clearTimeout(locatedTimer);if(locatedNote)locatedNote.classList.remove('is-located')
       locatedNote=el;el.classList.remove('is-distant');el.classList.add('is-located');el.focus({preventScroll:true})
-      el.scrollIntoView({block:'center',inline:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})
+      if(camera)camera.focus(el);else el.scrollIntoView({block:'center',inline:'nearest',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})
       status('已找到「'+noteLabel(note).slice(0,24)+'」。点击痕迹可查看或管理。')
       locatedTimer=setTimeout(function(){el.classList.remove('is-located');locatedNote=null},4500)
     }
@@ -455,7 +456,7 @@
       return note && note.layout === 2 && note.anchor && note.anchor.mode === layoutMode ? { x:note.anchor.x, y:note.anchor.y, z:notes.length + 1 } : null
     }
     function paintPaper(el, x, y) { el.style.left = x + 'px'; el.style.top = y + 'px' }
-    function wallControls(){var r=wall.getBoundingClientRect();return Array.from(root.querySelectorAll('[data-wall-protected]')).map(function(el){var b=el.getBoundingClientRect();return {x:b.left-r.left-8,y:b.top-r.top-8,width:b.width+16,height:b.height+16,medium:'control'}})}
+    function wallControls(){var r=wall.getBoundingClientRect(),z=viewZoom();return Array.from(root.querySelectorAll('[data-wall-protected]')).map(function(el){var b=el.getBoundingClientRect();return {x:(b.left-r.left)/z-8,y:(b.top-r.top)/z-8,width:b.width/z+16,height:b.height/z+16,medium:'control'}})}
     function spotAvailable(x,y,width,height,medium,occupied) {
       return occupied.every(function (other) {
         var ox = Math.min(x+width,other.x+other.width)-Math.max(x,other.x)
@@ -519,6 +520,7 @@
       try {var value=JSON.stringify(layouts);if(localStorage.getItem(layoutKey)!==value)localStorage.setItem(layoutKey,value)} catch (_) {}
       if (composer.open) positionStage()
       if(freeTools)freeTools.resize()
+      if(camera)camera.refresh()
     }
     function startPaper(el, pointerId, x, y) {
       if(shared&&!notes.some(function(n){return n.id===el.dataset.note&&n.owned})){status('只能移动自己留下的纸条或贴纸。');return}
@@ -575,8 +577,8 @@
     }, {signal:signal})
     wall.addEventListener('pointermove', function (e) {
       if (!drag || e.pointerId !== drag.pointer) return
-      var x = e.clientX - drag.startX, y = e.clientY - drag.startY
-      if (!drag.active && Math.hypot(x, y) < 6) return
+      var x = (e.clientX - drag.startX)/viewZoom(), y = (e.clientY - drag.startY)/viewZoom()
+      if (!drag.active && Math.hypot(x, y)*viewZoom() < 6) return
       if (!drag.active) liftPaper()
       movePaper(drag.originX + x, drag.originY + y)
     }, {signal:signal})
@@ -641,7 +643,9 @@
       var lastWidth = 0
       wallObserver = new ResizeObserver(function () { if (wall.clientWidth !== lastWidth) { lastWidth = wall.clientWidth; wallLayout() } })
       wallObserver.observe(wall)
-    } else window.addEventListener('resize', wallLayout, {signal:signal})
+    }
+    // Reflow before the camera clamps its new viewport, including height-only rotation.
+    window.addEventListener('resize', wallLayout, {signal:signal})
     wall.addEventListener('click', function (e) {
       if ((!choosing&&e.target!==wall) || suppressNoteClick || composer.open || (freeTools&&freeTools.active())) return
       if(!choosing){status('先选择工具，再在墙上落笔。');return}
@@ -826,13 +830,20 @@
     },{signal:signal})
     document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ if(composer.open) composer.close(); else if(choosing) abandonPlacement() } },{signal:signal})
     root.querySelectorAll('[data-wall-tool="ink"],[data-wall-tool="engraving"]').forEach(function(b){b.querySelector('span').innerHTML=window.WallTools.toolArt(b.dataset.wallTool)})
-    freeTools=window.WallTools.mount({root:root,wall:wall,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,capacity:capacityText,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;choosePlace(medium)},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('痕迹已保存。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))}})
+    function cancelCameraGesture(){
+      if(freeTools)freeTools.cancelGesture()
+      if(activeStroke){draft.strokes=draft.strokes.filter(function(s){return s!==activeStroke});stop();redraw()}
+      if(stageDrag){writeAnchor=stageDrag.anchor;stageDrag=null;positionStage()}
+      finishPaper(true)
+    }
+    if(window.WallCamera)camera=window.WallCamera.mount({root:root,wall:wall,stage:stage,ghost:placementGhost,cancel:cancelCameraGesture,editing:function(){return choosing||composer.open||touchArrange||!!(freeTools&&freeTools.active())},changed:function(){if(freeTools)freeTools.viewportChanged();if(composer.open)validatePlacement()}})
+    freeTools=window.WallTools.mount({root:root,wall:wall,zoom:viewZoom,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,capacity:capacityText,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;choosePlace(medium)},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('痕迹已保存。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))}})
     renderWall()
     var liveRefreshTimer=0
     function refreshShared(){if(signal.aborted)return;if((drag&&drag.active)||(freeTools&&freeTools.busy())||stageDrag){clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(refreshShared,80);return}notes=readNotes();renderWall();if(editingText){var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===editingText.id});if(original)original.classList.add('gb-editing-original')}if(book.open)renderBook()}
     var unsubscribe=shared?shared.subscribe(function(contentChanged){if(contentChanged===false){if(freeTools)freeTools.presence();return}refreshShared()}):function(){}
     showTextRecovery();
-    cleanup=function(){clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();if(camera)camera.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,hasUnsavedChanges:function(){return unsaved()},confirmLeave:function(){return !unsaved() || window.confirm('墙上还有尚未保存的内容。已备份的草稿可在原窗口恢复；未完成的提交不会发布。确定离开吗？')},destroy:function(){cleanup();cleanup=function(){}}}
 })()
