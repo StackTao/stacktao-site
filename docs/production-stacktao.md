@@ -65,7 +65,7 @@ chmod 755 /srv/stacktao/data-restored
 - 保留 `/root/.halo2`、`/opt/sttao/halo` 和 PostgreSQL `halo` 数据库。
 - 迁移前备份：`/srv/stacktao/backups/pre-halo/`，包含 PostgreSQL 自定义格式备份 `halo.dump`、文件压缩包 `halo-files.tar.gz`、原 Nginx 主配置、服务配置和宝塔网站登记数据库快照。
 - 原先同样代理 Halo 的 `sutao.site` 已 301 跳转到 `https://stacktao.cn`。
-- **本次仅替换网站服务；Halo 原文章没有自动导入新博客。** 当前前台内容来自本项目内容目录，原文章可从保留的 Halo 数据中另行迁移。
+- **2026-10-23 已完成 Halo 文章迁移：23 篇公开文章、1 篇草稿，跳过 1 篇已删除文章。** 原有 9 篇内容保留；迁移详情见 `docs/halo-migration.md`。
 - 回滚需暂停新博客写入，备份新数据，将独立的 stacktao.cn vhost 配置移出 Nginx include 目录，恢复 pre-halo/nginx.conf，启动 Halo，执行 nginx -t 后 reload。不要直接覆盖整个宝塔数据库，否则会影响其他网站后续改动。
 
 服务器对 systemd 启动目录及 root crontab 设置了 immutable 保护。仅为禁用 Halo 与添加备份临时解锁了对应条目，操作后已恢复原属性；未关闭全局防护。

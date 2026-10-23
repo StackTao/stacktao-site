@@ -123,7 +123,7 @@ async function renderArticle(file) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error(`文章目录必须使用英文 slug: ${file}`)
   if (!data.title || !data.date) throw new Error(`文章缺少 title 或 date: ${file}`)
 
-  const $ = cheerio.load(marked.parse(parsed.content, { gfm: true }), null, false)
+  const $ = cheerio.load(data.format === 'html' ? parsed.content : marked.parse(parsed.content, { gfm: true }), null, false)
   const outline = []
   const usedIds = new Map()
   $('h2, h3').each((_, element) => {

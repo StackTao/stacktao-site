@@ -39,6 +39,18 @@ test('content studio: auth, scoped API, isolated drafts, atomic publication, sha
     assert.equal((await request('/media?name=evil.png',{method:'POST',data:Buffer.from('<svg onload=alert(1)>'),raw:true})).status,415)
     assert.equal((await fetch(base+picture.data.url)).status,401,'unpublished originals require authentication')
     const preview=await request('/preview',{method:'POST',token:draftToken,data:{markdown:'![photo]('+picture.data.src+')\n<script>alert(1)</script><img src=x onerror=alert(1)>'}});assert.equal(preview.status,200);assert(!preview.data.html.includes('onerror'));assert(!preview.data.html.includes('<script>'));assert(preview.data.html.includes(picture.data.url))
+    const htmlSource='<pre><code class="language-java">class Example {\n\n    String value = &quot;x&quot;;\n}</code></pre><script>alert(1)</script>'
+    const htmlPreview=await request('/preview',{method:'POST',data:{format:'html',markdown:htmlSource}})
+    assert.equal((htmlPreview.data.html.match(/<pre>/g)||[]).length,1)
+    assert.ok(!htmlPreview.data.html.includes('<script>'))
+    const htmlDraft=await request('/posts',{method:'POST',data:{slug:'html-import',title:'Imported HTML',date:'2025-05-01',format:'html',markdown:htmlSource}})
+    assert.equal(htmlDraft.data.format,'html')
+    const htmlPublished=await request('/posts/html-import/publish',{method:'POST',revision:htmlDraft.data.revision,data:{}})
+    assert.equal(htmlPublished.data.format,'html')
+    const htmlOutput=JSON.parse(await fs.readFile(path.join(output,'content/posts/html-import.json'),'utf8')).html
+    assert.equal((htmlOutput.match(/<pre>/g)||[]).length,1)
+    assert.ok(htmlOutput.includes('    String value'))
+    assert.ok(!htmlOutput.includes('<script>'))
     let created=await request('/posts',{method:'POST',token:draftToken,data:{slug:'api-article',title:'API article',date:'2026-10-22',markdown:'![photo]('+picture.data.src+')\n## Hello\nPublished from API'}});assert.equal(created.status,201)
     assert.equal((await request('/posts',{method:'POST',data:{slug:'api-article',title:'duplicate'}})).status,409)
     const published=await request('/posts/api-article/publish',{method:'POST',revision:created.data.revision,data:{}});assert.equal(published.status,200,JSON.stringify(published.data));assert.equal(published.data.published,true)

@@ -33,7 +33,7 @@ function cleanPost(data) {
   const title=String(data.title||'').trim(), markdown=String(data.markdown||'')
   check(title.length>0&&title.length<=200,'标题需要 1–200 个字');check(markdown.length<=300000,'文章内容过长')
   check(!data.tags||Array.isArray(data.tags),'标签应为数组')
-  return {title,markdown,date:day(data.date||new Date().toISOString().slice(0,10)),summary:String(data.summary||'').slice(0,1000),tags:(data.tags||[]).map(String).slice(0,20),cover:String(data.cover||''),discussion:String(data.discussion||''),lang:String(data.lang||'zh'),featured:!!data.featured}
+  return {title,markdown,format:data.format==='html'?'html':'markdown',date:day(data.date||new Date().toISOString().slice(0,10)),summary:String(data.summary||'').slice(0,1000),tags:(data.tags||[]).map(String).slice(0,20),cover:String(data.cover||''),discussion:String(data.discussion||''),lang:String(data.lang||'zh'),featured:!!data.featured}
 }
 async function within(root, relative) {
   const full=path.resolve(root,relative), rel=path.relative(root,full)
@@ -269,7 +269,7 @@ export async function createAdminServer(options={}) {
         }
         if(pathname==='/api/v1/preview'&&method==='POST'){
           can(actor,'drafts:write');const data=await body(req)
-          let html=sanitizeHtml(marked.parse(String(data.markdown||'')),{allowedTags:sanitizeHtml.defaults.allowedTags.concat(['img','h1','h2','details','summary']),allowedAttributes:{...sanitizeHtml.defaults.allowedAttributes,img:['src','alt','title'],code:['class']},allowedSchemes:['https','http','mailto'],transformTags:{img:(tag,attrs)=>{let src=attrs.src||'';if(/^media\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/.test(src))src='/api/v1/'+src+'/file';else if(/^(\.\/)?images\//.test(src)&&slugPattern.test(data.slug||''))src='/api/v1/posts/'+data.slug+'/assets/'+src.replace(/^(\.\/)?images\//,'');return {tagName:tag,attribs:{...attrs,src}}}}})
+          let html=sanitizeHtml(data.format==='html'?String(data.markdown||''):marked.parse(String(data.markdown||'')),{allowedTags:sanitizeHtml.defaults.allowedTags.concat(['img','h1','h2','details','summary']),allowedAttributes:{...sanitizeHtml.defaults.allowedAttributes,img:['src','alt','title'],code:['class']},allowedSchemes:['https','http','mailto'],transformTags:{img:(tag,attrs)=>{let src=attrs.src||'';if(/^media\/[a-f0-9-]+\.(png|jpg|webp|gif|avif)$/.test(src))src='/api/v1/'+src+'/file';else if(/^(\.\/)?images\//.test(src)&&slugPattern.test(data.slug||''))src='/api/v1/posts/'+data.slug+'/assets/'+src.replace(/^(\.\/)?images\//,'');return {tagName:tag,attribs:{...attrs,src}}}}})
           return send(res,200,{html})
         }
         const payload=await body(req,pathname==='/api/v1/media'?12*1024*1024:1000000,pathname==='/api/v1/media')
