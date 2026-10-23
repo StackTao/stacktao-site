@@ -30,3 +30,12 @@
 - 浏览器未见本站脚本错误；Chrome 翻译扩展有自身网络错误，与本站无关。
 
 此验收使用桌面 Chromium 的触摸输入与手机视口模拟，不冒充 iPhone/Android 真机、Safari、软键盘或触控笔硬件验收。
+
+## 上线记录
+
+- 代码提交：`a4dca41`；镜像：`stacktao:20261023-zoom-a4dca41`。
+- 备份：`/srv/stacktao/backups/20261023T072505Z-3897680`，升级后比对 41 个持久化文件，差异 0。
+- 升级时数据库共 19 处留言、11 面墙；生产浏览器读取第一面 10 处正常。未向生产创建测试留言。
+- `https://stacktao.cn/` 的 HTML、guestbook.js、wall-tools.js、wall-camera.js、wall-camera.css 与本地 SHA-256 全部一致。
+- 实际打开线上墙并点击放大，场景变为 150%，共享留言显示正常，本站控制台错误为空。
+- 前版镜像 `stacktao:20261023-gestures-593143a`、源码归档和 env 备份均保留，可用于回退。
