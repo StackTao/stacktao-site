@@ -44,11 +44,11 @@
     <dialog class="gb-wall-book" id="gb-wall-book" data-wall-book aria-labelledby="gb-wall-book-title">
       <header class="gb-book-head"><div><p>路过，也留下过。</p><h2 id="gb-wall-book-title">墙册</h2></div><button data-gb="book-close" aria-label="关闭墙册">×</button></header>
       <div class="gb-book-current"><div><span>正在看的墙</span><strong data-book-title></strong></div><div class="gb-book-space"><span data-book-capacity></span><meter data-book-meter min="0" max="24" value="0" aria-label="当前墙面已用留言数"></meter></div></div>
-      <p class="gb-book-explanation">每次完成算一处，每面最多 24 处。可以随时开新墙，旧痕迹留在原处。</p>
-      <nav class="gb-book-walls" aria-label="墙面目录" data-book-walls></nav>
+      <p class="gb-book-explanation">先看看墙上的故事，再挑一面留下你的。余量按 24 处留言计，落笔时仍需避开已有痕迹。</p>
+      <nav class="gb-book-walls" aria-label="已有痕迹的墙" data-book-walls></nav><details class="gb-book-blank-walls" data-book-blanks><summary data-book-blank-summary></summary><nav class="gb-book-walls" aria-label="空墙目录" data-book-empty-walls></nav></details>
       <section class="gb-book-notes"><div class="gb-book-section-head"><h3>本面留下的痕迹</h3><span data-book-note-count></span></div><p class="gb-book-local">点一条，回到它在墙上的位置。</p><ol data-book-notes></ol></section>
       <p class="gb-book-status" data-book-status role="status"></p>
-      <footer class="gb-book-foot"><span data-book-total></span><button data-gb="book-new-wall">开一面新墙 <span aria-hidden="true">↗</span></button></footer>
+      <footer class="gb-book-foot"><span data-book-total></span><div><button data-gb="book-new-wall" class="gb-book-new">另开新墙</button><button data-gb="book-enter">去这面墙留言 ↗</button></div></footer>
     </dialog>
     <dialog class="gb-dialog" data-composer aria-labelledby="gb-dialog-title">
       <div class="gb-dialog-head"><div><p class="gb-eyebrow" data-step>01 / 写下此刻</p><h2 id="gb-dialog-title">慢慢写，不必工整。</h2></div><button class="gb-close" data-gb="close" aria-label="关闭，保留未完成纸笺">×</button></div>
@@ -104,6 +104,33 @@
       el.appendChild(path)
     })
     return el
+  }
+  // Compact SVG overview uses the same saved wall coordinates, without live tools or filters.
+  function wallThumbnail(items) {
+    var ns='http://www.w3.org/2000/svg',art=document.createElementNS(ns,'svg'),bottom=750
+    art.setAttribute('aria-hidden','true');art.setAttribute('preserveAspectRatio','xMidYMid meet')
+    items.slice().reverse().forEach(function(n,index){
+      var b=n.frame||n.worldBox||{x:50+index%3*300,y:70+Math.floor(index/3)*220,width:260,height:180}
+      bottom=Math.max(bottom,b.y+b.height+50)
+      var group=document.createElementNS(ns,'svg');group.setAttribute('x',b.x);group.setAttribute('y',b.y);group.setAttribute('width',b.width);group.setAttribute('height',b.height);group.setAttribute('viewBox','0 0 '+b.width+' '+b.height)
+      if(n.medium==='sticker'){var sticker=stickerArt(n.sticker);sticker.setAttribute('width','100%');sticker.setAttribute('height','100%');group.append(sticker)}
+      else {
+        if(n.medium==='paper'){var paper=document.createElementNS(ns,'rect');paper.setAttribute('width','100%');paper.setAttribute('height','100%');paper.setAttribute('fill',({sage:'#e9ede4',rose:'#f2e6e1'})[n.paper]||'#faf7ef');group.append(paper)}
+        if(n.mode==='draw'){
+          var drawing=svg(n.strokes,n.frame);drawing.setAttribute('width','100%');drawing.setAttribute('height','100%');drawing.setAttribute('preserveAspectRatio','none');drawing.removeAttribute('role');drawing.removeAttribute('aria-label');
+          if(n.medium==='engraving')drawing.querySelectorAll('path').forEach(function(p){p.setAttribute('stroke','#786046')})
+          if(n.medium==='ink')drawing.setAttribute('opacity','.8')
+          group.append(drawing)
+        }else{
+          var size=n.worldFontSize||24,lineHeight=size*1.8,padding=n.medium==='paper'?20:12,maxChars=Math.max(1,Math.floor((b.width-padding*2)/size)),lines=[]
+          n.text.split('\n').forEach(function(line){var chars=Array.from(line);if(!chars.length)lines.push('');for(var i=0;i<chars.length;i+=maxChars)lines.push(chars.slice(i,i+maxChars).join(''))})
+          lines.forEach(function(line,i){var text=document.createElementNS(ns,'text');text.setAttribute('x',padding);text.setAttribute('y',padding+size+i*lineHeight);text.setAttribute('font-size',size);text.setAttribute('font-family',(fonts[n.font]||fonts.wenkai)[1]);text.setAttribute('fill',n.medium==='engraving'?'#786046':n.ink||'#3f5870');text.textContent=line;group.append(text)})
+        }
+      }
+      art.append(group)
+    })
+    art.setAttribute('viewBox','0 0 1000 '+bottom)
+    return art
   }
   var carvingSerial = 0
   function carvedArt(note) {
@@ -344,9 +371,10 @@
       if (composer.open || choosing || (freeTools && freeTools.active())) { status('先完成当前创作，或收起工具，再翻墙册。你的草稿还在原处。'); return false }
       return true
     }
+    var wallChange=0
     function changeWall(section) {
       if (!canNavigateWall()) return false
-      if(shared){shared.load(section).then(function(){if(signal.aborted)return;notes=readNotes();currentWall=section;if(camera)camera.reset();try{localStorage.setItem(wallPreference,String(section))}catch(_){}renderWall();if(book.open)renderBook()}).catch(function(e){status(e.message)});return true}
+      if(shared){var ticket=++wallChange;shared.load(section).then(function(){if(signal.aborted||ticket!==wallChange)return;notes=readNotes();currentWall=section;if(camera)camera.reset();try{localStorage.setItem(wallPreference,String(section))}catch(_){}renderWall();if(book.open){renderBook();var chosen=$('[data-book-wall="'+section+'"]');if(chosen)chosen.focus({preventScroll:true})}}).catch(function(e){if(signal.aborted||ticket!==wallChange)return;status(e.message);if(book.open){$('[data-book-status]').textContent=e.message;$('[data-gb="book-enter"]').disabled=false}});return true}
       abandonPlacement();currentWall = section;if(camera)camera.reset(); writeAnchor = null; renderWall()
       try { localStorage.setItem(wallPreference, String(currentWall)) } catch (_) {}
       window.scrollTo({top:0,behavior:'auto'})
@@ -355,7 +383,7 @@
     }
     function newWall() {
       if (!canNavigateWall()) return false
-      if(shared){shared.newWall().then(function(id){if(signal.aborted)return;notes=readNotes();currentWall=id;if(camera)camera.reset();renderWall();status('已打开共享墙「'+wallName(id).full+'」')}).catch(function(e){status(e.message)});return true}
+      if(shared){var ticket=++wallChange;shared.newWall().then(function(id){if(signal.aborted||ticket!==wallChange)return;notes=readNotes();currentWall=id;if(camera)camera.reset();renderWall();status('已打开共享墙「'+wallName(id).full+'」')}).catch(function(e){status(e.message)});return true}
       var next = Math.max.apply(null,wallIds()) + 1
       try { localStorage.setItem(KEY+'-walls',JSON.stringify(wallCatalog.concat([next]))) }
       catch (_) { var message='新墙暂时无法保存，请释放浏览器空间后重试。现有留言没有改变。';status(message);$('[data-book-status]').textContent=message;return false }
@@ -368,8 +396,17 @@
       if (note.mode === 'text') return note.text.replace(/\s+/g,' ').trim() || '未题名的留言'
       return {ink:'手绘涂鸦',engraving:'手刻笔迹',paper:'手写纸条'}[note.medium || 'paper'] + ' · ' + note.strokes.length + ' 笔'
     }
+    var bookPreviews=new Map(),previewObserver=window.IntersectionObserver?new IntersectionObserver(function(entries){entries.forEach(function(entry){if(entry.isIntersecting){previewObserver.unobserve(entry.target);loadBookPreview(entry.target)}})},{root:book,rootMargin:'100px'}):null
+    function loadBookPreview(box){
+      var id=Number(box.dataset.previewWall),key=box.dataset.previewKey,items=notes.filter(function(n){return n.section===id})
+      if(!shared||id===currentWall){box.replaceChildren(wallThumbnail(items));return}
+      if(!shared.preview)return
+      var pending=bookPreviews.get(key)
+      if(!pending){pending=shared.preview(id);bookPreviews.set(key,pending)}
+      pending.then(function(items){if(!signal.aborted&&box.isConnected&&box.dataset.previewKey===key)box.replaceChildren(wallThumbnail(items))}).catch(function(){bookPreviews.delete(key);if(box.isConnected)box.textContent='预览暂未加载，点选后重试'})
+    }
     function renderBook() {
-      $('[data-book-status]').textContent=''
+      $('[data-book-status]').textContent='';$('[data-gb="book-enter"]').disabled=false
       var ids = wallIds(), items = wallNotes(), counts = {}
       notes.forEach(function (note) { counts[note.section] = (counts[note.section] || 0) + 1 })
       if(shared)shared.walls().forEach(function(w){counts[w.id]=w.count})
@@ -378,12 +415,22 @@
       $('[data-book-meter]').value = items.length
       $('[data-book-note-count]').textContent = items.length + ' 处'
       $('[data-book-total]').textContent = ids.length + ' 面墙 · '+(shared?shared.stats.total:notes.length)+(shared?' 处共享痕迹':' 处本机痕迹')
-      var walls = $('[data-book-walls]');walls.replaceChildren()
+      var walls=$('[data-book-walls]'),emptyWalls=$('[data-book-empty-walls]'),blankGroup=$('[data-book-blanks]'),emptyIds=ids.filter(function(id){return !counts[id]})
+      walls.replaceChildren();emptyWalls.replaceChildren();if(previewObserver)previewObserver.disconnect()
+      blankGroup.hidden=!emptyIds.length
+      $('[data-book-blank-summary]').textContent=emptyIds.length+' 面空墙 · 每面可留 24 处'
+      if(!counts[currentWall]&&!book.open)blankGroup.open=true
+      $('[data-gb="book-enter"]').textContent=items.length>=WALL_SIZE?'去看看这面墙 ↗':'去这面墙留言 ↗'
       ids.forEach(function (id) {
-        var button = document.createElement('button'), name = document.createElement('span'), count = document.createElement('small')
-        button.type='button';button.dataset.bookWall=String(id);button.setAttribute('aria-current',String(id === currentWall))
-        name.textContent=wallName(id).full;count.textContent=(counts[id] || 0)+' / '+WALL_SIZE;button.append(name,count);walls.append(button)
+        var count=counts[id]||0,button=document.createElement('button'),picture=document.createElement('span'),name=document.createElement('strong'),capacity=document.createElement('small'),bar=document.createElement('span'),meta=document.createElement('span')
+        button.type='button';button.dataset.bookWall=String(id);button.setAttribute('aria-current',String(id===currentWall));button.setAttribute('aria-label',wallName(id).full+'，'+(count>=WALL_SIZE?'已满，可浏览':'还可留 '+(WALL_SIZE-count)+' 处')+(id===currentWall?'，当前墙面':''))
+        picture.className='gb-book-preview';picture.setAttribute('aria-hidden','true')
+        if(!count){picture.classList.add('is-blank');picture.textContent='等你留下第一笔'}
+        else {picture.textContent='正在看这面墙…';picture.dataset.previewWall=String(id);var info=shared&&shared.walls().find(function(w){return w.id===id});picture.dataset.previewKey=id+':'+(info?info.revision:'local')}
+        name.textContent=wallName(id).full;meta.className='gb-book-card-meta';capacity.textContent=count>=WALL_SIZE?'已满 · 24 / 24':'还可留 '+(WALL_SIZE-count)+' 处';bar.className='gb-book-fill';bar.style.setProperty('--used',Math.min(100,count/WALL_SIZE*100)+'%');meta.append(name,capacity);button.append(picture,meta,bar);(count?walls:emptyWalls).append(button)
+        if(count){if(previewObserver)previewObserver.observe(picture);else loadBookPreview(picture)}
       })
+      walls.hidden=!ids.some(function(id){return counts[id]>0})
       var list=$('[data-book-notes]');list.replaceChildren()
       if (!items.length) { var empty=document.createElement('li');empty.className='gb-book-empty';empty.textContent='这里还没有留言。合上墙册，留下一笔吧。';list.append(empty) }
       items.forEach(function (note) {
@@ -753,7 +800,7 @@
     $('[data-width]').addEventListener('change',function(e){draft.width=Number(e.target.value)},{signal:signal})
     root.addEventListener('click', async function (e) {
       var button=e.target.closest('button');if(!button)return
-      if (button.dataset.bookWall !== undefined) { var targetWall=Number(button.dataset.bookWall);if(changeWall(targetWall))$('[data-book-wall="'+targetWall+'"]').focus({preventScroll:true});return }
+      if (button.dataset.bookWall !== undefined) { var targetWall=Number(button.dataset.bookWall);if(shared){$('[data-book-status]').textContent='正在打开这面墙…';$('[data-gb="book-enter"]').disabled=true;}if(changeWall(targetWall))$('[data-book-wall="'+targetWall+'"]').focus({preventScroll:true});return }
       if (button.dataset.bookNote) { locateAfterClose=button.dataset.bookNote;book.close();return }
       if (button.dataset.wallTool) { if(choosing&&editingText)abandonPlacement(); if(['ink','engraving'].includes(button.dataset.wallTool)){if(composer.open)composer.close();cancelPlace();if(!roomForNote())return;draft.medium=button.dataset.wallTool;freeTools.start(button.dataset.wallTool)}else choosePlace(button.dataset.wallTool); return }
       if (button.closest('.gb-materials') && button.dataset.medium) { draft.medium=button.dataset.medium;syncEditor();return }
@@ -770,8 +817,9 @@
       switch(button.dataset.gb) {
         case 'wall-book':
           if(!canNavigateWall())break
-          bookFocus=button;renderBook();book.showModal();var currentEntry=$('[data-book-wall="'+currentWall+'"]');if(currentEntry)currentEntry.scrollIntoView({block:'nearest',inline:'nearest',behavior:'auto'});button.setAttribute('aria-expanded','true');document.body.classList.add('gb-dialog-open');break
+          bookFocus=button;renderBook();book.showModal();book.scrollTop=0;button.setAttribute('aria-expanded','true');document.body.classList.add('gb-dialog-open');break
         case 'book-close':book.close();break
+        case 'book-enter':book.close();status(wallNotes().length>=WALL_SIZE?'这面墙已满，可以欣赏已有的留言。':'选好这面墙了，拿起下方的工具，留下一笔吧。');break
         case 'book-new-wall':if(newWall())book.close();break
         case 'previous-wall': case 'next-wall':
           var ids = wallIds(), index = ids.indexOf(currentWall) + (button.dataset.gb === 'previous-wall' ? -1 : 1)
@@ -845,7 +893,7 @@
     function refreshShared(){if(signal.aborted)return;if(!shared.walls().some(function(w){return w.id===currentWall})){if(composer.open||choosing||(freeTools&&freeTools.active())){status('这面墙已由管理员移除，草稿仍保留。恢复墙面后可继续提交。');return}changeWall(shared.walls()[0].id);status('原墙已移入删除档案，已为你打开另一面墙。');return}if((drag&&drag.active)||(freeTools&&freeTools.busy())||stageDrag){clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(refreshShared,80);return}notes=readNotes();renderWall();if(editingText){var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===editingText.id});if(original)original.classList.add('gb-editing-original')}if(book.open)renderBook()}
     var unsubscribe=shared?shared.subscribe(function(contentChanged){if(contentChanged===false){if(freeTools)freeTools.presence();return}refreshShared()}):function(){}
     showTextRecovery();
-    cleanup=function(){clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();if(camera)camera.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    cleanup=function(){if(previewObserver)previewObserver.disconnect();bookPreviews.clear();clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();if(camera)camera.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
   window.Guestbook={mount:mount,hasUnsavedChanges:function(){return unsaved()},confirmLeave:function(){return !unsaved() || window.confirm('墙上还有尚未保存的内容。已备份的草稿可在原窗口恢复；未完成的提交不会发布。确定离开吗？')},destroy:function(){cleanup();cleanup=function(){}}}
 })()

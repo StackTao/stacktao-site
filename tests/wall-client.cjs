@@ -6,6 +6,7 @@ const {JSDOM}=require('jsdom'),fs=require('node:fs'),assert=require('node:assert
  w.setInterval=fn=>(interval=fn,1);w.clearInterval=()=>{};w.EventSource=class{constructor(){events=this}close(){this.closed=true}}
  w.fetch=async(url,options)=>{if(failRead&&options.method==='GET')throw Error('offline');if(url.endsWith('/session'))return {ok:true,json:async()=>({token:'a'.repeat(64)})};if(url.endsWith('/notes'))return {ok:true,json:async()=>({...JSON.parse(options.body).note,revision:'saved',owned:true})};return {ok:true,json:async()=>structuredClone(snapshot)}}
  w.eval(fs.readFileSync('public/js/wall-client.js','utf8'));await w.SharedWall.init()
+ const beforePreview=w.SharedWall.read();await w.SharedWall.preview(4);assert.equal(w.SharedWall.section(),0);assert.equal(w.SharedWall.read(),beforePreview,'preview fetch never replaces current notes or view');
  const changes=[],stop=w.SharedWall.subscribe(changed=>changes.push(changed)),version=w.SharedWall.version()
  await interval();assert.equal(w.SharedWall.version(),version,'unchanged polls do not invalidate drawing geometry')
  snapshot.notes=[{id:'other',section:0,text:'new'}];await events.onmessage();assert.equal(changes.at(-1),true);assert.equal(w.SharedWall.read()[0].id,'other','save event refreshes without manual reload')
