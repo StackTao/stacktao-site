@@ -730,3 +730,11 @@ body:has([data-guestbook]) { overflow-anchor: none; }
 /* Shared wall coordinates scale with the wall; text and paper details must follow. */
 #view .gb-wall > .gb-note[data-world-sized] .gb-letter-glyph { padding: calc(14px * var(--note-scale)); }
 #view .gb-wall > .gb-note[data-world-sized][data-medium='paper'] .gb-note-foot { height: calc(36px * var(--note-scale)); padding: calc(8px * var(--note-scale)) 0; margin-inline: calc(19.2px * var(--note-scale)); font-size: calc(8px * var(--note-scale)); gap: calc(8px * var(--note-scale)); flex-wrap: nowrap; }
+
+.gb-free-selection { position:absolute; border:1px dashed #655842; outline:5px solid #fff6; pointer-events:none; }
+.gb-free-layer.is-moving canvas { cursor:grab; }
+.gb-free-layer.is-moving canvas:active { cursor:grabbing; }
+.gb-draft-resume { position:fixed; left:24px; bottom:110px; z-index:80; padding:12px 18px; border:1px solid #8c7d5e55; border-radius:24px; background:#faf6eb; color:#464333; box-shadow:0 3px 18px #39321f20; }
+#view .gb-wall > .gb-note[data-world-sized][data-typed] .gb-lettering { flex:none; }
+#view .gb-wall > .gb-note[data-world-sized][data-typed] .gb-note-content { height:100%; min-height:0; }
+#view .gb-wall > .gb-note[data-world-sized][data-typed][data-medium='paper'] .gb-note-content { height:calc(100% - 36px * var(--note-scale)); }

@@ -140,7 +140,7 @@ export async function createAdminServer(options={}) {
   }
   const send=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data))}
   async function staticFile(res,file,privateFile=false) {const data=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':privateFile?'no-store':'no-cache'});res.end(data)}
-  const wallStore=await createWallStore(state),wallRates=new Map()
+  const wallStore=await createWallStore(state),wallRates=new Map(),wallStreams=new Set()
   const analytics=createAnalytics({source,state,originals,writeJSON}),trackingRates=new Map()
   const server=http.createServer(async(req,res)=>{
     res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY')
@@ -168,6 +168,12 @@ export async function createAdminServer(options={}) {
         const mutation=req.method!=='GET';if(mutation)check(allowed.includes(req.headers.origin),'留言操作需要可信来源',403)
         const now=Date.now();for(const [key,r] of wallRates)if(r.until<now)wallRates.delete(key)
         const key=clientIP(req)+':'+mutation,rate=wallRates.get(key)||{count:0,until:now+60000};check(wallRates.size<10000||wallRates.has(key),'请求过多',429);rate.count++;wallRates.set(key,rate);check(rate.count<=(mutation?600:900),'操作频繁，请稍后重试',429)
+        if(pathname==='/api/wall/events'&&req.method==='GET'){
+          check(wallStreams.size<500,'实时连接较多，请稍后重试',503)
+          res.writeHead(200,{'Content-Type':'text/event-stream','Cache-Control':'no-cache','X-Accel-Buffering':'no'});res.write(': connected\n\n');wallStreams.add(res)
+          const unsubscribe=wallStore.subscribe(()=>res.write('data: changed\n\n')),heartbeat=setInterval(()=>res.write(': heartbeat\n\n'),20000)
+          res.on('close',()=>{clearInterval(heartbeat);unsubscribe();wallStreams.delete(res)});return
+        }
         if(pathname==='/api/wall/session'&&req.method==='POST')return send(res,201,{token:crypto.randomBytes(32).toString('hex')})
         const token=/^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization||'')?.[1],visitor=token?wallStore.owner(token):''
         if(pathname==='/api/wall'&&req.method==='GET'){const section=Number(url.searchParams.get('section')||0);check(Number.isInteger(section)&&section>=0,'墙面无效');return send(res,200,wallStore.snapshot(section,visitor))}
@@ -343,5 +349,5 @@ export async function createAdminServer(options={}) {
   return {server,ownerFile,source,output,state,async listen(port=Number(process.env.ADMIN_PORT||5174),host=process.env.ADMIN_HOST||'127.0.0.1'){
     check(['127.0.0.1','localhost','::1'].includes(host)||/^https:\/\//.test(origin),'对外监听必须配置 HTTPS 的 ADMIN_PUBLIC_ORIGIN')
     await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,()=>{server.removeListener('error',reject);resolve()})});if(!origin)origin=`http://${host==='::1'?'[::1]':host}:${server.address().port}`;return origin
-  },async close(){await new Promise(resolve=>server.close(resolve));await wallStore.close()}}
+  },async close(){for(const stream of wallStreams)stream.end();await new Promise(resolve=>server.close(resolve));await wallStore.close()}}
 }

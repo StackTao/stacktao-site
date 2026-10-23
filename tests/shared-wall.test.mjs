@@ -13,7 +13,9 @@ test('shared wall: two visitors, atomic collisions, ownership, revisions, leases
  try{
  await assert.rejects(()=>createAdminServer({root,source,state,output:path.join(temp,'dist')}),/另一个服务实例/)
  const a=(await req('/api/wall/session','POST',{})).data.token,b=(await req('/api/wall/session','POST',{})).data.token
+ const streamAbort=new AbortController(),stream=await fetch(base+'/api/wall/events',{signal:streamAbort.signal}),reader=stream.body.getReader();assert.equal(stream.headers.get('content-type'),'text/event-stream');assert.equal(stream.headers.get('x-accel-buffering'),'no');await reader.read();const update=reader.read()
  const racing=await Promise.all([req('/api/wall/notes','POST',{note:note('one')},a),req('/api/wall/notes','POST',{note:note('two')},b)])
+ const event=await Promise.race([update,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('No realtime save event')),2000);timer.unref()})]);assert.match(new TextDecoder().decode(event.value),/data: changed/);streamAbort.abort();await reader.cancel().catch(()=>{});
  assert.deepEqual(racing.map(r=>r.status).sort(),[200,409]);const winner=racing[0].status===200?a:b,loser=winner===a?b:a,created=racing.find(r=>r.status===200).data
  const snapshot=(await req('/api/wall?section=0','GET',null,loser)).data;assert.equal(snapshot.notes.length,1);assert.equal(snapshot.notes[0].owned,false);assert(!JSON.stringify(snapshot).includes('ownerHash'));assert(!JSON.stringify(snapshot).includes(winner))
  assert.equal((await req('/api/wall/notes/'+created.id,'DELETE',{revision:created.revision},loser)).status,403)

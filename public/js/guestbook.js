@@ -4,7 +4,7 @@
   var WALL_SIZE = 24
   var markWidths = { small:190, medium:260, large:320 }
   var inks = ['#343832', '#3f5870', '#a45743', '#e9edcf', '#d7f557', '#6286ee', '#f47760']
-  var fonts = { wenkai:['霞鹜文楷', '"LXGW WenKai TC","Kaiti SC",STKaiti,KaiTi,serif'], mashan:['马善政毛笔', '"Ma Shan Zheng","LXGW WenKai TC","Kaiti SC",cursive'], caveat:['Caveat · 英文手写', '"Caveat","LXGW WenKai TC","Kaiti SC",cursive'], kai:['系统楷书', '"Kaiti SC",STKaiti,KaiTi,serif'], song:['宋体', '"Songti SC","Noto Serif SC",serif'], hei:['黑体', '"PingFang SC","Microsoft YaHei",sans-serif'], round:['系统圆体', '"Yuanti SC",YouYuan,sans-serif'], brush:['系统行楷', '"Xingkai SC",STXingkai,"Kaiti SC",cursive'], mono:['等宽', '"DM Mono",monospace'] }
+  var fonts = { wenkai:['霞鹜文楷', '"LXGW WenKai TC",serif'], mashan:['马善政毛笔', '"Ma Shan Zheng","LXGW WenKai TC",serif'], caveat:['Caveat · 英文手写', '"Caveat","LXGW WenKai TC",serif'] }
   var papers = ['ivory', 'sage', 'rose']
   var cleanup = function () {}
   var unsaved = function () { return false }
@@ -155,7 +155,7 @@
     return art
   }
   function textStyle(el,note) {
-    el.style.setProperty('--letter-font',(fonts[note.font]||fonts.kai)[1]);el.style.setProperty('--letter-size',([18,24,32].includes(note.fontSize)?note.fontSize:note.medium==='paper'?16:note.medium==='engraving'?20:25)+'px');el.style.setProperty('--letter-ink',inks.includes(note.ink)?note.ink:inks[1])
+    el.style.setProperty('--letter-font',(fonts[note.font]||fonts.wenkai)[1]);el.style.setProperty('--letter-size',([18,24,32].includes(note.fontSize)?note.fontSize:note.medium==='paper'?16:note.medium==='engraving'?20:25)+'px');el.style.setProperty('--letter-ink',inks.includes(note.ink)?note.ink:inks[1])
   }
   function lettering(note) {
     var box=document.createElement('div'),text=document.createElement('p');box.className='gb-lettering';box.dataset.material=note.medium;box.dataset.typeface=note.font||'kai';textStyle(box,note);text.className='gb-letter-glyph';text.textContent=note.text;box.append(text)
@@ -229,7 +229,7 @@
     if (!root) return
     if(shared){
       var cancelled=false;cleanup=function(){cancelled=true};root.querySelectorAll('button,select').forEach(function(b){b.disabled=true})
-      try{await shared.init();if(cancelled||!root.isConnected)return;nameSeed=shared.seed;root.querySelectorAll('button,select').forEach(function(b){b.disabled=false});root.querySelector('.gb-local-label').firstChild.textContent='共享留言 · '}
+      try{await shared.init();var lastWall=Number(localStorage.getItem(KEY+'-current-wall'));if(Number.isInteger(lastWall)&&lastWall!==shared.section()&&shared.walls().some(function(w){return w.id===lastWall}))await shared.load(lastWall);if(cancelled||!root.isConnected)return;nameSeed=shared.seed;root.querySelectorAll('button,select').forEach(function(b){b.disabled=false});root.querySelector('.gb-local-label').firstChild.textContent='共享留言 · '}
       catch(e){if(cancelled)return;var message=document.createElement('p');message.className='gb-status is-visible';message.textContent='共享墙连接失败：'+e.message+'。本机旧留言仍保留，未自动上传。';var retry=document.createElement('button');retry.textContent='重新连接';retry.onclick=function(){message.remove();retry.remove();mount(view)};root.append(message,retry);return}
     }
     var controller = new AbortController(), signal = controller.signal
@@ -256,10 +256,10 @@
     function queueTypography(){if(signal.aborted)return;clearTimeout(fontRefreshTimer);fontRefreshTimer=setTimeout(refreshTypography,40)}
     function loadTypedFont(){
       if(draft.mode!=='text'||!document.fonts||!document.fonts.load)return Promise.resolve()
-      var family=(fonts[draft.font]||fonts.kai)[1],text=draft.text||'山海 Hello',key=family+'\n'+text
+      var family=(fonts[draft.font]||fonts.wenkai)[1],text=draft.text||'山海 Hello',key=family+'\n'+text
       if(fontRequest&&fontRequest.key===key)return fontRequest.promise
       var request={key:key};fontRequest=request
-      request.promise=document.fonts.load('400 '+(draft.fontSize||24)+'px '+family,text).then(function(){if(fontRequest===request)queueTypography()},function(){if(!signal.aborted&&fontRequest===request)error('字体暂未载入，当前显示备用字体。')})
+      request.promise=document.fonts.load('400 '+(draft.fontSize||24)+'px '+family,text).then(function(){if(fontRequest===request)queueTypography();return true},function(){if(fontRequest===request)fontRequest=null;if(!signal.aborted)error('字体暂未载入，请联网后重试；草稿仍保留。');return false})
       return request.promise
     }
     if(document.fonts){
@@ -268,6 +268,14 @@
         if(!e.fontfaces||e.fontfaces.some(function(face){return Object.keys(fonts).some(function(key){return fonts[key][1].includes(face.family.replace(/["']/g,''))})}))queueTypography()
       },{signal:signal})
     }
+    var textRecovery=window.WallTools.draftStore(function(){return KEY+'-text-'+currentWall}),textDraftTimer=0
+    var recoverText=document.createElement('button');recoverText.className='gb-draft-resume';recoverText.style.bottom='160px';recoverText.textContent='继续未完成的留言';root.append(recoverText)
+    function showTextRecovery(){var saved=textRecovery.read();recoverText.hidden=composer.open||!saved||saved.section!==currentWall}
+    function backupText(){clearTimeout(textDraftTimer);if(!composer.open)return;try{if(draft.text.trim()||draft.strokes.length||draft.medium==='sticker')textRecovery.write({section:currentWall,draft:draft,anchor:writeAnchor,wallWidth:wall.clientWidth,editing:editingText});else textRecovery.clear()}catch(_){error('无法备份草稿，请保持页面打开并保存。')}}
+    root.addEventListener('input',function(){clearTimeout(textDraftTimer);textDraftTimer=setTimeout(backupText,300)},{signal:signal})
+    root.addEventListener('change',function(){clearTimeout(textDraftTimer);textDraftTimer=setTimeout(backupText,300)},{signal:signal})
+    window.addEventListener('pagehide',backupText,{signal:signal})
+    recoverText.addEventListener('click',function(){var saved=textRecovery.read();if(!saved||saved.section!==currentWall)return;draft=saved.draft;editingText=saved.editing;writeAnchor=saved.anchor;if(writeAnchor)writeAnchor.y*=wall.clientWidth/saved.wallWidth;openComposer(recoverText);recoverText.hidden=true},{signal:signal})
     function draftSignature(){return JSON.stringify([draft.mode,draft.medium,draft.text,draft.strokes,draft.name,draft.paper,draft.ink,draft.size,draft.sticker,draft.font,draft.fontSize])}
     unsaved=function(){
       if(freeTools&&freeTools.dirty())return true
@@ -278,9 +286,11 @@
     window.addEventListener('beforeunload',function(e){if(unsaved()){e.preventDefault();e.returnValue=''}},{signal:signal})
     function capacityText(){var count=wallNotes().length;return '本面 '+count+' / '+WALL_SIZE+' · '+(count>=WALL_SIZE?'已满，请开新墙':'还可留 '+(WALL_SIZE-count)+' 处')}
     function roomForNote(){if(wallNotes().length<WALL_SIZE)return true;status('这面墙已满（24 / 24）。点击「开新墙」继续，现有留言会留在原墙。');return false}
-    function draftWidth(){return Math.min(draft.medium==='sticker'?{small:100,medium:148,large:200}[draft.size]:markWidths[draft.size],Math.max(160,wall.clientWidth-32))}
+    function textScale(){return draft.mode==='text'&&draft.medium!=='sticker'?wall.clientWidth/1000*(editingText?(editingText.worldFontSize||editingText.fontSize||24)/(editingText.fontSize||24):1):1}
+    function draftWidth(){if(draft.mode==='text'&&draft.medium!=='sticker')return editingText&&editingText.worldBox?editingText.worldBox.width*wall.clientWidth/1000:markWidths[draft.size]*textScale();return Math.min(draft.medium==='sticker'?{small:100,medium:148,large:200}[draft.size]:markWidths[draft.size],Math.max(160,wall.clientWidth-32))}
     function anchorAt(x,y){var r=wall.getBoundingClientRect(),w=draftWidth(),h=draft.medium==='sticker'?w:w*.6;return {mode:layoutMode,x:Math.max(0,Math.min(1,(x-r.left-w/2-16)/Math.max(1,wall.clientWidth-w-32))),y:Math.max(16,y-r.top-h/2)}}
     function choosePlace(medium) {
+      var recoverable=textRecovery.read();if(recoverable&&!composer.open&&!draft.text.trim()&&!draft.strokes.length){recoverText.click();return}
       if(!editingText&&!roomForNote())return
       if (composer.open) { closingForMove = true; composer.close() }
       draft.medium = medium; choosing = true; root.classList.add('is-choosing'); $('[data-placement-hint]').hidden = false
@@ -290,15 +300,16 @@
     function cancelPlace() { choosing = false;placementGhost.hidden=true;root.classList.remove('is-choosing');$('[data-placement-hint]').hidden=true;root.querySelectorAll('[data-wall-tool]').forEach(function(b){b.setAttribute('aria-pressed','false')}) }
     function abandonPlacement(){cancelPlace();editingText=null;wall.querySelectorAll('.gb-editing-original').forEach(function(el){el.classList.remove('gb-editing-original')})}
     function positionStage() {
+      clearTimeout(textDraftTimer);if(composer.open)textDraftTimer=setTimeout(backupText,300)
       if(shared){clearTimeout(textLeaseTimer);textLeaseTimer=setTimeout(function(){reserveText().catch(function(e){error(e.message)})},250)}
-      var width=draftWidth();stage.style.width=width+'px';stage.style.left=(wall.offsetLeft+16+(writeAnchor?writeAnchor.x:.5)*Math.max(0,wall.clientWidth-width-32))+'px';stage.style.top=(wall.offsetTop+(writeAnchor?writeAnchor.y:32))+'px'
+      var width=draftWidth();writing.style.width='';writing.style.transform='';stage.style.height='';stage.style.width=width+'px';stage.style.left=(wall.offsetLeft+16+(writeAnchor?writeAnchor.x:.5)*Math.max(0,wall.clientWidth-width-32))+'px';stage.style.top=(wall.offsetTop+(writeAnchor?writeAnchor.y:32))+'px'
       if(draft.medium==='sticker')stage.replaceChildren(card({id:'draft-sticker',medium:'sticker',sticker:draft.sticker,size:draft.size,paper:draft.paper,name:'',date:'',text:'',strokes:[]},false),moveHandle)
       else if(writing.parentElement!==stage)stage.replaceChildren(writing,moveHandle)
       stage.dataset.medium=draft.medium
-      if(draft.mode==='text'&&draft.medium!=='sticker'){textStyle(writing,draft);var input=$('[data-message]');input.style.height='0px';var h=Math.max(width*.6,input.scrollHeight);input.style.height=h+'px';writing.style.height=h+'px'}else {writing.style.height='';$('[data-message]').style.height=''}
+      if(draft.mode==='text'&&draft.medium!=='sticker'){var ts=textScale(),authoredWidth=width/ts;writing.style.width=authoredWidth+'px';writing.style.transformOrigin='0 0';writing.style.transform='scale('+ts+')';textStyle(writing,draft);var input=$('[data-message]');input.style.height='0px';var h=Math.max(authoredWidth*.6,input.scrollHeight);input.style.height=h+'px';writing.style.height=h+'px';stage.style.height=h*ts+'px'}else {writing.style.height='';$('[data-message]').style.height=''}
       if(composer.open){validatePlacement();var b=stage.getBoundingClientRect();composer.style.left=innerWidth>900&&b.right>innerWidth-330?'24px':'';composer.style.right=composer.style.left?'auto':''}
     }
-    function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:Math.max(writing.offsetHeight,width*.6);if(draft.medium==='paper')h+=36;return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
+    function placementRect(){var width=draftWidth(),h=draft.medium==='sticker'?width:Math.max(writing.offsetHeight*textScale(),width*.6);if(draft.medium==='paper')h+=36*textScale();return {x:16+writeAnchor.x*Math.max(0,wall.clientWidth-width-32),y:writeAnchor.y,width:width,height:h}}
     function validatePlacement(){if(!writeAnchor||!composer.open)return true;var b=placementRect(),ok=freeTools.canPlace(b,editingText&&editingText.id);stage.classList.toggle('is-conflicting',!ok);$('[data-gb="publish"]').disabled=!ok||publishingText;error(ok?'':'这里会覆盖已有痕迹。拖动上方把手，或点「换个位置」。');return ok}
     wall.addEventListener('pointermove',function(e){if(!choosing)return;var a=anchorAt(e.clientX,e.clientY),w=draftWidth();placementGhost.hidden=false;Object.assign(placementGhost.style,{left:wall.offsetLeft+16+a.x*Math.max(0,wall.clientWidth-w-32)+'px',top:wall.offsetTop+a.y+'px',width:w+'px',height:(draft.medium==='sticker'?w:w*.6)+'px'});placementGhost.textContent={ink:'喷漆文字',engraving:'刻字',paper:'纸条',sticker:'贴纸'}[draft.medium]},{signal:signal})
     moveHandle.addEventListener('pointerdown',function(e){if(e.button!==0)return;e.preventDefault();moveHandle.setPointerCapture(e.pointerId);stageDrag={id:e.pointerId,x:e.clientX,y:e.clientY,anchor:Object.assign({},writeAnchor)}},{signal:signal})
@@ -324,7 +335,7 @@
     }
     function changeWall(section) {
       if (!canNavigateWall()) return false
-      if(shared){shared.load(section).then(function(){if(signal.aborted)return;notes=readNotes();currentWall=section;renderWall();if(book.open)renderBook()}).catch(function(e){status(e.message)});return true}
+      if(shared){shared.load(section).then(function(){if(signal.aborted)return;notes=readNotes();currentWall=section;try{localStorage.setItem(wallPreference,String(section))}catch(_){}renderWall();if(book.open)renderBook()}).catch(function(e){status(e.message)});return true}
       abandonPlacement();currentWall = section; writeAnchor = null; renderWall()
       try { localStorage.setItem(wallPreference, String(currentWall)) } catch (_) {}
       window.scrollTo({top:0,behavior:'auto'})
@@ -396,7 +407,7 @@
       if(shared){try{
         var deleted=notes.filter(function(n){return !next.some(function(x){return x.id===n.id})}),changed=next.filter(function(n){return !notes.some(function(x){return x.id===n.id&&JSON.stringify(x)===JSON.stringify(n)})})
         for(var n of deleted)await shared.remove(n)
-        for(var n of changed){if(removed&&removed.id===n.id){await shared.restore(n);continue}if(!n.frame){var box=placementRect(),scale=wall.clientWidth/1000;n.worldBox={x:box.x/scale,y:box.y/scale,width:box.width/scale,height:box.height/scale};n.worldFontSize=(draft.fontSize||24)/scale}await reserveText();await shared.put(n,textLease)}
+        for(var n of changed){if(removed&&removed.id===n.id){await shared.restore(n);continue}if(!n.frame){var box=placementRect(),scale=wall.clientWidth/1000;n.worldBox={x:box.x/scale,y:box.y/scale,width:box.width/scale,height:box.height/scale};n.worldFontSize=(draft.fontSize||24)*textScale()/scale}await reserveText();await shared.put(n,textLease)}
         notes=readNotes();return true
       }catch(e){error(e.message+'；草稿仍保留。');status(e.message);return false}}
 
@@ -468,6 +479,7 @@
       return { x:span ? (best.x-16)/span : .5, y:best.y }
     }
     function wallLayout() {
+      if(recoverText)showTextRecovery()
       finishPaper(true)
       var width = wall.clientWidth, paperWidth = Math.min(280, Math.max(180, width - 32))
       layoutMode = width < 600 ? 'narrow' : 'wide'
@@ -475,10 +487,9 @@
       var cards = Array.from(wall.querySelectorAll('[data-note]')), bottom = 0
       cards.forEach(function (el) { var n=notes.find(function(n){return n.id===el.dataset.note});el.style.width = (n && (n.frame||n.worldBox) ? (n.frame||n.worldBox).width*width/1000 : Math.min(parseFloat(el.style.getPropertyValue('--mark-size')), Math.max(160, width - 32))) + 'px';el.style.setProperty('--letter-min-height',parseFloat(el.style.width)*.6+'px');if(n&&(n.frame||n.worldBox)){el.style.height=(n.frame||n.worldBox).height*width/1000+'px';if(n.worldBox){
           el.dataset.worldSized='true';el.style.overflow='hidden'
-          var fontSize=(n.worldFontSize||24)*width/1000,scale=fontSize/(n.fontSize||24)
+          var fontSize=n.fontSize||24,scale=(n.worldFontSize||24)*width/1000/fontSize
           el.style.setProperty('--note-scale',scale)
-          el.style.setProperty('--letter-size',fontSize+'px')
-          var lettering=el.querySelector('.gb-lettering');if(lettering)lettering.style.setProperty('--letter-size',fontSize+'px')
+          var lettering=el.querySelector('.gb-lettering');if(lettering){lettering.style.width=(n.worldBox.width*width/1000/scale)+'px';lettering.style.transformOrigin='0 0';lettering.style.transform='scale('+scale+')';lettering.style.setProperty('--letter-size',fontSize+'px');lettering.style.setProperty('--note-scale',1)}
         }} })
       var reserved=wallControls();var occupied = reserved.concat(cards.map(function (el) { var p = positionOf(el); return p ? { x:16 + p.x * Math.max(0,width - parseFloat(el.style.width) - 32), y:p.y, width:parseFloat(el.style.width), height:el.offsetHeight || 240, medium:el.dataset.medium } : null }).filter(Boolean))
       cards.forEach(function (el,index) {
@@ -494,7 +505,7 @@
         paintPaper(el, freeNote ? (freeNote.frame||freeNote.worldBox).x*width/1000 : 16 + p.x * maxX, p.y); el.style.zIndex = String(p.z)
         bottom = Math.max(bottom, p.y + height)
       })
-      wall.style.height = Math.max((window.innerHeight || 720) - 100, bottom + 160) + 'px'
+      wall.style.height = Math.max((window.innerHeight || 720) - 100, bottom + 160, freeTools?freeTools.extent():0, composer.open&&writeAnchor?writeAnchor.y+stage.offsetHeight+100:0) + 'px'
       try {var value=JSON.stringify(layouts);if(localStorage.getItem(layoutKey)!==value)localStorage.setItem(layoutKey,value)} catch (_) {}
       if (composer.open) positionStage()
       if(freeTools)freeTools.resize()
@@ -659,7 +670,7 @@
       $('.gb-papers').hidden = draft.medium !== 'paper'
       $('[data-pen-tools]').classList.toggle('is-engraving', draft.medium === 'engraving')
       canvas.hidden = draft.mode !== 'draw'; $('[data-message]').hidden = draft.mode !== 'text'
-      $('[data-pen-tools]').hidden = isSticker||(draft.mode==='text'&&draft.medium==='engraving');$('.gb-pen-size').hidden=draft.mode!=='draw';$('[data-gb="undo"]').hidden=draft.mode!=='draw';$('[data-gb="clear"]').hidden=draft.mode!=='draw';$('[data-type-tools]').hidden=isSticker||draft.mode!=='text';$('[data-font]').value=draft.font||'kai';$('[data-font-size]').value=String(draft.fontSize||24); $('[data-text-count]').hidden = isSticker || draft.mode !== 'text'
+      $('[data-pen-tools]').hidden = isSticker||(draft.mode==='text'&&draft.medium==='engraving');$('.gb-pen-size').hidden=draft.mode!=='draw';$('[data-gb="undo"]').hidden=draft.mode!=='draw';$('[data-gb="clear"]').hidden=draft.mode!=='draw';$('[data-type-tools]').hidden=isSticker||draft.mode!=='text';$('[data-font]').value=fonts[draft.font]?draft.font:'wenkai';$('[data-font-size]').value=String(draft.fontSize||24); $('[data-text-count]').hidden = isSticker || draft.mode !== 'text'
       $('[data-message]').value = draft.text; $('[data-name]').value = draft.name; $('[data-width]').value = String(draft.width)
       $('[data-text-count]').textContent = draft.text.length + ' / 180'
       redraw(); if (composer.open) positionStage();loadTypedFont()
@@ -671,6 +682,7 @@
       $('[data-foot-hint]').textContent = capacityText()+' · 写满后手动开新墙'; error(''); syncEditor()
     }
     function openComposer(trigger) {
+      recoverText.hidden=true;
       cancelPlace(); restoreFocus = trigger; previewNote = null
       if(draft.medium==='sticker')stickerCategory=stickerGroup(draft.sticker)
       if(!writeAnchor)writeAnchor=anchorAt(innerWidth*.45,innerHeight*.4)
@@ -679,7 +691,7 @@
       ;(draft.mode === 'text' ? $('[data-message]') : $('[data-mode="draw"]')).focus({preventScroll:true})
     }
     function makeNote() {
-      return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', font:draft.font||'kai',fontSize:draft.fontSize||24,ink:draft.ink,size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
+      return { id: crypto.randomUUID(), layout:2, medium:draft.medium || 'paper', font:fonts[draft.font]?draft.font:'wenkai',fontSize:draft.fontSize||24,ink:draft.ink,size:draft.size || 'medium', sticker:draft.sticker || 'spark', anchor:writeAnchor, mode: draft.medium === 'sticker' ? 'text' : draft.mode, strokes: draft.medium !== 'sticker' && draft.mode === 'draw' ? JSON.parse(JSON.stringify(draft.strokes)) : [], text: draft.medium !== 'sticker' && draft.mode === 'text' ? draft.text.trim() : '', name: draft.name.trim(), paper: draft.paper, date: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) }
     }
     function point(e) { var r = canvas.getBoundingClientRect(); return [Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)), e.pressure || 0.5].map(function (n) { return Math.round(n * 10000) / 10000 }) }
     function stop() { activeStroke = null; pointer = null }
@@ -765,8 +777,9 @@
           if(draft.medium!=='sticker' && (draft.mode==='draw'?!draft.strokes.length:!draft.text.trim())) { error('先在墙面选中的位置留下一笔。'); return }
           if(draft.mode==='text'&&draft.medium!=='sticker'){
             var beforeFontLoad=draftSignature();publishingText=true;button.disabled=true
-            await loadTypedFont();publishingText=false
+            var fontReady=await loadTypedFont();publishingText=false
             if(signal.aborted||!composer.open)break
+            if(fontReady===false){button.disabled=false;error('字体暂未载入，请重试；草稿仍保留。');break}
             positionStage()
             if(draftSignature()!==beforeFontLoad){error('文字或字体已更改，请确认后再次保存。');break}
           }
@@ -777,7 +790,7 @@
           publishingText=true;button.disabled=true
           var stored=await persist(editingText?notes.map(function(n){return n.id===editingText.id?previewNote:n}):[previewNote].concat(notes));publishingText=false;button.disabled=false;if(!stored)return
           try{localStorage.setItem(wallPreference,String(currentWall))}catch(_){}
-          var newId=previewNote.id;draftBaseline=null;if(editingText&&writeAnchor)layouts[layoutMode][newId]={x:writeAnchor.x,y:writeAnchor.y,z:notes.length+1};previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium,size:draft.size,sticker:draft.sticker,font:draft.font,fontSize:draft.fontSize};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status('已留在你选的位置。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))
+          textRecovery.clear();clearTimeout(textDraftTimer);var newId=previewNote.id;draftBaseline=null;if(editingText&&writeAnchor)layouts[layoutMode][newId]={x:writeAnchor.x,y:writeAnchor.y,z:notes.length+1};previewNote=null;draft={mode:'draw',strokes:[],text:'',name:draft.name,paper:draft.paper,ink:draft.ink,width:draft.width,medium:draft.medium,size:draft.size,sticker:draft.sticker,font:draft.font,fontSize:draft.fontSize};writeAnchor=null;restoreFocus=null;composer.close();renderWall(newId);status('已留在你选的位置。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))
           var pinned=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===newId});if(pinned){pinned.focus({preventScroll:true});}break
         case 'remove':
           if(!selected || selected.id==='sample')return
@@ -788,6 +801,7 @@
     }, {signal:signal})
     ;[composer,detail].forEach(function(dialog){dialog.addEventListener('close',function(){stop();document.body.classList.remove('gb-dialog-open');if(dialog===detail&&restoreFocus&&restoreFocus.isConnected)restoreFocus.focus()},{signal:signal})})
     composer.addEventListener('close',function () {
+      if(draft.text.trim()||draft.strokes.length){try{textRecovery.write({section:currentWall,draft:draft,anchor:writeAnchor,wallWidth:wall.clientWidth,editing:editingText})}catch(_){}}showTextRecovery()
       if(shared){clearTimeout(textLeaseTimer);shared.ignoreLease=null;shared.release(textLease).catch(function(){})}
       if(editingText&&!closingForMove){editingText=null;wall.querySelectorAll('.gb-editing-original').forEach(function(el){el.classList.remove('gb-editing-original')})}
       stage.hidden=true; root.classList.remove('is-writing'); writingHome.insertBefore(writing,$('[data-pen-tools]')); stage.replaceChildren(); wallLayout()
@@ -798,8 +812,11 @@
     root.querySelectorAll('[data-wall-tool="ink"],[data-wall-tool="engraving"]').forEach(function(b){b.querySelector('span').innerHTML=window.WallTools.toolArt(b.dataset.wallTool)})
     freeTools=window.WallTools.mount({root:root,wall:wall,key:KEY,section:function(){return currentWall},read:readNotes,carve:carvedArt,notice:status,changed:wallLayout,capacity:capacityText,type:function(medium){draft.medium=medium;draft.mode='text';writeAnchor=null;choosePlace(medium)},sync:function(){notes=readNotes();renderWall()},saved:function(n){notes=readNotes();renderWall(n.id);status('痕迹已保存。'+capacityText()+(wallNotes().length>=WALL_SIZE?' · 点击「开新墙」继续。':''))}})
     renderWall()
-    var unsubscribe=shared?shared.subscribe(function(){if(signal.aborted)return;notes=readNotes();if(!unsaved()&&!composer.open&&!(drag&&drag.active)&&!(freeTools&&freeTools.active())){renderWall();if(book.open)renderBook()}}):function(){}
-    cleanup=function(){unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
+    var liveRefreshTimer=0
+    function refreshShared(){if(signal.aborted)return;if((drag&&drag.active)||(freeTools&&freeTools.busy())||stageDrag){clearTimeout(liveRefreshTimer);liveRefreshTimer=setTimeout(refreshShared,80);return}notes=readNotes();renderWall();if(editingText){var original=Array.from(wall.querySelectorAll('[data-note]')).find(function(el){return el.dataset.note===editingText.id});if(original)original.classList.add('gb-editing-original')}if(book.open)renderBook()}
+    var unsubscribe=shared?shared.subscribe(function(contentChanged){if(contentChanged===false){if(freeTools)freeTools.presence();return}refreshShared()}):function(){}
+    showTextRecovery();
+    cleanup=function(){clearTimeout(liveRefreshTimer);backupText();clearTimeout(textDraftTimer);unsubscribe();clearTimeout(textLeaseTimer);clearInterval(textLeaseBeat);if(shared){shared.ignoreLease=null;shared.release(textLease).catch(function(){})}unsaved=function(){return false};cancelAnimationFrame(placeFrame);clearTimeout(fontRefreshTimer);clearTimeout(locatedTimer);if(book.open)book.close();if(freeTools)freeTools.destroy();clearTimeout(statusTimer);finishPaper(true);if(wallObserver)wallObserver.disconnect();if(visibilityObserver)visibilityObserver.disconnect();controller.abort();if(composer.open)composer.close();if(detail.open)detail.close();document.body.classList.remove('gb-dialog-open')}
   }
-  window.Guestbook={mount:mount,hasUnsavedChanges:function(){return unsaved()},confirmLeave:function(){return !unsaved() || window.confirm('墙上还有尚未保存的内容。离开后，未保存的手绘会丢失。确定离开吗？')},destroy:function(){cleanup();cleanup=function(){}}}
+  window.Guestbook={mount:mount,hasUnsavedChanges:function(){return unsaved()},confirmLeave:function(){return !unsaved() || window.confirm('墙上还有尚未保存的内容。已备份的草稿可在原窗口恢复；未完成的提交不会发布。确定离开吗？')},destroy:function(){cleanup();cleanup=function(){}}}
 })()
